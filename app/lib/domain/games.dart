@@ -68,7 +68,16 @@ class Game {
   );
 }
 
-enum JoinError { full, alreadyJoined, levelOutOfRange, notParticipant, hostCannotLeave }
+enum JoinError {
+  full,
+  alreadyJoined,
+  levelOutOfRange,
+  notParticipant,
+  hostCannotLeave,
+
+  /// The backend could not be reached or answered with something unexpected.
+  unavailable,
+}
 
 class JoinException implements Exception {
   const JoinException(this.error);

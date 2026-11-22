@@ -17,6 +17,13 @@
   "demoNotice": "Demo rejim: Telegram orqali kirish keyingi versiyada ulanadi. Davom etish uchun ismingizni kiriting. Koʻrsatilgan maydonlar, oʻyinlar va turnirlar namunaviy maʼlumotlar.",
   "yourName": "Ismingiz",
   "nameRequired": "Ismingizni kiriting",
+  "telegramHint": "Telegram ochiladi. U yerda «Start» tugmasini bosing va telefon raqamingizni yuboring — u Actra akkauntingiz boʻladi.",
+  "telegramWaiting": "Telegram kutilmoqda. Actra botiga telefon raqamingizni yuboring va shu yerga qayting.",
+  "telegramOpenAgain": "Telegramni qayta ochish",
+  "telegramExpired": "Kirish havolasi eskirdi. Qaytadan urinib koʻring.",
+  "signInFailed": "Kirib boʻlmadi. Internet aloqasini tekshirib, qaytadan urinib koʻring.",
+  "acceptTerms": "Foydalanish shartlari va Maxfiylik siyosatini qabul qilaman",
+  "termsRequired": "Davom etish uchun shartlarni qabul qiling",
 
   "tabHome": "Asosiy",
   "tabVenues": "Maydonlar",

@@ -196,6 +196,48 @@ abstract class AppLocalizations {
   /// **'Enter your name'**
   String get nameRequired;
 
+  /// No description provided for @telegramHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram will open. Tap Start there and share your phone number — it becomes your Actra account.'**
+  String get telegramHint;
+
+  /// No description provided for @telegramWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for Telegram. Share your phone number with the Actra bot, then come back here.'**
+  String get telegramWaiting;
+
+  /// No description provided for @telegramOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Telegram again'**
+  String get telegramOpenAgain;
+
+  /// No description provided for @telegramExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in link has expired. Please try again.'**
+  String get telegramExpired;
+
+  /// No description provided for @signInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign in. Check your connection and try again.'**
+  String get signInFailed;
+
+  /// No description provided for @acceptTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'I accept the Terms of Use and the Privacy Policy'**
+  String get acceptTerms;
+
+  /// No description provided for @termsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept the terms to continue'**
+  String get termsRequired;
+
   /// No description provided for @tabHome.
   ///
   /// In en, this message translates to:

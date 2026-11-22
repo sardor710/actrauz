@@ -1,0 +1,69 @@
+// The same fixture as app/test/helpers.dart: one venue in Tashkent open
+// 07:00-23:00 every day, one 90-minute padel court at 180 000.
+
+export async function addCities(pool) {
+  await pool.query(`
+    insert into cities (id, name_en, country_code, currency, utc_offset_minutes) values
+      ('tashkent', 'Tashkent', 'UZ', 'UZS', 300),
+      ('almaty', 'Almaty', 'KZ', 'KZT', 300),
+      ('farcity', 'Far City', 'KZ', 'KZT', 360)
+    on conflict (id) do nothing`);
+  await pool.query(`
+    insert into sports (id, name_en, icon_key, default_players) values
+      ('padel', 'Padel', 'padel', 4), ('football', 'Football', 'football', 10)
+    on conflict (id) do nothing`);
+}
+
+/** hours: { weekday: [openMinute, closeMinute] | null }; default 07:00-23:00 all week. */
+export async function addVenue(pool, { cityId = 'tashkent', name = 'Test venue', open = 7 * 60, close = 23 * 60, hours } = {}) {
+  await addCities(pool);
+  const { rows } = await pool.query(`insert into venues (city_id, name_en) values ($1, $2) returning id`, [cityId, name]);
+  const venueId = rows[0].id;
+  for (let weekday = 1; weekday <= 7; weekday++) {
+    const day = hours ? hours[weekday] : [open, close];
+    if (!day) continue;
+    await pool.query(`insert into working_hours (venue_id, weekday, open_minute, close_minute) values ($1, $2, $3, $4)`, [
+      venueId,
+      weekday,
+      day[0],
+      day[1],
+    ]);
+  }
+  return venueId;
+}
+
+/**
+ * rules: [{ weekdays, from, to, price }] in priority order.
+ * override: { weekday: [open, close] | null } replaces the venue's hours.
+ */
+export async function addCourt(pool, venueId, { slot = 90, basePrice = 180000, rules = [], override = {}, sportId = 'padel' } = {}) {
+  const { rows } = await pool.query(
+    `insert into courts (venue_id, sport_id, name_en, slot_minutes, base_price) values ($1, $2, 'Court', $3, $4) returning id`,
+    [venueId, sportId, slot, basePrice],
+  );
+  const courtId = rows[0].id;
+  for (const [i, rule] of rules.entries()) {
+    await pool.query(
+      `insert into price_rules (court_id, weekdays, from_minute, to_minute, price, sort_order) values ($1, $2, $3, $4, $5, $6)`,
+      [courtId, rule.weekdays, rule.from, rule.to, rule.price, i],
+    );
+  }
+  for (const [weekday, day] of Object.entries(override)) {
+    await pool.query(
+      `insert into working_hours (court_id, weekday, closed, open_minute, close_minute) values ($1, $2, $3, $4, $5)`,
+      [courtId, Number(weekday), day === null, day?.[0] ?? 0, day?.[1] ?? 0],
+    );
+  }
+  return courtId;
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** Venue wall-clock time, as the API carries it: "2026-11-23T07:00:00". */
+export const at = (day, hour, minute = 0) => `${day}T${pad(hour)}:${pad(minute)}:00`;
+
+/** The instant of a Tashkent (UTC+5) wall-clock time, for the `now` argument. */
+export const tashkent = (day, hour, minute = 0) => `${day}T${pad(hour)}:${pad(minute)}:00+05:00`;
+
+export const monday = '2026-11-23';
+export const saturday = '2026-11-28';

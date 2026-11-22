@@ -17,6 +17,13 @@
   "demoNotice": "Demo mode: Telegram sign-in is connected in the next release. Enter a name to continue. Venues, games and tournaments shown are sample data.",
   "yourName": "Your name",
   "nameRequired": "Enter your name",
+  "telegramHint": "Telegram will open. Tap Start there and share your phone number — it becomes your Actra account.",
+  "telegramWaiting": "Waiting for Telegram. Share your phone number with the Actra bot, then come back here.",
+  "telegramOpenAgain": "Open Telegram again",
+  "telegramExpired": "The sign-in link has expired. Please try again.",
+  "signInFailed": "Could not sign in. Check your connection and try again.",
+  "acceptTerms": "I accept the Terms of Use and the Privacy Policy",
+  "termsRequired": "Accept the terms to continue",
 
   "tabHome": "Home",
   "tabVenues": "Venues",

@@ -5,11 +5,21 @@
 *.keystore
 *.jks
 key.properties
+# Build-time app configuration (project URL and anon key)
+app/env/*.json
+!app/env/example.json
 
 # Local tool state
 .claude/settings.local.json
 supabase/.temp/
 supabase/.branches/
+supabase/tests/.pgdata/
+supabase/tests/.last-run.log
+
+# Tooling installed on D: for the backend
+node_modules/
+.npm-cache/
+.deno-cache/
 
 # OS and editor
 .DS_Store

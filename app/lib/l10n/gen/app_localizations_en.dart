@@ -58,6 +58,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nameRequired => 'Enter your name';
 
   @override
+  String get telegramHint =>
+      'Telegram will open. Tap Start there and share your phone number — it becomes your Actra account.';
+
+  @override
+  String get telegramWaiting =>
+      'Waiting for Telegram. Share your phone number with the Actra bot, then come back here.';
+
+  @override
+  String get telegramOpenAgain => 'Open Telegram again';
+
+  @override
+  String get telegramExpired =>
+      'The sign-in link has expired. Please try again.';
+
+  @override
+  String get signInFailed =>
+      'Could not sign in. Check your connection and try again.';
+
+  @override
+  String get acceptTerms => 'I accept the Terms of Use and the Privacy Policy';
+
+  @override
+  String get termsRequired => 'Accept the terms to continue';
+
+  @override
   String get tabHome => 'Home';
 
   @override

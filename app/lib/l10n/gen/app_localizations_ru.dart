@@ -58,6 +58,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get nameRequired => 'Введите имя';
 
   @override
+  String get telegramHint =>
+      'Откроется Telegram. Нажмите там «Старт» и отправьте свой номер телефона — он станет вашим аккаунтом в Actra.';
+
+  @override
+  String get telegramWaiting =>
+      'Ждём Telegram. Отправьте боту Actra свой номер телефона и вернитесь сюда.';
+
+  @override
+  String get telegramOpenAgain => 'Открыть Telegram ещё раз';
+
+  @override
+  String get telegramExpired =>
+      'Ссылка для входа устарела. Попробуйте ещё раз.';
+
+  @override
+  String get signInFailed =>
+      'Не удалось войти. Проверьте соединение и попробуйте ещё раз.';
+
+  @override
+  String get acceptTerms =>
+      'Я принимаю Пользовательское соглашение и Политику конфиденциальности';
+
+  @override
+  String get termsRequired => 'Примите условия, чтобы продолжить';
+
+  @override
   String get tabHome => 'Главная';
 
   @override

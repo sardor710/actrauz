@@ -1,0 +1,22 @@
+# Supabase CLI configuration for Actra. The project itself is hosted;
+# `scripts/deploy.mjs` links to it using supabase/.env.
+project_id = "actra"
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+# Called by the app before anyone is signed in. The project uses the new
+# publishable key, which is not a JWT, so the gateway's JWT check cannot be
+# used here; the endpoint is public by nature and hands out nothing without
+# a contact verified through Telegram.
+[functions.telegram-login]
+verify_jwt = false
+
+# Called by Telegram, which cannot send a JWT. The function checks the
+# secret header registered with setWebhook instead.
+[functions.telegram-webhook]
+verify_jwt = false

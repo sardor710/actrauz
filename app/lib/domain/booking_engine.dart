@@ -91,6 +91,9 @@ enum BookingError {
   holdExpired,
   notFound,
   notCancellable,
+
+  /// The backend could not be reached or answered with something unexpected.
+  unavailable,
 }
 
 class BookingException implements Exception {

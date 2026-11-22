@@ -59,6 +59,32 @@ class AppLocalizationsUz extends AppLocalizations {
   String get nameRequired => 'Ismingizni kiriting';
 
   @override
+  String get telegramHint =>
+      'Telegram ochiladi. U yerda «Start» tugmasini bosing va telefon raqamingizni yuboring — u Actra akkauntingiz boʻladi.';
+
+  @override
+  String get telegramWaiting =>
+      'Telegram kutilmoqda. Actra botiga telefon raqamingizni yuboring va shu yerga qayting.';
+
+  @override
+  String get telegramOpenAgain => 'Telegramni qayta ochish';
+
+  @override
+  String get telegramExpired =>
+      'Kirish havolasi eskirdi. Qaytadan urinib koʻring.';
+
+  @override
+  String get signInFailed =>
+      'Kirib boʻlmadi. Internet aloqasini tekshirib, qaytadan urinib koʻring.';
+
+  @override
+  String get acceptTerms =>
+      'Foydalanish shartlari va Maxfiylik siyosatini qabul qilaman';
+
+  @override
+  String get termsRequired => 'Davom etish uchun shartlarni qabul qiling';
+
+  @override
   String get tabHome => 'Asosiy';
 
   @override

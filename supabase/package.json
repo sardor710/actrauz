@@ -1,0 +1,17 @@
+{
+  "name": "actra-supabase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "seed": "node scripts/deploy.mjs seed",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "deno": "^2.9.6",
+    "embedded-postgres": "^18.7.0-beta.19",
+    "pg": "^8.23.1",
+    "supabase": "^3.2.0"
+  }
+}

@@ -1,9 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_config.dart';
 import '../core/markets.dart';
+import '../data/auth/auth_repository.dart';
 import '../data/repositories.dart';
 import '../data/sample/sample_repositories.dart';
+import '../data/supabase/supabase_auth_repository.dart';
+import '../data/supabase/supabase_booking_repository.dart';
+import '../data/supabase/supabase_catalog_repository.dart';
+import '../data/supabase/supabase_game_repository.dart';
 import '../domain/booking_engine.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
@@ -15,6 +23,25 @@ final sharedPrefsProvider = Provider<SharedPreferences>((ref) => throw Unimpleme
 
 /// Current UTC time. Overridden in tests to fix the clock.
 final clockProvider = Provider<DateTime Function()>((ref) => () => DateTime.now().toUtc());
+
+/// Whether the app was built with a Supabase project. Without one it runs on
+/// the sample data with the demo sign-in (tests, offline demo).
+final backendEnabledProvider = Provider<bool>((ref) => AppConfig.hasBackend);
+
+/// Initialised in `main()` when the backend is enabled.
+final supabaseClientProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
+
+final authRepositoryProvider = Provider<AuthRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseAuthRepository(ref.watch(supabaseClientProvider))
+      : const DemoAuthRepository(),
+);
+
+/// Opens a link outside the app (the Telegram bot). Overridden in tests.
+final urlOpenerProvider = Provider<Future<bool> Function(Uri)>(
+  (ref) =>
+      (uri) => launchUrl(uri, mode: LaunchMode.externalApplication),
+);
 
 final sessionProvider = NotifierProvider<SessionController, SessionState>(SessionController.new);
 
@@ -35,9 +62,30 @@ final sampleBackendProvider = Provider<SampleBackend>((ref) {
   return SampleBackend(utcNow: ref.watch(clockProvider), meName: name);
 });
 
-final catalogRepositoryProvider = Provider<CatalogRepository>((ref) => ref.watch(sampleBackendProvider));
-final bookingRepositoryProvider = Provider<BookingRepository>((ref) => ref.watch(sampleBackendProvider));
-final gameRepositoryProvider = Provider<GameRepository>((ref) => ref.watch(sampleBackendProvider));
+/// The Supabase client for whoever is signed in now. Depending on the
+/// signed-in name makes everything loaded for one player reload for the next.
+SupabaseClient _clientForCurrentPlayer(Ref ref) {
+  ref.watch(sessionProvider.select((s) => s.userName));
+  return ref.watch(supabaseClientProvider);
+}
+
+final catalogRepositoryProvider = Provider<CatalogRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseCatalogRepository(ref.watch(supabaseClientProvider))
+      : ref.watch(sampleBackendProvider),
+);
+
+final bookingRepositoryProvider = Provider<BookingRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseBookingRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider),
+);
+
+final gameRepositoryProvider = Provider<GameRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseGameRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider),
+);
 
 final sportsProvider = FutureProvider<List<Sport>>((ref) => ref.watch(catalogRepositoryProvider).sports());
 

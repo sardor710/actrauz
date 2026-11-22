@@ -23,11 +23,18 @@ class SessionController extends Notifier<SessionState> {
   @override
   SessionState build() {
     final prefs = ref.watch(sharedPrefsProvider);
+    final auth = ref.watch(authRepositoryProvider);
+
+    // If the backend ends the session (revoked, expired), go back to sign-in.
+    final lost = auth.sessionLost.listen((_) => _forgetUser());
+    ref.onDispose(lost.cancel);
+
     final lang = prefs.getString(_lang);
     return SessionState(
       languageCode: kLanguageCodes.contains(lang) ? lang : null,
       cityId: prefs.getString(_city),
-      userName: prefs.getString(_user),
+      // A remembered name without a backend session is not a sign-in.
+      userName: auth.hasSession ? prefs.getString(_user) : null,
     );
   }
 
@@ -41,6 +48,7 @@ class SessionController extends Notifier<SessionState> {
     await ref.read(sharedPrefsProvider).setString(_city, cityId);
   }
 
+  /// Called once the player is signed in and has a name.
   Future<void> signIn(String name) async {
     state = SessionState(languageCode: state.languageCode, cityId: state.cityId, userName: name);
     await ref.read(sharedPrefsProvider).setString(_user, name);
@@ -48,6 +56,12 @@ class SessionController extends Notifier<SessionState> {
 
   /// Keeps language and city so the next sign-in starts where it left off.
   Future<void> signOut() async {
+    await _forgetUser();
+    await ref.read(authRepositoryProvider).signOut();
+  }
+
+  Future<void> _forgetUser() async {
+    if (state.userName == null) return;
     state = SessionState(languageCode: state.languageCode, cityId: state.cityId);
     await ref.read(sharedPrefsProvider).remove(_user);
   }
