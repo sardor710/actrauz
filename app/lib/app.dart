@@ -27,8 +27,9 @@ class ActraApp extends ConsumerWidget {
         }
         return const Locale('ru');
       },
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
+      // Light only for now; a dark theme is a later addition.
+      theme: buildTheme(),
+      themeMode: ThemeMode.light,
     );
   }
 }

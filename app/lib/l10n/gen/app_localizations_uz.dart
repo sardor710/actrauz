@@ -375,4 +375,147 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get currencyKzt => '₸';
+
+  @override
+  String get searchHint => 'Maydon va sport turlarini qidirish';
+
+  @override
+  String get gamesBySports => 'Sport turlari boʻyicha oʻyinlar';
+
+  @override
+  String get venuesNearYou => 'Yaqin atrofdagi maydonlar';
+
+  @override
+  String get tabTournaments => 'Turnirlar';
+
+  @override
+  String get tabSocial => 'Hamjamiyat';
+
+  @override
+  String get allDays => 'Barchasi';
+
+  @override
+  String get filterSport => 'Sport turi';
+
+  @override
+  String get myLevel => 'Mening darajam';
+
+  @override
+  String going(int count, int spots) {
+    return '$count/$spots keladi';
+  }
+
+  @override
+  String gameTitle(String host, String sport) {
+    return '$host bilan $sport';
+  }
+
+  @override
+  String get createGame => 'Oʻyin yaratish';
+
+  @override
+  String get gamesPromoTitle => 'Oʻyinchi yetishmayaptimi?';
+
+  @override
+  String get gamesPromoText =>
+      'Oʻz darajangizdagi oʻyinga qoʻshiling yoki oʻzingiznikini toʻldiring';
+
+  @override
+  String get bookable => 'Onlayn bron';
+
+  @override
+  String get favourites => 'Sevimlilar';
+
+  @override
+  String get sortPrice => 'Avval arzonlari';
+
+  @override
+  String get priceStartingFrom => 'Boshlangʻich narx';
+
+  @override
+  String get registrationOpen => 'Roʻyxatga olish ochiq';
+
+  @override
+  String get tournamentFull => 'Joy qolmadi';
+
+  @override
+  String get noTournaments => 'Hozircha turnirlar eʼlon qilinmagan';
+
+  @override
+  String get tournamentsPromoTitle => 'Kubok uchun oʻynang';
+
+  @override
+  String get tournamentsPromoText =>
+      'Har qanday daraja uchun yakkalik va juftlik bahslari';
+
+  @override
+  String get discoverTeams => 'Jamoalar';
+
+  @override
+  String get noTeams => 'Bu shaharda hozircha jamoalar yoʻq';
+
+  @override
+  String members(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aʼzo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String upcomingGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta oʻyin',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playersNearYou => 'Yaqin atrofdagi oʻyinchilar';
+
+  @override
+  String level(int level) {
+    return 'Daraja $level';
+  }
+
+  @override
+  String get inviteTitle => 'Doʻstlaringizni chaqiring';
+
+  @override
+  String get inviteText =>
+      'Doʻstlaringizni Actraga taklif qiling, oʻyinlar tezroq toʻladi.';
+
+  @override
+  String get inviteCta => 'Doʻstlarni taklif qilish';
+
+  @override
+  String get statBookings => 'Bronlar';
+
+  @override
+  String get statGames => 'Oʻyinlar';
+
+  @override
+  String get statLate => 'Kech bekor qilish';
+
+  @override
+  String get mySports => 'Mening sport turlarim';
+
+  @override
+  String get morning => 'Ertalab';
+
+  @override
+  String get afternoon => 'Kunduzi';
+
+  @override
+  String get evening => 'Kechqurun';
+
+  @override
+  String get everyDay => 'Har kuni';
+
+  @override
+  String get gamesPromoCta => 'Kort band qilish';
 }

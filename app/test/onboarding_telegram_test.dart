@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:actra/app.dart';
 import 'package:actra/data/auth/auth_repository.dart';
+import 'package:actra/features/common/widgets.dart';
 import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
@@ -181,7 +182,7 @@ void main() {
 
     expect(auth.savedProfile, (fullName: 'Тест', cityId: 'tashkent', languageCode: 'ru'));
     expect(find.text('Привет, Тест'), findsOneWidget);
-    for (final label in ['Главная', 'Площадки', 'Игры', 'Профиль']) {
+    for (final label in ['Главная', 'Игры', 'Площадки', 'Турниры', 'Сообщество']) {
       expect(find.text(label), findsWidgets);
     }
 
@@ -285,7 +286,9 @@ void main() {
   testWidgets('signing out also ends the backend session', (tester) async {
     final auth = FakeAuth(session: true, storedName: 'Тест');
     await pumpApp(tester, auth, prefs: {'lang': 'ru', 'city': 'tashkent', 'user_name': 'Тест'});
-    await tap(tester, find.text('Профиль').last);
+    // The profile opens from the avatar in the header.
+    await tap(tester, find.byType(InitialAvatar).first);
+    await tester.ensureVisible(find.text(ru.signOut));
     await tap(tester, find.text(ru.signOut));
 
     expect(auth.signOuts, 1);

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/markets.dart';
+import '../../core/theme.dart';
+import '../../data/sample/sample_media.dart';
 import '../../domain/booking_engine.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
@@ -60,7 +62,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       if (!mounted) return;
       setState(() => _selected = []);
       refreshBookings(ref);
-      if (confirmed == true) context.go('/profile/bookings');
+      if (confirmed == true) context.push('/bookings');
     } on BookingException catch (e) {
       if (!mounted) return;
       setState(() => _selected = []);
@@ -74,10 +76,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final theme = Theme.of(context);
     final now = ref.watch(cityNowProvider)();
     final today = dateOnly(now);
     final date = today.add(Duration(days: _dayOffset));
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
 
     return Scaffold(
       appBar: AppBar(title: Text(l.bookingTitle)),
@@ -86,125 +88,207 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         builder: (venue) {
           final court = venue.court(_courtId);
           final currency = cityById(venue.cityId).currency;
+          final sport = sports.where((s) => s.id == court.sportId).firstOrNull;
           final slots = ref.watch(availabilityProvider((venueId: venue.id, courtId: court.id, date: date)));
-          final total = slots.valueOrNull
-              ?.where((s) => _selected.contains(s.time))
-              .fold<int>(0, (sum, s) => sum + s.price);
+          final total =
+              slots.valueOrNull?.where((s) => _selected.contains(s.time)).fold<int>(0, (sum, s) => sum + s.price) ?? 0;
+          final courtLine = [
+            if (sport != null) sport.name.resolve(context.lang),
+            court.indoor ? l.indoor : l.outdoor,
+            l.slotLength(court.slotMinutes),
+          ].join(' · ');
 
           return Column(
             children: [
-              SizedBox(
-                height: 76,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  itemCount: BookingEngine.maxDaysAhead + 1,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, i) {
-                    final day = today.add(Duration(days: i));
-                    return _DayChip(
-                      top: i == 0 ? l.today : weekdayShort(context.lang, day),
-                      bottom: '${day.day}',
-                      selected: i == _dayOffset,
-                      onTap: () => setState(() {
-                        _dayOffset = i;
-                        _selected = [];
-                      }),
-                    );
-                  },
-                ),
-              ),
-              if (venue.courts.length > 1)
-                SizedBox(
-                  height: 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      for (final c in venue.courts)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(c.name.resolve(context.lang)),
-                            selected: c.id == _courtId,
-                            onSelected: (_) => setState(() {
-                              _courtId = c.id;
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  children: [
+                    // What is being booked.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              PhotoBox(asset: venuePhoto(venue.id), width: 64, height: 64, radius: 14),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      venue.name.resolve(context.lang),
+                                      style: manrope(16, 800),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(courtLine, style: AppText.muted, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SportBadge(sportId: court.sportId, size: 38),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 74,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: BookingEngine.maxDaysAhead + 1,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final day = today.add(Duration(days: i));
+                          return _DayChip(
+                            top: i == 0 ? l.today : weekdayShort(context.lang, day),
+                            bottom: '${day.day}',
+                            selected: i == _dayOffset,
+                            onTap: () => setState(() {
+                              _dayOffset = i;
                               _selected = [];
                             }),
+                          );
+                        },
+                      ),
+                    ),
+                    if (venue.courts.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: SizedBox(
+                          height: 44,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            children: [
+                              for (final c in venue.courts)
+                                FilterChipButton(
+                                  label: c.name.resolve(context.lang),
+                                  selected: c.id == _courtId,
+                                  onTap: () => setState(() {
+                                    _courtId = c.id;
+                                    _selected = [];
+                                  }),
+                                ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: AsyncBody(
-                  value: slots,
-                  builder: (views) {
-                    if (views.isEmpty) {
-                      return Center(child: EmptyState(icon: Icons.event_busy_outlined, text: l.closedThatDay));
-                    }
-                    return ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        Text(
-                          l.selectHint,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            for (final view in views)
-                              _SlotTile(
-                                view: view,
-                                priceText: money(l, view.price, currency),
-                                selected: _selected.contains(view.time),
-                                onTap: () => _toggle(view.time),
+                      ),
+                    AsyncBody(
+                      value: slots,
+                      builder: (views) {
+                        if (views.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 24),
+                            child: EmptyState(icon: Icons.event_busy_outlined, text: l.closedThatDay),
+                          );
+                        }
+                        // Morning before 12:00, evening from 17:00.
+                        final groups = [
+                          (l.morning, Icons.wb_twilight_rounded, views.where((v) => v.time.start.hour < 12).toList()),
+                          (
+                            l.afternoon,
+                            Icons.wb_sunny_outlined,
+                            views.where((v) => v.time.start.hour >= 12 && v.time.start.hour < 17).toList(),
+                          ),
+                          (l.evening, Icons.nights_stay_outlined, views.where((v) => v.time.start.hour >= 17).toList()),
+                        ];
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                              child: LayoutBuilder(
+                                builder: (context, box) {
+                                  final tileWidth = (box.maxWidth - 20) / 3;
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      for (final (title, icon, items) in groups)
+                                        if (items.isNotEmpty) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 14, bottom: 10),
+                                            child: Row(
+                                              children: [
+                                                Icon(icon, size: 18, color: AppColors.muted),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  title.toUpperCase(),
+                                                  style: AppText.sectionTitle.copyWith(fontSize: 12.5),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Wrap(
+                                            spacing: 10,
+                                            runSpacing: 10,
+                                            children: [
+                                              for (final view in items)
+                                                _SlotTile(
+                                                  view: view,
+                                                  width: tileWidth,
+                                                  priceText: money(l, view.price, currency),
+                                                  selected: _selected.contains(view.time),
+                                                  onTap: () => _toggle(view.time),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                    ],
+                                  );
+                                },
                               ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              if (_selected.isNotEmpty && total != null)
-                Material(
-                  elevation: 8,
-                  color: theme.colorScheme.surfaceContainer,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${l.slotsSelected(_selected.length)} · '
-                                  '${timeRange(_selected.first.start, _selected.last.end)}',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                                Text(
-                                  '${l.total}: ${money(l, total, currency)}',
-                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                                ),
-                              ],
                             ),
                           ),
-                          FilledButton(
-                            onPressed: _busy ? null : () => _continue(venue, court),
-                            child: Text(l.continueLabel),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // Always visible, so the next step is never hidden.
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.card,
+                  border: Border(top: BorderSide(color: AppColors.line)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _selected.isEmpty
+                              ? Text(l.selectHint, style: AppText.muted)
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${l.slotsSelected(_selected.length)} · '
+                                      '${timeRange(_selected.first.start, _selected.last.end)}',
+                                      style: AppText.muted,
+                                    ),
+                                    Text('${l.total}: ${money(l, total, currency)}', style: manrope(17, 800)),
+                                  ],
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton(
+                          onPressed: _selected.isEmpty || _busy ? null : () => _continue(venue, court),
+                          child: Text(l.continueLabel),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
             ],
           );
         },
@@ -223,22 +307,25 @@ class _DayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final fg = selected ? scheme.onPrimary : scheme.onSurface;
+    final fg = selected ? Colors.white : AppColors.ink;
     return Material(
-      color: selected ? scheme.primary : scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(14),
+      color: selected ? AppColors.primary : AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: selected ? AppColors.primary : AppColors.line),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minWidth: 60),
+          constraints: const BoxConstraints(minWidth: 62),
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(top, style: TextStyle(color: fg, fontSize: 12)),
-              Text(bottom, style: TextStyle(color: fg, fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(top, style: manrope(12.5, 600, color: selected ? Colors.white : AppColors.muted)),
+              const SizedBox(height: 2),
+              Text(bottom, style: manrope(19, 800, color: fg)),
             ],
           ),
         ),
@@ -248,30 +335,40 @@ class _DayChip extends StatelessWidget {
 }
 
 class _SlotTile extends StatelessWidget {
-  const _SlotTile({required this.view, required this.priceText, required this.selected, required this.onTap});
+  const _SlotTile({
+    required this.view,
+    required this.width,
+    required this.priceText,
+    required this.selected,
+    required this.onTap,
+  });
 
   final SlotView view;
+  final double width;
   final String priceText;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     // A slot this player is still holding is theirs to pick again.
     final available = view.state == SlotState.free || view.state == SlotState.mine;
 
     final Color background;
     final Color foreground;
+    final Color border;
     if (selected) {
-      background = scheme.primary;
-      foreground = scheme.onPrimary;
+      background = AppColors.primary;
+      foreground = Colors.white;
+      border = AppColors.primary;
     } else if (available) {
-      background = scheme.surfaceContainerHigh;
-      foreground = scheme.onSurface;
+      background = AppColors.primarySoft;
+      foreground = AppColors.primaryDark;
+      border = AppColors.primarySoft;
     } else {
-      background = scheme.surfaceContainerLowest;
-      foreground = scheme.outline;
+      background = AppColors.page;
+      foreground = AppColors.faint;
+      border = AppColors.page;
     }
 
     return Semantics(
@@ -282,28 +379,39 @@ class _SlotTile extends StatelessWidget {
         color: background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: available ? scheme.outlineVariant : Colors.transparent),
+          side: BorderSide(color: border),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: available ? onTap : null,
           child: SizedBox(
-            width: 104,
-            height: 64,
+            width: width,
+            height: 62,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   hm(view.time.start),
-                  style: TextStyle(
+                  style: manrope(
+                    16.5,
+                    800,
                     color: foreground,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    decoration: available ? null : TextDecoration.lineThrough,
-                  ),
+                  ).copyWith(decoration: available ? null : TextDecoration.lineThrough, decorationColor: foreground),
                 ),
                 const SizedBox(height: 2),
-                Text(priceText, style: TextStyle(color: foreground, fontSize: 12)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    priceText,
+                    style: manrope(
+                      11.5,
+                      600,
+                      color: selected ? Colors.white : (available ? AppColors.ink : foreground),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),

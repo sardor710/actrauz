@@ -8,7 +8,6 @@
   "tomorrow": "Tomorrow",
   "comingSoon": "Coming soon",
   "errGeneric": "Something went wrong. Try again.",
-
   "chooseLanguage": "Choose your language",
   "chooseCity": "Choose your city",
   "chooseCityHint": "You can change it any time in your profile",
@@ -24,27 +23,42 @@
   "signInFailed": "Could not sign in. Check your connection and try again.",
   "acceptTerms": "I accept the Terms of Use and the Privacy Policy",
   "termsRequired": "Accept the terms to continue",
-
   "tabHome": "Home",
   "tabVenues": "Venues",
   "tabGames": "Games",
   "tabProfile": "Profile",
-
   "greeting": "Hello, {name}",
-  "@greeting": { "placeholders": { "name": { "type": "String" } } },
+  "@greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "homeGames": "Available games",
   "homeCourts": "Free courts today",
   "homeTournaments": "Tournaments",
   "noGames": "No open games yet",
   "noCourtsToday": "No free slots left today",
-
   "searchVenues": "Search venues",
   "allSports": "All sports",
   "noVenues": "No venues found",
   "fromPrice": "from {price}",
-  "@fromPrice": { "placeholders": { "price": { "type": "String" } } },
+  "@fromPrice": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "slotLength": "{minutes} min",
-  "@slotLength": { "placeholders": { "minutes": { "type": "int" } } },
+  "@slotLength": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "workingHours": "Working hours",
   "closed": "Closed",
   "weekdays": "Mon–Fri",
@@ -63,16 +77,27 @@
   "phone": "Phone",
   "address": "Address",
   "about": "About the venue",
-
   "bookingTitle": "Choose a time",
   "closedThatDay": "The court is closed on this day",
   "selectHint": "Pick one slot or several in a row",
   "slotsSelected": "{count, plural, one{{count} slot} other{{count} slots}}",
-  "@slotsSelected": { "placeholders": { "count": { "type": "int" } } },
+  "@slotsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "total": "Total",
   "summaryTitle": "Booking summary",
   "heldFor": "Slots are held for you: {time}",
-  "@heldFor": { "placeholders": { "time": { "type": "String" } } },
+  "@heldFor": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "holdExpiredMsg": "The hold has expired. Please choose the time again.",
   "paymentMethod": "Payment method",
   "payAtVenue": "Pay at venue",
@@ -87,11 +112,22 @@
   "errSlotTaken": "Someone has just taken this time. Choose another one.",
   "errNotContiguous": "Slots must be next to each other",
   "errTooManyBookings": "You already have {count} upcoming bookings",
-  "@errTooManyBookings": { "placeholders": { "count": { "type": "int" } } },
+  "@errTooManyBookings": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "errTooFarAhead": "Booking opens {days} days in advance",
-  "@errTooFarAhead": { "placeholders": { "days": { "type": "int" } } },
+  "@errTooFarAhead": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "errInPast": "This time has already passed",
-
   "myBookings": "My bookings",
   "noBookings": "You have no bookings yet",
   "statusConfirmed": "Confirmed",
@@ -101,17 +137,43 @@
   "cancelConfirmTitle": "Cancel this booking?",
   "cancelFreeMsg": "Cancellation is free.",
   "cancelLateMsg": "Less than {hours} hours are left before the start. This counts as a late cancellation and lowers your reliability.",
-  "@cancelLateMsg": { "placeholders": { "hours": { "type": "int" } } },
+  "@cancelLateMsg": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
   "keepBooking": "Keep booking",
   "bookingCancelled": "Booking cancelled",
   "lateCancellation": "Late cancellation",
-
   "spotsLeft": "{count, plural, =0{Full} one{{count} spot left} other{{count} spots left}}",
-  "@spotsLeft": { "placeholders": { "count": { "type": "int" } } },
+  "@spotsLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "levelRange": "Level {min}–{max}",
-  "@levelRange": { "placeholders": { "min": { "type": "int" }, "max": { "type": "int" } } },
+  "@levelRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "perPlayer": "≈ {price} per player",
-  "@perPlayer": { "placeholders": { "price": { "type": "String" } } },
+  "@perPlayer": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "host": "Host",
   "players": "Players",
   "joinGame": "Join",
@@ -119,14 +181,102 @@
   "errGameFull": "This game is already full",
   "errLevel": "Your level is outside the range for this game",
   "you": "You",
-
   "entryFee": "Entry fee",
   "filledOf": "{filled} of {total} filled",
-  "@filledOf": { "placeholders": { "filled": { "type": "int" }, "total": { "type": "int" } } },
-
+  "@filledOf": {
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "language": "Language",
   "city": "City",
   "signOut": "Sign out",
   "currencyUzs": "UZS",
-  "currencyKzt": "₸"
+  "currencyKzt": "₸",
+  "searchHint": "Search venues and sports",
+  "gamesBySports": "Games by sport",
+  "venuesNearYou": "Venues near you",
+  "tabTournaments": "Tournaments",
+  "tabSocial": "Social",
+  "allDays": "All",
+  "filterSport": "Sport",
+  "myLevel": "My level",
+  "going": "{count}/{spots} going",
+  "@going": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "spots": {
+        "type": "int"
+      }
+    }
+  },
+  "gameTitle": "{sport} with {host}",
+  "@gameTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "sport": {
+        "type": "String"
+      }
+    }
+  },
+  "createGame": "Create a game",
+  "gamesPromoTitle": "Short of players?",
+  "gamesPromoText": "Join a game at your level or fill your own court",
+  "bookable": "Bookable",
+  "favourites": "Favourites",
+  "sortPrice": "Cheapest first",
+  "priceStartingFrom": "Price starting from",
+  "registrationOpen": "Registration open",
+  "tournamentFull": "Full",
+  "noTournaments": "No tournaments announced yet",
+  "tournamentsPromoTitle": "Play for the cup",
+  "tournamentsPromoText": "Singles and pairs for every level",
+  "discoverTeams": "Discover teams",
+  "noTeams": "No teams in this city yet",
+  "members": "{count, plural, one{{count} member} other{{count} members}}",
+  "@members": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "upcomingGames": "{count, plural, one{{count} game soon} other{{count} games soon}}",
+  "@upcomingGames": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playersNearYou": "Players near you",
+  "level": "Level {level}",
+  "@level": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "inviteTitle": "Bring your friends",
+  "inviteText": "Invite friends to Actra and fill your games faster.",
+  "inviteCta": "Invite friends",
+  "statBookings": "Bookings",
+  "statGames": "Games",
+  "statLate": "Late cancels",
+  "mySports": "My sports",
+  "morning": "Morning",
+  "afternoon": "Afternoon",
+  "evening": "Evening",
+  "everyDay": "Every day",
+  "gamesPromoCta": "Book a court"
 }

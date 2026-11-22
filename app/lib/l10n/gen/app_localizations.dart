@@ -747,6 +747,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'₸'**
   String get currencyKzt;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search venues and sports'**
+  String get searchHint;
+
+  /// No description provided for @gamesBySports.
+  ///
+  /// In en, this message translates to:
+  /// **'Games by sport'**
+  String get gamesBySports;
+
+  /// No description provided for @venuesNearYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Venues near you'**
+  String get venuesNearYou;
+
+  /// No description provided for @tabTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournaments'**
+  String get tabTournaments;
+
+  /// No description provided for @tabSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social'**
+  String get tabSocial;
+
+  /// No description provided for @allDays.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allDays;
+
+  /// No description provided for @filterSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport'**
+  String get filterSport;
+
+  /// No description provided for @myLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'My level'**
+  String get myLevel;
+
+  /// No description provided for @going.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}/{spots} going'**
+  String going(int count, int spots);
+
+  /// No description provided for @gameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{sport} with {host}'**
+  String gameTitle(String host, String sport);
+
+  /// No description provided for @createGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a game'**
+  String get createGame;
+
+  /// No description provided for @gamesPromoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Short of players?'**
+  String get gamesPromoTitle;
+
+  /// No description provided for @gamesPromoText.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a game at your level or fill your own court'**
+  String get gamesPromoText;
+
+  /// No description provided for @bookable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookable'**
+  String get bookable;
+
+  /// No description provided for @favourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get favourites;
+
+  /// No description provided for @sortPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest first'**
+  String get sortPrice;
+
+  /// No description provided for @priceStartingFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Price starting from'**
+  String get priceStartingFrom;
+
+  /// No description provided for @registrationOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration open'**
+  String get registrationOpen;
+
+  /// No description provided for @tournamentFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get tournamentFull;
+
+  /// No description provided for @noTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'No tournaments announced yet'**
+  String get noTournaments;
+
+  /// No description provided for @tournamentsPromoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play for the cup'**
+  String get tournamentsPromoTitle;
+
+  /// No description provided for @tournamentsPromoText.
+  ///
+  /// In en, this message translates to:
+  /// **'Singles and pairs for every level'**
+  String get tournamentsPromoText;
+
+  /// No description provided for @discoverTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover teams'**
+  String get discoverTeams;
+
+  /// No description provided for @noTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams in this city yet'**
+  String get noTeams;
+
+  /// No description provided for @members.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} member} other{{count} members}}'**
+  String members(int count);
+
+  /// No description provided for @upcomingGames.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} game soon} other{{count} games soon}}'**
+  String upcomingGames(int count);
+
+  /// No description provided for @playersNearYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Players near you'**
+  String get playersNearYou;
+
+  /// No description provided for @level.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String level(int level);
+
+  /// No description provided for @inviteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your friends'**
+  String get inviteTitle;
+
+  /// No description provided for @inviteText.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite friends to Actra and fill your games faster.'**
+  String get inviteText;
+
+  /// No description provided for @inviteCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite friends'**
+  String get inviteCta;
+
+  /// No description provided for @statBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings'**
+  String get statBookings;
+
+  /// No description provided for @statGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Games'**
+  String get statGames;
+
+  /// No description provided for @statLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Late cancels'**
+  String get statLate;
+
+  /// No description provided for @mySports.
+  ///
+  /// In en, this message translates to:
+  /// **'My sports'**
+  String get mySports;
+
+  /// No description provided for @morning.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning'**
+  String get morning;
+
+  /// No description provided for @afternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Afternoon'**
+  String get afternoon;
+
+  /// No description provided for @evening.
+  ///
+  /// In en, this message translates to:
+  /// **'Evening'**
+  String get evening;
+
+  /// No description provided for @everyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get everyDay;
+
+  /// No description provided for @gamesPromoCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a court'**
+  String get gamesPromoCta;
 }
 
 class _AppLocalizationsDelegate

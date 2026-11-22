@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/markets.dart';
 import '../../domain/booking_engine.dart';
@@ -15,7 +16,10 @@ class BookingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
     return Scaffold(
-      appBar: AppBar(title: Text(l.myBookings)),
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
+        title: Text(l.myBookings),
+      ),
       body: AsyncBody(
         value: ref.watch(myBookingsProvider),
         builder: (bookings) => bookings.isEmpty

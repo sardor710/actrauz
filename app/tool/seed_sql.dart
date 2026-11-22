@@ -34,7 +34,8 @@ String buildSeedSql() {
 
 // ---- SQL literals ----
 
-/// Stable id for a sample row: the same expression in every run.
+/// Stable id for a sample row: the same expression in every run. The app
+/// computes the same value in `lib/data/sample/seed_ids.dart`.
 String _id(String sampleId) => "md5('actra:$sampleId')::uuid";
 
 String _text(String? value) => value == null ? 'null' : "'${value.replaceAll("'", "''")}'";
