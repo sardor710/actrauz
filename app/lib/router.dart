@@ -10,6 +10,8 @@ import 'features/home/home_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/shell/home_shell.dart';
+import 'features/social/social_screen.dart';
+import 'features/tournaments/tournaments_screen.dart';
 import 'features/venues/venue_screen.dart';
 import 'features/venues/venues_screen.dart';
 import 'state/providers.dart';
@@ -31,11 +33,28 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
+      // Opened on top of the tabs from the header, so "back" returns to them.
+      GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
+      GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [
           StatefulShellBranch(
             routes: [GoRoute(path: '/home', builder: (context, state) => const HomeScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/games',
+                builder: (context, state) => const GamesScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => GameScreen(gameId: state.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [
@@ -61,27 +80,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/games',
-                builder: (context, state) => const GamesScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) => GameScreen(gameId: state.pathParameters['id']!),
-                  ),
-                ],
-              ),
-            ],
+            routes: [GoRoute(path: '/tournaments', builder: (context, state) => const TournamentsScreen())],
           ),
           StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/profile',
-                builder: (context, state) => const ProfileScreen(),
-                routes: [GoRoute(path: 'bookings', builder: (context, state) => const BookingsScreen())],
-              ),
-            ],
+            routes: [GoRoute(path: '/social', builder: (context, state) => const SocialScreen())],
           ),
         ],
       ),

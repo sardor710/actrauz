@@ -350,4 +350,148 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currencyKzt => '₸';
+
+  @override
+  String get searchHint => 'Search venues and sports';
+
+  @override
+  String get gamesBySports => 'Games by sport';
+
+  @override
+  String get venuesNearYou => 'Venues near you';
+
+  @override
+  String get tabTournaments => 'Tournaments';
+
+  @override
+  String get tabSocial => 'Social';
+
+  @override
+  String get allDays => 'All';
+
+  @override
+  String get filterSport => 'Sport';
+
+  @override
+  String get myLevel => 'My level';
+
+  @override
+  String going(int count, int spots) {
+    return '$count/$spots going';
+  }
+
+  @override
+  String gameTitle(String host, String sport) {
+    return '$sport with $host';
+  }
+
+  @override
+  String get createGame => 'Create a game';
+
+  @override
+  String get gamesPromoTitle => 'Short of players?';
+
+  @override
+  String get gamesPromoText =>
+      'Join a game at your level or fill your own court';
+
+  @override
+  String get bookable => 'Bookable';
+
+  @override
+  String get favourites => 'Favourites';
+
+  @override
+  String get sortPrice => 'Cheapest first';
+
+  @override
+  String get priceStartingFrom => 'Price starting from';
+
+  @override
+  String get registrationOpen => 'Registration open';
+
+  @override
+  String get tournamentFull => 'Full';
+
+  @override
+  String get noTournaments => 'No tournaments announced yet';
+
+  @override
+  String get tournamentsPromoTitle => 'Play for the cup';
+
+  @override
+  String get tournamentsPromoText => 'Singles and pairs for every level';
+
+  @override
+  String get discoverTeams => 'Discover teams';
+
+  @override
+  String get noTeams => 'No teams in this city yet';
+
+  @override
+  String members(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '$count member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String upcomingGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count games soon',
+      one: '$count game soon',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playersNearYou => 'Players near you';
+
+  @override
+  String level(int level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get inviteTitle => 'Bring your friends';
+
+  @override
+  String get inviteText =>
+      'Invite friends to Actra and fill your games faster.';
+
+  @override
+  String get inviteCta => 'Invite friends';
+
+  @override
+  String get statBookings => 'Bookings';
+
+  @override
+  String get statGames => 'Games';
+
+  @override
+  String get statLate => 'Late cancels';
+
+  @override
+  String get mySports => 'My sports';
+
+  @override
+  String get morning => 'Morning';
+
+  @override
+  String get afternoon => 'Afternoon';
+
+  @override
+  String get evening => 'Evening';
+
+  @override
+  String get everyDay => 'Every day';
+
+  @override
+  String get gamesPromoCta => 'Book a court';
 }

@@ -1,4 +1,5 @@
 import 'package:actra/app.dart';
+import 'package:actra/features/common/widgets.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,7 @@ Future<void> pumpApp(WidgetTester tester, {Map<String, Object> prefs = const {},
   await initializeDateFormatting();
 
   // A tall phone, so lists show without scrolling.
-  tester.view.physicalSize = const Size(900, 2600);
+  tester.view.physicalSize = const Size(900, 3400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
@@ -45,7 +46,7 @@ Future<void> settleSnackbars(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('onboarding: language, city, name, then the main tabs in Russian', (tester) async {
+  testWidgets('onboarding: language, city, name, then the five tabs in Russian', (tester) async {
     await pumpApp(tester);
 
     expect(find.text('Oʻzbekcha'), findsOneWidget);
@@ -65,17 +66,22 @@ void main() {
     await tester.enterText(find.byType(TextFormField), 'Тест');
     await tap(tester, find.text('Продолжить через Telegram'));
 
-    for (final label in ['Главная', 'Площадки', 'Игры', 'Профиль']) {
-      expect(find.text(label), findsWidgets);
+    for (final label in ['Главная', 'Игры', 'Площадки', 'Турниры', 'Сообщество']) {
+      expect(find.text(label), findsOneWidget);
     }
     expect(find.text('Привет, Тест'), findsOneWidget);
   });
 
-  testWidgets('the same home screen renders in Uzbek', (tester) async {
+  testWidgets('the home screen renders in Uzbek with every section', (tester) async {
     await pumpApp(tester, prefs: {...signedIn, 'lang': 'uz'}, utcNow: sundayMorning);
     expect(find.text('Salom, Test'), findsOneWidget);
-    expect(find.text('Mavjud oʻyinlar'), findsOneWidget);
-    expect(find.text('Maydonlar'), findsWidgets);
+    expect(find.text('SPORT TURLARI BOʻYICHA OʻYINLAR'), findsOneWidget);
+    expect(find.text('YAQIN ATROFDAGI MAYDONLAR'), findsOneWidget);
+    expect(find.text('BUGUN BOʻSH KORTLAR'), findsOneWidget);
+    expect(find.text('MAVJUD OʻYINLAR'), findsOneWidget);
+    expect(find.text('Maydonlar'), findsOneWidget);
+    // No photo fell back to the placeholder.
+    expect(find.byKey(const ValueKey('photo-fallback')), findsNothing);
   });
 
   testWidgets('book two adjacent slots, see the booking, cancel it', (tester) async {
@@ -129,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Back on the slot picker with nothing selected and the slot free again.
-    expect(find.text('Continue'), findsNothing);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue')).onPressed, isNull);
     await tap(tester, find.text('11:30'));
     expect(find.textContaining('1 slot'), findsOneWidget);
   });
@@ -152,16 +158,54 @@ void main() {
 
     await tap(tester, find.text('Games'));
     // Padel tomorrow 19:00 with 2 of 4 players.
-    await tap(tester, find.text('2 spots left'));
-    expect(find.text('Players · 2/4'), findsOneWidget);
+    expect(find.text('2/4 going'), findsOneWidget);
+    await tap(tester, find.text('Padel with Aziz'));
+    expect(find.text('PLAYERS · 2/4'), findsOneWidget);
 
     await tap(tester, find.widgetWithText(FilledButton, 'Join'));
-    expect(find.text('Players · 3/4'), findsOneWidget);
+    expect(find.text('PLAYERS · 3/4'), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
 
     await tap(tester, find.widgetWithText(OutlinedButton, 'Leave game'));
-    expect(find.text('Players · 2/4'), findsOneWidget);
-    await settleSnackbars(tester);
+    expect(find.text('PLAYERS · 2/4'), findsOneWidget);
+  });
+
+  testWidgets('a sport on Home opens Games filtered to it', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.text('Football'));
+    expect(find.text('Football with Timur'), findsOneWidget);
+    expect(find.text('Padel with Aziz'), findsNothing);
+  });
+
+  testWidgets('a day with no games shows the empty state, All brings them back', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.text('Games'));
+    expect(find.text('Padel with Aziz'), findsOneWidget);
+
+    // Sample games start tomorrow, so today has none.
+    await tap(tester, find.text('Today'));
+    expect(find.text('No open games yet'), findsOneWidget);
+    expect(find.text('Padel with Aziz'), findsNothing);
+
+    await tap(tester, find.text('All'));
+    expect(find.text('Padel with Aziz'), findsOneWidget);
+  });
+
+  testWidgets('favourite a venue, then filter by favourites', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.text('Venues'));
+    expect(find.text('VENUES (3)'), findsOneWidget);
+
+    // The first heart belongs to the filter chip, the second to the first venue.
+    await tap(tester, find.byIcon(Icons.favorite_border_rounded).at(1));
+    await tap(tester, find.text('Favourites'));
+
+    expect(find.text('VENUES (1)'), findsOneWidget);
+    expect(find.text('Lochin Padel Club'), findsOneWidget);
+    expect(find.text('Bunyod Football Park'), findsNothing);
   });
 
   testWidgets('switching city switches venues and currency', (tester) async {
@@ -172,5 +216,43 @@ void main() {
     expect(find.text('Lochin Padel Club'), findsNothing);
     expect(find.textContaining('₸'), findsWidgets);
     expect(find.textContaining('UZS'), findsNothing);
+  });
+
+  testWidgets('tournaments show the city\'s events and mark the full one', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.text('Tournaments'));
+    expect(find.text('Tashkent Padel Cup'), findsOneWidget);
+    expect(find.text('Amateur 5-a-side League'), findsOneWidget);
+    expect(find.text('Almaty Open Tennis'), findsNothing);
+    expect(find.text('Registration open'), findsOneWidget);
+    expect(find.text('Full'), findsOneWidget);
+  });
+
+  testWidgets('social shows teams of the selected city and players', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.text('Social'));
+    expect(find.text('Yunusobod Padel'), findsOneWidget);
+    expect(find.text('Alatau Smash'), findsNothing);
+    expect(find.text('2 games soon'), findsOneWidget);
+    expect(find.text('Aziz'), findsOneWidget);
+  });
+
+  testWidgets('profile opens from the avatar and switches language and city', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+
+    await tap(tester, find.byType(InitialAvatar).first);
+    expect(find.text('MY SPORTS'), findsOneWidget);
+    expect(find.text('Padel · Level 3'), findsOneWidget);
+
+    await tap(tester, find.text('Language'));
+    await tap(tester, find.text('Русский'));
+    expect(find.text('МОИ ВИДЫ СПОРТА'), findsOneWidget);
+
+    await tap(tester, find.text('Город'));
+    await tap(tester, find.text('Алматы'));
+    expect(find.text('Алматы'), findsWidgets);
+    expect(find.text('Ташкент'), findsNothing);
   });
 }
