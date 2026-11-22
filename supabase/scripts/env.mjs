@@ -126,11 +126,22 @@ export async function sql(env, query, { write = false } = {}) {
 }
 
 export async function telegram(env, method, body) {
-  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body ?? {}),
-  });
+  // Bot API calls here only read state or set it to a fixed value, so a
+  // dropped connection is simply tried again.
+  let res;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body ?? {}),
+        signal: AbortSignal.timeout(20_000),
+      });
+      break;
+    } catch (e) {
+      if (attempt === 4) throw new Error(`Could not reach Telegram for ${method}: ${e.cause?.code ?? e.message}`);
+    }
+  }
   const data = await res.json();
   if (!data.ok) throw new Error(`Telegram ${method} failed: ${data.description}`);
   return data.result;
