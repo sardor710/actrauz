@@ -1,0 +1,111 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/markets.dart';
+import '../data/repositories.dart';
+import '../data/sample/sample_repositories.dart';
+import '../domain/booking_engine.dart';
+import '../domain/games.dart';
+import '../domain/models.dart';
+import '../domain/pricing.dart';
+import 'session.dart';
+
+/// Overridden in `main()` with the loaded instance.
+final sharedPrefsProvider = Provider<SharedPreferences>((ref) => throw UnimplementedError('sharedPrefsProvider'));
+
+/// Current UTC time. Overridden in tests to fix the clock.
+final clockProvider = Provider<DateTime Function()>((ref) => () => DateTime.now().toUtc());
+
+final sessionProvider = NotifierProvider<SessionController, SessionState>(SessionController.new);
+
+final currentCityProvider = Provider<City>((ref) {
+  final id = ref.watch(sessionProvider.select((s) => s.cityId));
+  return kCities.firstWhere((c) => c.id == id, orElse: () => kCities.first);
+});
+
+/// Wall-clock time in the selected city.
+final cityNowProvider = Provider<DateTime Function()>((ref) {
+  final city = ref.watch(currentCityProvider);
+  final clock = ref.watch(clockProvider);
+  return () => venueNow(city, utcNow: clock());
+});
+
+final sampleBackendProvider = Provider<SampleBackend>((ref) {
+  final name = ref.watch(sessionProvider.select((s) => s.userName)) ?? '';
+  return SampleBackend(utcNow: ref.watch(clockProvider), meName: name);
+});
+
+final catalogRepositoryProvider = Provider<CatalogRepository>((ref) => ref.watch(sampleBackendProvider));
+final bookingRepositoryProvider = Provider<BookingRepository>((ref) => ref.watch(sampleBackendProvider));
+final gameRepositoryProvider = Provider<GameRepository>((ref) => ref.watch(sampleBackendProvider));
+
+final sportsProvider = FutureProvider<List<Sport>>((ref) => ref.watch(catalogRepositoryProvider).sports());
+
+final venuesProvider = FutureProvider<List<Venue>>(
+  (ref) => ref.watch(catalogRepositoryProvider).venues(ref.watch(currentCityProvider).id),
+);
+
+final venueProvider = FutureProvider.family<Venue, String>((ref, id) => ref.watch(catalogRepositoryProvider).venue(id));
+
+final bannersProvider = FutureProvider<List<BannerItem>>(
+  (ref) => ref.watch(catalogRepositoryProvider).banners(ref.watch(currentCityProvider).id),
+);
+
+final tournamentsProvider = FutureProvider<List<TournamentItem>>(
+  (ref) => ref.watch(catalogRepositoryProvider).tournaments(ref.watch(currentCityProvider).id),
+);
+
+typedef AvailabilityKey = ({String venueId, String courtId, DateTime date});
+
+final availabilityProvider = FutureProvider.family<List<SlotView>, AvailabilityKey>(
+  (ref, key) => ref.watch(bookingRepositoryProvider).availability(key.venueId, key.courtId, key.date),
+);
+
+final myBookingsProvider = FutureProvider<List<Booking>>((ref) => ref.watch(bookingRepositoryProvider).myBookings());
+
+final gamesProvider = FutureProvider<List<Game>>(
+  (ref) => ref.watch(gameRepositoryProvider).games(ref.watch(currentCityProvider).id),
+);
+
+final gameProvider = FutureProvider.family<Game, String>((ref, id) => ref.watch(gameRepositoryProvider).game(id));
+
+final playerProvider = FutureProvider.family<Player, String>((ref, id) => ref.watch(gameRepositoryProvider).player(id));
+
+/// A venue with its next free slots today, for the home feed.
+typedef FreeToday = ({Venue venue, List<SlotView> next});
+
+final freeTodayProvider = FutureProvider<List<FreeToday>>((ref) async {
+  final venues = await ref.watch(venuesProvider.future);
+  final bookings = ref.watch(bookingRepositoryProvider);
+  final today = dateOnly(ref.watch(cityNowProvider)());
+  final result = <FreeToday>[];
+  for (final venue in venues) {
+    final free = <SlotView>[];
+    for (final court in venue.courts) {
+      final slots = await bookings.availability(venue.id, court.id, today);
+      free.addAll(slots.where((s) => s.state == SlotState.free));
+    }
+    if (free.isEmpty) continue;
+    free.sort((a, b) => a.time.start.compareTo(b.time.start));
+    final distinct = <DateTime>{};
+    result.add((venue: venue, next: free.where((s) => distinct.add(s.time.start)).take(3).toList()));
+  }
+  return result;
+});
+
+/// Cheapest slot at a venue this week, for "from X" on venue cards.
+int? venueFromPrice(Venue venue, DateTime today) {
+  int? min;
+  for (final sportId in venue.sportIds) {
+    final range = feeRange(venue, sportId, today);
+    if (range != null && (min == null || range.min < min)) min = range.min;
+  }
+  return min;
+}
+
+/// Refreshes everything that depends on bookings.
+void refreshBookings(WidgetRef ref) {
+  ref.invalidate(availabilityProvider);
+  ref.invalidate(myBookingsProvider);
+  ref.invalidate(freeTodayProvider);
+}

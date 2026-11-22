@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "actra-web",
+      "runtimeExecutable": "D:/actra/app/tool/run_web.cmd",
+      "runtimeArgs": [],
+      "port": 5611
+    }
+  ]
+}

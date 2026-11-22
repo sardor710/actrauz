@@ -1,0 +1,18 @@
+# Secrets and local environment (Supabase keys, bot tokens)
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+key.properties
+
+# Local tool state
+.claude/settings.local.json
+supabase/.temp/
+supabase/.branches/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
