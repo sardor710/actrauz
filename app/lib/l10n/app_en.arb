@@ -278,5 +278,243 @@
   "afternoon": "Afternoon",
   "evening": "Evening",
   "everyDay": "Every day",
-  "gamesPromoCta": "Book a court"
+  "gamesPromoCta": "Book a court",
+  "myVenues": "My venues",
+  "ownerCalendar": "Booking calendar",
+  "noVenuesAssigned": "No venues are assigned to you yet",
+  "prevWeek": "Previous week",
+  "nextWeek": "Next week",
+  "slotFree": "Free",
+  "slotBooked": "Booked",
+  "slotBlocked": "Blocked",
+  "closedThatWeek": "The court is closed this week",
+  "newBooking": "New booking",
+  "blockTime": "Block time",
+  "customerName": "Customer name",
+  "customerNameRequired": "Enter the customer name",
+  "customerPhone": "Phone number (optional)",
+  "slotsCountLabel": "Number of slots",
+  "payCash": "Cash",
+  "payCard": "Card",
+  "payTransfer": "Transfer",
+  "saveBooking": "Save booking",
+  "blockReason": "Reason (optional)",
+  "blockConfirm": "Block this time",
+  "unblock": "Open this time again",
+  "customerLabel": "Customer",
+  "sourceLabel": "Source",
+  "statusLabel": "Status",
+  "reasonLabel": "Reason",
+  "sourceApp": "Booked in the app",
+  "sourceWalkIn": "Walk-in or phone",
+  "sourceBlock": "Blocked by the venue",
+  "markPaid": "Mark paid",
+  "markNoShow": "Mark no-show",
+  "statusPaid": "Paid",
+  "statusNoShow": "No-show",
+  "statusUnverified": "Not confirmed",
+  "statusCancelledByVenue": "Cancelled by the venue",
+  "markAfterStart": "Paid and no-show can be marked once the booking has started",
+  "cancelByVenueMsg": "The time becomes free at once. A player who booked in the app will see that the venue cancelled it.",
+  "errNotAllowed": "You do not manage this venue",
+  "bookingSaved": "Booking saved",
+  "ownerSettings": "Hours and prices",
+  "ownerDashboard": "Dashboard",
+  "venueHours": "Venue working hours",
+  "courtHours": "Court hours",
+  "sameAsVenue": "Same as venue",
+  "openLabel": "Open",
+  "editLabel": "Edit",
+  "saveLabel": "Save",
+  "savedMsg": "Saved",
+  "pricesTitle": "Prices",
+  "hoursTitle": "Hours",
+  "slotLengthLabel": "Slot length",
+  "basePrice": "Base price per slot",
+  "priceRules": "Price rules",
+  "addRule": "Add rule",
+  "removeRule": "Remove rule",
+  "ruleFrom": "From",
+  "ruleTo": "To",
+  "rulePrice": "Price per slot",
+  "noRules": "No rules: every slot costs the base price",
+  "rulesCount": "{count, plural, =0{No price rules} one{{count} price rule} other{{count} price rules}}",
+  "@rulesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errInvalidHours": "Opening must be earlier than closing",
+  "errRulesOverlap": "Two rules cover the same day and time",
+  "errInvalidArgument": "Check the values and try again",
+  "errPickWeekday": "Choose at least one day",
+  "errPrice": "Enter a price",
+  "period7": "Last 7 days",
+  "periodMonth": "This month",
+  "allCourts": "All courts",
+  "metricSplit": "App {app} · walk-in {walkIn}",
+  "@metricSplit": {
+    "placeholders": {
+      "app": {
+        "type": "int"
+      },
+      "walkIn": {
+        "type": "int"
+      }
+    }
+  },
+  "metricRevenue": "Paid revenue",
+  "metricUnconfirmed": "Unconfirmed revenue",
+  "metricDailyAvg": "Bookings per day",
+  "metricUtilisation": "Utilisation",
+  "metricNoShows": "No-shows",
+  "peakHours": "Peak hours",
+  "noDataPeriod": "No bookings in this period",
+  "adminTitle": "Admin",
+  "adminOnly": "Only Actra administrators can open this page",
+  "adminSports": "Sports",
+  "adminBanners": "Banners",
+  "adminAudit": "Audit log",
+  "adminAuditHint": "Who changed what, and when",
+  "venuesCount": "{count, plural, one{{count} venue} other{{count} venues}}",
+  "@venuesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sportsCount": "{count, plural, one{{count} sport} other{{count} sports}}",
+  "@sportsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bannersCount": "{count, plural, one{{count} banner} other{{count} banners}}",
+  "@bannersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courtsCount": "{count, plural, one{{count} court} other{{count} courts}}",
+  "@courtsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownersCount": "{count, plural, =0{No owners} one{{count} owner} other{{count} owners}}",
+  "@ownersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playersN": "{count, plural, one{{count} player} other{{count} players}}",
+  "@playersN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "inactive": "Inactive",
+  "activeLabel": "Active",
+  "activeHint": "Players can see it",
+  "addVenue": "Add venue",
+  "newVenue": "New venue",
+  "venueDetails": "Details",
+  "nameLabel": "Name",
+  "descriptionLabel": "Description",
+  "districtLabel": "District",
+  "nameRequiredAny": "Fill in at least one language",
+  "saveVenueFirst": "Save the venue to add courts and owners",
+  "addCourt": "Add court",
+  "newCourt": "New court",
+  "editCourt": "Edit court",
+  "noCourts": "No courts yet",
+  "courtActions": "Court actions",
+  "duplicateLabel": "Duplicate",
+  "deleteLabel": "Delete",
+  "deleteVenue": "Delete venue",
+  "deleteConfirmTitle": "Delete “{name}”?",
+  "@deleteConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteConfirmMsg": "This cannot be undone.",
+  "errHasBookings": "It has bookings, so it cannot be deleted. Deactivate it to hide it from players.",
+  "deactivateInstead": "Deactivate instead",
+  "errAlreadyExists": "This ID is already taken",
+  "errNotFound": "Not found. Refresh and try again.",
+  "ownersTitle": "Owners",
+  "assignOwner": "Assign owner",
+  "removeOwner": "Remove owner",
+  "noOwners": "No owners assigned",
+  "searchUsers": "Name or phone",
+  "searchUsersMin": "Type at least 2 characters",
+  "noUsersFound": "Nobody found",
+  "addSport": "Add sport",
+  "newSport": "New sport",
+  "editSport": "Edit sport",
+  "sportIdLabel": "ID",
+  "sportIdHint": "Lowercase Latin letters, digits and _, for example squash. Cannot be changed later.",
+  "errSportId": "2–30 characters: lowercase Latin letters, digits or _, starting with a letter",
+  "iconLabel": "Icon",
+  "sportTypeLabel": "Type",
+  "placeOnly": "Place only",
+  "ratingLabel": "Rating",
+  "ratingSimple": "Level 1–5",
+  "ratingCompetitive": "Rating 1.0–7.0",
+  "defaultPlayers": "Default players",
+  "sortOrderLabel": "Position in list",
+  "addBanner": "Add banner",
+  "newBanner": "New banner",
+  "editBanner": "Edit banner",
+  "bannerTitle": "Title",
+  "bannerSubtitle": "Subtitle",
+  "linkLabel": "Link",
+  "errUrl": "The link must start with https://",
+  "allCities": "All cities",
+  "noBanners": "No banners yet",
+  "auditEmpty": "No changes recorded yet",
+  "loadMore": "Load more",
+  "auditBefore": "Before",
+  "auditAfter": "After",
+  "auditSystem": "System",
+  "auditCreateVenue": "Venue created",
+  "auditUpdateVenue": "Venue updated",
+  "auditDeleteVenue": "Venue deleted",
+  "auditCreateCourt": "Court created",
+  "auditUpdateCourt": "Court updated",
+  "auditDuplicateCourt": "Court duplicated",
+  "auditDeleteCourt": "Court deleted",
+  "auditAssignOwner": "Owner assigned",
+  "auditRemoveOwner": "Owner removed",
+  "auditCreateSport": "Sport created",
+  "auditUpdateSport": "Sport updated",
+  "auditCreateBanner": "Banner created",
+  "auditUpdateBanner": "Banner updated",
+  "auditDeleteBanner": "Banner deleted",
+  "auditVenueHours": "Venue hours changed",
+  "auditCourtHours": "Court hours changed",
+  "auditCourtPricing": "Court prices changed",
+  "auditWalkIn": "Walk-in booking added",
+  "auditBlock": "Time blocked",
+  "auditMarkBooking": "Booking marked",
+  "entityVenue": "Venue",
+  "entityBanner": "Banner",
+  "entityBooking": "Booking",
+  "entityOwner": "Venue owner"
 }

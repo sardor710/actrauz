@@ -528,4 +528,602 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get gamesPromoCta => 'Забронировать корт';
+
+  @override
+  String get myVenues => 'Мои площадки';
+
+  @override
+  String get ownerCalendar => 'Календарь броней';
+
+  @override
+  String get noVenuesAssigned => 'Вам пока не назначены площадки';
+
+  @override
+  String get prevWeek => 'Предыдущая неделя';
+
+  @override
+  String get nextWeek => 'Следующая неделя';
+
+  @override
+  String get slotFree => 'Свободно';
+
+  @override
+  String get slotBooked => 'Занято';
+
+  @override
+  String get slotBlocked => 'Закрыто';
+
+  @override
+  String get closedThatWeek => 'На этой неделе корт закрыт';
+
+  @override
+  String get newBooking => 'Новая бронь';
+
+  @override
+  String get blockTime => 'Закрыть время';
+
+  @override
+  String get customerName => 'Имя клиента';
+
+  @override
+  String get customerNameRequired => 'Введите имя клиента';
+
+  @override
+  String get customerPhone => 'Номер телефона (необязательно)';
+
+  @override
+  String get slotsCountLabel => 'Количество слотов';
+
+  @override
+  String get payCash => 'Наличные';
+
+  @override
+  String get payCard => 'Карта';
+
+  @override
+  String get payTransfer => 'Перевод';
+
+  @override
+  String get saveBooking => 'Сохранить бронь';
+
+  @override
+  String get blockReason => 'Причина (необязательно)';
+
+  @override
+  String get blockConfirm => 'Закрыть это время';
+
+  @override
+  String get unblock => 'Снова открыть это время';
+
+  @override
+  String get customerLabel => 'Клиент';
+
+  @override
+  String get sourceLabel => 'Источник';
+
+  @override
+  String get statusLabel => 'Статус';
+
+  @override
+  String get reasonLabel => 'Причина';
+
+  @override
+  String get sourceApp => 'Бронь из приложения';
+
+  @override
+  String get sourceWalkIn => 'На месте или по телефону';
+
+  @override
+  String get sourceBlock => 'Закрыто площадкой';
+
+  @override
+  String get markPaid => 'Отметить оплату';
+
+  @override
+  String get markNoShow => 'Отметить неявку';
+
+  @override
+  String get statusPaid => 'Оплачено';
+
+  @override
+  String get statusNoShow => 'Неявка';
+
+  @override
+  String get statusUnverified => 'Не подтверждено';
+
+  @override
+  String get statusCancelledByVenue => 'Отменено площадкой';
+
+  @override
+  String get markAfterStart =>
+      'Оплату и неявку можно отметить после начала брони';
+
+  @override
+  String get cancelByVenueMsg =>
+      'Время сразу освободится. Игрок, забронировавший через приложение, увидит, что бронь отменила площадка.';
+
+  @override
+  String get errNotAllowed => 'Вы не управляете этой площадкой';
+
+  @override
+  String get bookingSaved => 'Бронь сохранена';
+
+  @override
+  String get ownerSettings => 'Часы и цены';
+
+  @override
+  String get ownerDashboard => 'Статистика';
+
+  @override
+  String get venueHours => 'Часы работы площадки';
+
+  @override
+  String get courtHours => 'Часы корта';
+
+  @override
+  String get sameAsVenue => 'Как у площадки';
+
+  @override
+  String get openLabel => 'Открыто';
+
+  @override
+  String get editLabel => 'Изменить';
+
+  @override
+  String get saveLabel => 'Сохранить';
+
+  @override
+  String get savedMsg => 'Сохранено';
+
+  @override
+  String get pricesTitle => 'Цены';
+
+  @override
+  String get hoursTitle => 'Часы';
+
+  @override
+  String get slotLengthLabel => 'Длина слота';
+
+  @override
+  String get basePrice => 'Базовая цена за слот';
+
+  @override
+  String get priceRules => 'Правила цен';
+
+  @override
+  String get addRule => 'Добавить правило';
+
+  @override
+  String get removeRule => 'Удалить правило';
+
+  @override
+  String get ruleFrom => 'С';
+
+  @override
+  String get ruleTo => 'До';
+
+  @override
+  String get rulePrice => 'Цена за слот';
+
+  @override
+  String get noRules => 'Правил нет: все слоты по базовой цене';
+
+  @override
+  String rulesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count правила цен',
+      many: '$count правил цен',
+      few: '$count правила цен',
+      one: '$count правило цен',
+      zero: 'Без правил цен',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get errInvalidHours => 'Открытие должно быть раньше закрытия';
+
+  @override
+  String get errRulesOverlap => 'Два правила совпадают по дню и времени';
+
+  @override
+  String get errInvalidArgument => 'Проверьте значения и попробуйте ещё раз';
+
+  @override
+  String get errPickWeekday => 'Выберите хотя бы один день';
+
+  @override
+  String get errPrice => 'Введите цену';
+
+  @override
+  String get period7 => 'Последние 7 дней';
+
+  @override
+  String get periodMonth => 'Этот месяц';
+
+  @override
+  String get allCourts => 'Все корты';
+
+  @override
+  String metricSplit(int app, int walkIn) {
+    return 'Приложение $app · на месте $walkIn';
+  }
+
+  @override
+  String get metricRevenue => 'Оплаченная выручка';
+
+  @override
+  String get metricUnconfirmed => 'Неподтверждённая выручка';
+
+  @override
+  String get metricDailyAvg => 'Броней в день';
+
+  @override
+  String get metricUtilisation => 'Загрузка';
+
+  @override
+  String get metricNoShows => 'Неявки';
+
+  @override
+  String get peakHours => 'Часы пик';
+
+  @override
+  String get noDataPeriod => 'За этот период броней нет';
+
+  @override
+  String get adminTitle => 'Админ-панель';
+
+  @override
+  String get adminOnly => 'Эта страница доступна только администраторам Actra';
+
+  @override
+  String get adminSports => 'Виды спорта';
+
+  @override
+  String get adminBanners => 'Баннеры';
+
+  @override
+  String get adminAudit => 'Журнал изменений';
+
+  @override
+  String get adminAuditHint => 'Кто, что и когда изменил';
+
+  @override
+  String venuesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count площадки',
+      many: '$count площадок',
+      few: '$count площадки',
+      one: '$count площадка',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sportsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count вида спорта',
+      many: '$count видов спорта',
+      few: '$count вида спорта',
+      one: '$count вид спорта',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bannersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count баннера',
+      many: '$count баннеров',
+      few: '$count баннера',
+      one: '$count баннер',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String courtsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count корта',
+      many: '$count кортов',
+      few: '$count корта',
+      one: '$count корт',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ownersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count владельца',
+      many: '$count владельцев',
+      few: '$count владельца',
+      one: '$count владелец',
+      zero: 'Нет владельцев',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playersN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count игрока',
+      many: '$count игроков',
+      few: '$count игрока',
+      one: '$count игрок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get inactive => 'Неактивно';
+
+  @override
+  String get activeLabel => 'Активно';
+
+  @override
+  String get activeHint => 'Игроки видят это';
+
+  @override
+  String get addVenue => 'Добавить площадку';
+
+  @override
+  String get newVenue => 'Новая площадка';
+
+  @override
+  String get venueDetails => 'Основное';
+
+  @override
+  String get nameLabel => 'Название';
+
+  @override
+  String get descriptionLabel => 'Описание';
+
+  @override
+  String get districtLabel => 'Район';
+
+  @override
+  String get nameRequiredAny => 'Заполните хотя бы один язык';
+
+  @override
+  String get saveVenueFirst =>
+      'Сохраните площадку, чтобы добавить корты и владельцев';
+
+  @override
+  String get addCourt => 'Добавить корт';
+
+  @override
+  String get newCourt => 'Новый корт';
+
+  @override
+  String get editCourt => 'Изменить корт';
+
+  @override
+  String get noCourts => 'Кортов пока нет';
+
+  @override
+  String get courtActions => 'Действия с кортом';
+
+  @override
+  String get duplicateLabel => 'Дублировать';
+
+  @override
+  String get deleteLabel => 'Удалить';
+
+  @override
+  String get deleteVenue => 'Удалить площадку';
+
+  @override
+  String deleteConfirmTitle(String name) {
+    return 'Удалить «$name»?';
+  }
+
+  @override
+  String get deleteConfirmMsg => 'Это действие нельзя отменить.';
+
+  @override
+  String get errHasBookings =>
+      'Есть брони, поэтому удалить нельзя. Отключите, чтобы скрыть от игроков.';
+
+  @override
+  String get deactivateInstead => 'Отключить';
+
+  @override
+  String get errAlreadyExists => 'Этот ID уже занят';
+
+  @override
+  String get errNotFound => 'Не найдено. Обновите и попробуйте снова.';
+
+  @override
+  String get ownersTitle => 'Владельцы';
+
+  @override
+  String get assignOwner => 'Назначить владельца';
+
+  @override
+  String get removeOwner => 'Убрать владельца';
+
+  @override
+  String get noOwners => 'Владельцы не назначены';
+
+  @override
+  String get searchUsers => 'Имя или телефон';
+
+  @override
+  String get searchUsersMin => 'Введите хотя бы 2 символа';
+
+  @override
+  String get noUsersFound => 'Никого не нашли';
+
+  @override
+  String get addSport => 'Добавить вид спорта';
+
+  @override
+  String get newSport => 'Новый вид спорта';
+
+  @override
+  String get editSport => 'Изменить вид спорта';
+
+  @override
+  String get sportIdLabel => 'ID';
+
+  @override
+  String get sportIdHint =>
+      'Строчные латинские буквы, цифры и _, например squash. Потом изменить нельзя.';
+
+  @override
+  String get errSportId =>
+      '2–30 символов: строчные латинские буквы, цифры или _, первая — буква';
+
+  @override
+  String get iconLabel => 'Иконка';
+
+  @override
+  String get sportTypeLabel => 'Тип';
+
+  @override
+  String get placeOnly => 'Только место';
+
+  @override
+  String get ratingLabel => 'Рейтинг';
+
+  @override
+  String get ratingSimple => 'Уровень 1–5';
+
+  @override
+  String get ratingCompetitive => 'Рейтинг 1.0–7.0';
+
+  @override
+  String get defaultPlayers => 'Игроков по умолчанию';
+
+  @override
+  String get sortOrderLabel => 'Порядок в списке';
+
+  @override
+  String get addBanner => 'Добавить баннер';
+
+  @override
+  String get newBanner => 'Новый баннер';
+
+  @override
+  String get editBanner => 'Изменить баннер';
+
+  @override
+  String get bannerTitle => 'Заголовок';
+
+  @override
+  String get bannerSubtitle => 'Подзаголовок';
+
+  @override
+  String get linkLabel => 'Ссылка';
+
+  @override
+  String get errUrl => 'Ссылка должна начинаться с https://';
+
+  @override
+  String get allCities => 'Все города';
+
+  @override
+  String get noBanners => 'Баннеров пока нет';
+
+  @override
+  String get auditEmpty => 'Изменений пока нет';
+
+  @override
+  String get loadMore => 'Показать ещё';
+
+  @override
+  String get auditBefore => 'До';
+
+  @override
+  String get auditAfter => 'После';
+
+  @override
+  String get auditSystem => 'Система';
+
+  @override
+  String get auditCreateVenue => 'Площадка создана';
+
+  @override
+  String get auditUpdateVenue => 'Площадка изменена';
+
+  @override
+  String get auditDeleteVenue => 'Площадка удалена';
+
+  @override
+  String get auditCreateCourt => 'Корт создан';
+
+  @override
+  String get auditUpdateCourt => 'Корт изменён';
+
+  @override
+  String get auditDuplicateCourt => 'Корт продублирован';
+
+  @override
+  String get auditDeleteCourt => 'Корт удалён';
+
+  @override
+  String get auditAssignOwner => 'Владелец назначен';
+
+  @override
+  String get auditRemoveOwner => 'Владелец убран';
+
+  @override
+  String get auditCreateSport => 'Вид спорта создан';
+
+  @override
+  String get auditUpdateSport => 'Вид спорта изменён';
+
+  @override
+  String get auditCreateBanner => 'Баннер создан';
+
+  @override
+  String get auditUpdateBanner => 'Баннер изменён';
+
+  @override
+  String get auditDeleteBanner => 'Баннер удалён';
+
+  @override
+  String get auditVenueHours => 'Часы площадки изменены';
+
+  @override
+  String get auditCourtHours => 'Часы корта изменены';
+
+  @override
+  String get auditCourtPricing => 'Цены корта изменены';
+
+  @override
+  String get auditWalkIn => 'Добавлена бронь на месте';
+
+  @override
+  String get auditBlock => 'Время заблокировано';
+
+  @override
+  String get auditMarkBooking => 'Бронь отмечена';
+
+  @override
+  String get entityVenue => 'Площадка';
+
+  @override
+  String get entityBanner => 'Баннер';
+
+  @override
+  String get entityBooking => 'Бронь';
+
+  @override
+  String get entityOwner => 'Владелец площадки';
 }

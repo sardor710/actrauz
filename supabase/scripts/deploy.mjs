@@ -2,6 +2,9 @@
 //
 //   node scripts/deploy.mjs            everything, in order
 //   node scripts/deploy.mjs db         migrations + seed
+//   node scripts/deploy.mjs migrations migrations only; use this once owners
+//                                      edit hours and prices, which the seed
+//                                      resets for the sample venues
 //   node scripts/deploy.mjs seed       seed only (re-dates the sample games)
 //   node scripts/deploy.mjs functions  function secrets + both edge functions
 //   node scripts/deploy.mjs telegram   point the bot's webhook at the function
@@ -34,7 +37,7 @@ if (wants('functions')) {
   await supabase(env, ['link', '--project-ref', env.SUPABASE_PROJECT_REF]);
 }
 
-if (wants('db')) {
+if (wants('db') || only.includes('migrations')) {
   step('Applying migrations');
   // Over HTTPS rather than `supabase db push`, which needs the database port
   // (5432) and is blocked on some networks. Applied versions are recorded in

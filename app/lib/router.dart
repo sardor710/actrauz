@@ -2,12 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'features/admin/admin_audit_screen.dart';
+import 'features/admin/admin_banners_screen.dart';
+import 'features/admin/admin_home_screen.dart';
+import 'features/admin/admin_sports_screen.dart';
+import 'features/admin/admin_venues_screen.dart';
+import 'features/admin/venue_editor_screen.dart';
 import 'features/booking/booking_screen.dart';
 import 'features/bookings/bookings_screen.dart';
 import 'features/games/game_screen.dart';
 import 'features/games/games_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/owner/owner_calendar_screen.dart';
+import 'features/owner/owner_dashboard_screen.dart';
+import 'features/owner/owner_settings_screen.dart';
+import 'features/owner/owner_venues_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'features/social/social_screen.dart';
@@ -36,6 +46,48 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Opened on top of the tabs from the header, so "back" returns to them.
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
       GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
+      // Venue owners and admins only; the screens show nothing to anyone else.
+      GoRoute(
+        path: '/owner',
+        builder: (context, state) => const OwnerVenuesScreen(),
+        routes: [
+          GoRoute(
+            path: ':venueId',
+            builder: (context, state) => OwnerCalendarScreen(venueId: state.pathParameters['venueId']!),
+            routes: [
+              GoRoute(
+                path: 'settings',
+                builder: (context, state) => OwnerSettingsScreen(venueId: state.pathParameters['venueId']!),
+              ),
+              GoRoute(
+                path: 'dashboard',
+                builder: (context, state) => OwnerDashboardScreen(venueId: state.pathParameters['venueId']!),
+              ),
+            ],
+          ),
+        ],
+      ),
+      // Actra admins only; the screens show a locked state to anyone else.
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminHomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'venues',
+            builder: (context, state) => const AdminVenuesScreen(),
+            routes: [
+              GoRoute(path: 'new', builder: (context, state) => const VenueEditorScreen()),
+              GoRoute(
+                path: ':venueId',
+                builder: (context, state) => VenueEditorScreen(venueId: state.pathParameters['venueId']),
+              ),
+            ],
+          ),
+          GoRoute(path: 'sports', builder: (context, state) => const AdminSportsScreen()),
+          GoRoute(path: 'banners', builder: (context, state) => const AdminBannersScreen()),
+          GoRoute(path: 'audit', builder: (context, state) => const AdminAuditScreen()),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [

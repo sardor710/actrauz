@@ -519,4 +519,587 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gamesPromoCta => 'Book a court';
+
+  @override
+  String get myVenues => 'My venues';
+
+  @override
+  String get ownerCalendar => 'Booking calendar';
+
+  @override
+  String get noVenuesAssigned => 'No venues are assigned to you yet';
+
+  @override
+  String get prevWeek => 'Previous week';
+
+  @override
+  String get nextWeek => 'Next week';
+
+  @override
+  String get slotFree => 'Free';
+
+  @override
+  String get slotBooked => 'Booked';
+
+  @override
+  String get slotBlocked => 'Blocked';
+
+  @override
+  String get closedThatWeek => 'The court is closed this week';
+
+  @override
+  String get newBooking => 'New booking';
+
+  @override
+  String get blockTime => 'Block time';
+
+  @override
+  String get customerName => 'Customer name';
+
+  @override
+  String get customerNameRequired => 'Enter the customer name';
+
+  @override
+  String get customerPhone => 'Phone number (optional)';
+
+  @override
+  String get slotsCountLabel => 'Number of slots';
+
+  @override
+  String get payCash => 'Cash';
+
+  @override
+  String get payCard => 'Card';
+
+  @override
+  String get payTransfer => 'Transfer';
+
+  @override
+  String get saveBooking => 'Save booking';
+
+  @override
+  String get blockReason => 'Reason (optional)';
+
+  @override
+  String get blockConfirm => 'Block this time';
+
+  @override
+  String get unblock => 'Open this time again';
+
+  @override
+  String get customerLabel => 'Customer';
+
+  @override
+  String get sourceLabel => 'Source';
+
+  @override
+  String get statusLabel => 'Status';
+
+  @override
+  String get reasonLabel => 'Reason';
+
+  @override
+  String get sourceApp => 'Booked in the app';
+
+  @override
+  String get sourceWalkIn => 'Walk-in or phone';
+
+  @override
+  String get sourceBlock => 'Blocked by the venue';
+
+  @override
+  String get markPaid => 'Mark paid';
+
+  @override
+  String get markNoShow => 'Mark no-show';
+
+  @override
+  String get statusPaid => 'Paid';
+
+  @override
+  String get statusNoShow => 'No-show';
+
+  @override
+  String get statusUnverified => 'Not confirmed';
+
+  @override
+  String get statusCancelledByVenue => 'Cancelled by the venue';
+
+  @override
+  String get markAfterStart =>
+      'Paid and no-show can be marked once the booking has started';
+
+  @override
+  String get cancelByVenueMsg =>
+      'The time becomes free at once. A player who booked in the app will see that the venue cancelled it.';
+
+  @override
+  String get errNotAllowed => 'You do not manage this venue';
+
+  @override
+  String get bookingSaved => 'Booking saved';
+
+  @override
+  String get ownerSettings => 'Hours and prices';
+
+  @override
+  String get ownerDashboard => 'Dashboard';
+
+  @override
+  String get venueHours => 'Venue working hours';
+
+  @override
+  String get courtHours => 'Court hours';
+
+  @override
+  String get sameAsVenue => 'Same as venue';
+
+  @override
+  String get openLabel => 'Open';
+
+  @override
+  String get editLabel => 'Edit';
+
+  @override
+  String get saveLabel => 'Save';
+
+  @override
+  String get savedMsg => 'Saved';
+
+  @override
+  String get pricesTitle => 'Prices';
+
+  @override
+  String get hoursTitle => 'Hours';
+
+  @override
+  String get slotLengthLabel => 'Slot length';
+
+  @override
+  String get basePrice => 'Base price per slot';
+
+  @override
+  String get priceRules => 'Price rules';
+
+  @override
+  String get addRule => 'Add rule';
+
+  @override
+  String get removeRule => 'Remove rule';
+
+  @override
+  String get ruleFrom => 'From';
+
+  @override
+  String get ruleTo => 'To';
+
+  @override
+  String get rulePrice => 'Price per slot';
+
+  @override
+  String get noRules => 'No rules: every slot costs the base price';
+
+  @override
+  String rulesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count price rules',
+      one: '$count price rule',
+      zero: 'No price rules',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get errInvalidHours => 'Opening must be earlier than closing';
+
+  @override
+  String get errRulesOverlap => 'Two rules cover the same day and time';
+
+  @override
+  String get errInvalidArgument => 'Check the values and try again';
+
+  @override
+  String get errPickWeekday => 'Choose at least one day';
+
+  @override
+  String get errPrice => 'Enter a price';
+
+  @override
+  String get period7 => 'Last 7 days';
+
+  @override
+  String get periodMonth => 'This month';
+
+  @override
+  String get allCourts => 'All courts';
+
+  @override
+  String metricSplit(int app, int walkIn) {
+    return 'App $app · walk-in $walkIn';
+  }
+
+  @override
+  String get metricRevenue => 'Paid revenue';
+
+  @override
+  String get metricUnconfirmed => 'Unconfirmed revenue';
+
+  @override
+  String get metricDailyAvg => 'Bookings per day';
+
+  @override
+  String get metricUtilisation => 'Utilisation';
+
+  @override
+  String get metricNoShows => 'No-shows';
+
+  @override
+  String get peakHours => 'Peak hours';
+
+  @override
+  String get noDataPeriod => 'No bookings in this period';
+
+  @override
+  String get adminTitle => 'Admin';
+
+  @override
+  String get adminOnly => 'Only Actra administrators can open this page';
+
+  @override
+  String get adminSports => 'Sports';
+
+  @override
+  String get adminBanners => 'Banners';
+
+  @override
+  String get adminAudit => 'Audit log';
+
+  @override
+  String get adminAuditHint => 'Who changed what, and when';
+
+  @override
+  String venuesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count venues',
+      one: '$count venue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sportsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sports',
+      one: '$count sport',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bannersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count banners',
+      one: '$count banner',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String courtsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count courts',
+      one: '$count court',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ownersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count owners',
+      one: '$count owner',
+      zero: 'No owners',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playersN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count players',
+      one: '$count player',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get inactive => 'Inactive';
+
+  @override
+  String get activeLabel => 'Active';
+
+  @override
+  String get activeHint => 'Players can see it';
+
+  @override
+  String get addVenue => 'Add venue';
+
+  @override
+  String get newVenue => 'New venue';
+
+  @override
+  String get venueDetails => 'Details';
+
+  @override
+  String get nameLabel => 'Name';
+
+  @override
+  String get descriptionLabel => 'Description';
+
+  @override
+  String get districtLabel => 'District';
+
+  @override
+  String get nameRequiredAny => 'Fill in at least one language';
+
+  @override
+  String get saveVenueFirst => 'Save the venue to add courts and owners';
+
+  @override
+  String get addCourt => 'Add court';
+
+  @override
+  String get newCourt => 'New court';
+
+  @override
+  String get editCourt => 'Edit court';
+
+  @override
+  String get noCourts => 'No courts yet';
+
+  @override
+  String get courtActions => 'Court actions';
+
+  @override
+  String get duplicateLabel => 'Duplicate';
+
+  @override
+  String get deleteLabel => 'Delete';
+
+  @override
+  String get deleteVenue => 'Delete venue';
+
+  @override
+  String deleteConfirmTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get deleteConfirmMsg => 'This cannot be undone.';
+
+  @override
+  String get errHasBookings =>
+      'It has bookings, so it cannot be deleted. Deactivate it to hide it from players.';
+
+  @override
+  String get deactivateInstead => 'Deactivate instead';
+
+  @override
+  String get errAlreadyExists => 'This ID is already taken';
+
+  @override
+  String get errNotFound => 'Not found. Refresh and try again.';
+
+  @override
+  String get ownersTitle => 'Owners';
+
+  @override
+  String get assignOwner => 'Assign owner';
+
+  @override
+  String get removeOwner => 'Remove owner';
+
+  @override
+  String get noOwners => 'No owners assigned';
+
+  @override
+  String get searchUsers => 'Name or phone';
+
+  @override
+  String get searchUsersMin => 'Type at least 2 characters';
+
+  @override
+  String get noUsersFound => 'Nobody found';
+
+  @override
+  String get addSport => 'Add sport';
+
+  @override
+  String get newSport => 'New sport';
+
+  @override
+  String get editSport => 'Edit sport';
+
+  @override
+  String get sportIdLabel => 'ID';
+
+  @override
+  String get sportIdHint =>
+      'Lowercase Latin letters, digits and _, for example squash. Cannot be changed later.';
+
+  @override
+  String get errSportId =>
+      '2–30 characters: lowercase Latin letters, digits or _, starting with a letter';
+
+  @override
+  String get iconLabel => 'Icon';
+
+  @override
+  String get sportTypeLabel => 'Type';
+
+  @override
+  String get placeOnly => 'Place only';
+
+  @override
+  String get ratingLabel => 'Rating';
+
+  @override
+  String get ratingSimple => 'Level 1–5';
+
+  @override
+  String get ratingCompetitive => 'Rating 1.0–7.0';
+
+  @override
+  String get defaultPlayers => 'Default players';
+
+  @override
+  String get sortOrderLabel => 'Position in list';
+
+  @override
+  String get addBanner => 'Add banner';
+
+  @override
+  String get newBanner => 'New banner';
+
+  @override
+  String get editBanner => 'Edit banner';
+
+  @override
+  String get bannerTitle => 'Title';
+
+  @override
+  String get bannerSubtitle => 'Subtitle';
+
+  @override
+  String get linkLabel => 'Link';
+
+  @override
+  String get errUrl => 'The link must start with https://';
+
+  @override
+  String get allCities => 'All cities';
+
+  @override
+  String get noBanners => 'No banners yet';
+
+  @override
+  String get auditEmpty => 'No changes recorded yet';
+
+  @override
+  String get loadMore => 'Load more';
+
+  @override
+  String get auditBefore => 'Before';
+
+  @override
+  String get auditAfter => 'After';
+
+  @override
+  String get auditSystem => 'System';
+
+  @override
+  String get auditCreateVenue => 'Venue created';
+
+  @override
+  String get auditUpdateVenue => 'Venue updated';
+
+  @override
+  String get auditDeleteVenue => 'Venue deleted';
+
+  @override
+  String get auditCreateCourt => 'Court created';
+
+  @override
+  String get auditUpdateCourt => 'Court updated';
+
+  @override
+  String get auditDuplicateCourt => 'Court duplicated';
+
+  @override
+  String get auditDeleteCourt => 'Court deleted';
+
+  @override
+  String get auditAssignOwner => 'Owner assigned';
+
+  @override
+  String get auditRemoveOwner => 'Owner removed';
+
+  @override
+  String get auditCreateSport => 'Sport created';
+
+  @override
+  String get auditUpdateSport => 'Sport updated';
+
+  @override
+  String get auditCreateBanner => 'Banner created';
+
+  @override
+  String get auditUpdateBanner => 'Banner updated';
+
+  @override
+  String get auditDeleteBanner => 'Banner deleted';
+
+  @override
+  String get auditVenueHours => 'Venue hours changed';
+
+  @override
+  String get auditCourtHours => 'Court hours changed';
+
+  @override
+  String get auditCourtPricing => 'Court prices changed';
+
+  @override
+  String get auditWalkIn => 'Walk-in booking added';
+
+  @override
+  String get auditBlock => 'Time blocked';
+
+  @override
+  String get auditMarkBooking => 'Booking marked';
+
+  @override
+  String get entityVenue => 'Venue';
+
+  @override
+  String get entityBanner => 'Banner';
+
+  @override
+  String get entityBooking => 'Booking';
+
+  @override
+  String get entityOwner => 'Venue owner';
 }

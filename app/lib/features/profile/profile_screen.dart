@@ -7,6 +7,8 @@ import '../../data/sample/sample_data.dart';
 import '../../domain/booking_engine.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../state/admin_providers.dart';
+import '../../state/owner_providers.dart';
 import '../../state/providers.dart';
 import '../common/app_header.dart';
 import '../common/formatters.dart';
@@ -32,6 +34,10 @@ class ProfileScreen extends ConsumerWidget {
     final booked = bookings.where((b) => b.status != BookingStatus.cancelledByPlayer).length;
     final joined = games.where((g) => g.participantIds.contains(kMeId)).length;
     final late = bookings.where((b) => b.lateCancellation).length;
+    // Shown only to people who manage at least one venue.
+    final managesVenues = (ref.watch(myVenuesProvider).valueOrNull ?? const <Venue>[]).isNotEmpty;
+    // Shown only to Actra admins.
+    final isAdmin = ref.watch(isAdminProvider).valueOrNull ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -120,6 +126,18 @@ class ProfileScreen extends ConsumerWidget {
           Card(
             child: Column(
               children: [
+                if (managesVenues) ...[
+                  _MenuRow(icon: Icons.stadium_outlined, title: l.myVenues, onTap: () => context.push('/owner')),
+                  const Divider(indent: 60),
+                ],
+                if (isAdmin) ...[
+                  _MenuRow(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: l.adminTitle,
+                    onTap: () => context.push('/admin'),
+                  ),
+                  const Divider(indent: 60),
+                ],
                 _MenuRow(
                   icon: Icons.event_available_outlined,
                   title: l.myBookings,

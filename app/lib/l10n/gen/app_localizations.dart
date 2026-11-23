@@ -987,6 +987,1038 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Book a court'**
   String get gamesPromoCta;
+
+  /// No description provided for @myVenues.
+  ///
+  /// In en, this message translates to:
+  /// **'My venues'**
+  String get myVenues;
+
+  /// No description provided for @ownerCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking calendar'**
+  String get ownerCalendar;
+
+  /// No description provided for @noVenuesAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No venues are assigned to you yet'**
+  String get noVenuesAssigned;
+
+  /// No description provided for @prevWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous week'**
+  String get prevWeek;
+
+  /// No description provided for @nextWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Next week'**
+  String get nextWeek;
+
+  /// No description provided for @slotFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get slotFree;
+
+  /// No description provided for @slotBooked.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked'**
+  String get slotBooked;
+
+  /// No description provided for @slotBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get slotBlocked;
+
+  /// No description provided for @closedThatWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'The court is closed this week'**
+  String get closedThatWeek;
+
+  /// No description provided for @newBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'New booking'**
+  String get newBooking;
+
+  /// No description provided for @blockTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Block time'**
+  String get blockTime;
+
+  /// No description provided for @customerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer name'**
+  String get customerName;
+
+  /// No description provided for @customerNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the customer name'**
+  String get customerNameRequired;
+
+  /// No description provided for @customerPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number (optional)'**
+  String get customerPhone;
+
+  /// No description provided for @slotsCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of slots'**
+  String get slotsCountLabel;
+
+  /// No description provided for @payCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get payCash;
+
+  /// No description provided for @payCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get payCard;
+
+  /// No description provided for @payTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get payTransfer;
+
+  /// No description provided for @saveBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Save booking'**
+  String get saveBooking;
+
+  /// No description provided for @blockReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get blockReason;
+
+  /// No description provided for @blockConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Block this time'**
+  String get blockConfirm;
+
+  /// No description provided for @unblock.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this time again'**
+  String get unblock;
+
+  /// No description provided for @customerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get customerLabel;
+
+  /// No description provided for @sourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get sourceLabel;
+
+  /// No description provided for @statusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusLabel;
+
+  /// No description provided for @reasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get reasonLabel;
+
+  /// No description provided for @sourceApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked in the app'**
+  String get sourceApp;
+
+  /// No description provided for @sourceWalkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-in or phone'**
+  String get sourceWalkIn;
+
+  /// No description provided for @sourceBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by the venue'**
+  String get sourceBlock;
+
+  /// No description provided for @markPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark paid'**
+  String get markPaid;
+
+  /// No description provided for @markNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark no-show'**
+  String get markNoShow;
+
+  /// No description provided for @statusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get statusPaid;
+
+  /// No description provided for @statusNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show'**
+  String get statusNoShow;
+
+  /// No description provided for @statusUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get statusUnverified;
+
+  /// No description provided for @statusCancelledByVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled by the venue'**
+  String get statusCancelledByVenue;
+
+  /// No description provided for @markAfterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid and no-show can be marked once the booking has started'**
+  String get markAfterStart;
+
+  /// No description provided for @cancelByVenueMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'The time becomes free at once. A player who booked in the app will see that the venue cancelled it.'**
+  String get cancelByVenueMsg;
+
+  /// No description provided for @errNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not manage this venue'**
+  String get errNotAllowed;
+
+  /// No description provided for @bookingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking saved'**
+  String get bookingSaved;
+
+  /// No description provided for @ownerSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours and prices'**
+  String get ownerSettings;
+
+  /// No description provided for @ownerDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get ownerDashboard;
+
+  /// No description provided for @venueHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue working hours'**
+  String get venueHours;
+
+  /// No description provided for @courtHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Court hours'**
+  String get courtHours;
+
+  /// No description provided for @sameAsVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as venue'**
+  String get sameAsVenue;
+
+  /// No description provided for @openLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get openLabel;
+
+  /// No description provided for @editLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editLabel;
+
+  /// No description provided for @saveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveLabel;
+
+  /// No description provided for @savedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get savedMsg;
+
+  /// No description provided for @pricesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices'**
+  String get pricesTitle;
+
+  /// No description provided for @hoursTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get hoursTitle;
+
+  /// No description provided for @slotLengthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot length'**
+  String get slotLengthLabel;
+
+  /// No description provided for @basePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Base price per slot'**
+  String get basePrice;
+
+  /// No description provided for @priceRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Price rules'**
+  String get priceRules;
+
+  /// No description provided for @addRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get addRule;
+
+  /// No description provided for @removeRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove rule'**
+  String get removeRule;
+
+  /// No description provided for @ruleFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get ruleFrom;
+
+  /// No description provided for @ruleTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get ruleTo;
+
+  /// No description provided for @rulePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per slot'**
+  String get rulePrice;
+
+  /// No description provided for @noRules.
+  ///
+  /// In en, this message translates to:
+  /// **'No rules: every slot costs the base price'**
+  String get noRules;
+
+  /// No description provided for @rulesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No price rules} one{{count} price rule} other{{count} price rules}}'**
+  String rulesCount(int count);
+
+  /// No description provided for @errInvalidHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening must be earlier than closing'**
+  String get errInvalidHours;
+
+  /// No description provided for @errRulesOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Two rules cover the same day and time'**
+  String get errRulesOverlap;
+
+  /// No description provided for @errInvalidArgument.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the values and try again'**
+  String get errInvalidArgument;
+
+  /// No description provided for @errPickWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one day'**
+  String get errPickWeekday;
+
+  /// No description provided for @errPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a price'**
+  String get errPrice;
+
+  /// No description provided for @period7.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get period7;
+
+  /// No description provided for @periodMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get periodMonth;
+
+  /// No description provided for @allCourts.
+  ///
+  /// In en, this message translates to:
+  /// **'All courts'**
+  String get allCourts;
+
+  /// No description provided for @metricSplit.
+  ///
+  /// In en, this message translates to:
+  /// **'App {app} · walk-in {walkIn}'**
+  String metricSplit(int app, int walkIn);
+
+  /// No description provided for @metricRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid revenue'**
+  String get metricRevenue;
+
+  /// No description provided for @metricUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unconfirmed revenue'**
+  String get metricUnconfirmed;
+
+  /// No description provided for @metricDailyAvg.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings per day'**
+  String get metricDailyAvg;
+
+  /// No description provided for @metricUtilisation.
+  ///
+  /// In en, this message translates to:
+  /// **'Utilisation'**
+  String get metricUtilisation;
+
+  /// No description provided for @metricNoShows.
+  ///
+  /// In en, this message translates to:
+  /// **'No-shows'**
+  String get metricNoShows;
+
+  /// No description provided for @peakHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak hours'**
+  String get peakHours;
+
+  /// No description provided for @noDataPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookings in this period'**
+  String get noDataPeriod;
+
+  /// No description provided for @adminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminTitle;
+
+  /// No description provided for @adminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only Actra administrators can open this page'**
+  String get adminOnly;
+
+  /// No description provided for @adminSports.
+  ///
+  /// In en, this message translates to:
+  /// **'Sports'**
+  String get adminSports;
+
+  /// No description provided for @adminBanners.
+  ///
+  /// In en, this message translates to:
+  /// **'Banners'**
+  String get adminBanners;
+
+  /// No description provided for @adminAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit log'**
+  String get adminAudit;
+
+  /// No description provided for @adminAuditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Who changed what, and when'**
+  String get adminAuditHint;
+
+  /// No description provided for @venuesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} venue} other{{count} venues}}'**
+  String venuesCount(int count);
+
+  /// No description provided for @sportsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} sport} other{{count} sports}}'**
+  String sportsCount(int count);
+
+  /// No description provided for @bannersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} banner} other{{count} banners}}'**
+  String bannersCount(int count);
+
+  /// No description provided for @courtsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} court} other{{count} courts}}'**
+  String courtsCount(int count);
+
+  /// No description provided for @ownersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No owners} one{{count} owner} other{{count} owners}}'**
+  String ownersCount(int count);
+
+  /// No description provided for @playersN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} player} other{{count} players}}'**
+  String playersN(int count);
+
+  /// No description provided for @inactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get inactive;
+
+  /// No description provided for @activeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeLabel;
+
+  /// No description provided for @activeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Players can see it'**
+  String get activeHint;
+
+  /// No description provided for @addVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Add venue'**
+  String get addVenue;
+
+  /// No description provided for @newVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'New venue'**
+  String get newVenue;
+
+  /// No description provided for @venueDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get venueDetails;
+
+  /// No description provided for @nameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get nameLabel;
+
+  /// No description provided for @descriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionLabel;
+
+  /// No description provided for @districtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'District'**
+  String get districtLabel;
+
+  /// No description provided for @nameRequiredAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in at least one language'**
+  String get nameRequiredAny;
+
+  /// No description provided for @saveVenueFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the venue to add courts and owners'**
+  String get saveVenueFirst;
+
+  /// No description provided for @addCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add court'**
+  String get addCourt;
+
+  /// No description provided for @newCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'New court'**
+  String get newCourt;
+
+  /// No description provided for @editCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit court'**
+  String get editCourt;
+
+  /// No description provided for @noCourts.
+  ///
+  /// In en, this message translates to:
+  /// **'No courts yet'**
+  String get noCourts;
+
+  /// No description provided for @courtActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Court actions'**
+  String get courtActions;
+
+  /// No description provided for @duplicateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get duplicateLabel;
+
+  /// No description provided for @deleteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteLabel;
+
+  /// No description provided for @deleteVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete venue'**
+  String get deleteVenue;
+
+  /// No description provided for @deleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String deleteConfirmTitle(String name);
+
+  /// No description provided for @deleteConfirmMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone.'**
+  String get deleteConfirmMsg;
+
+  /// No description provided for @errHasBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'It has bookings, so it cannot be deleted. Deactivate it to hide it from players.'**
+  String get errHasBookings;
+
+  /// No description provided for @deactivateInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate instead'**
+  String get deactivateInstead;
+
+  /// No description provided for @errAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This ID is already taken'**
+  String get errAlreadyExists;
+
+  /// No description provided for @errNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found. Refresh and try again.'**
+  String get errNotFound;
+
+  /// No description provided for @ownersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Owners'**
+  String get ownersTitle;
+
+  /// No description provided for @assignOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign owner'**
+  String get assignOwner;
+
+  /// No description provided for @removeOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove owner'**
+  String get removeOwner;
+
+  /// No description provided for @noOwners.
+  ///
+  /// In en, this message translates to:
+  /// **'No owners assigned'**
+  String get noOwners;
+
+  /// No description provided for @searchUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Name or phone'**
+  String get searchUsers;
+
+  /// No description provided for @searchUsersMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Type at least 2 characters'**
+  String get searchUsersMin;
+
+  /// No description provided for @noUsersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody found'**
+  String get noUsersFound;
+
+  /// No description provided for @addSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Add sport'**
+  String get addSport;
+
+  /// No description provided for @newSport.
+  ///
+  /// In en, this message translates to:
+  /// **'New sport'**
+  String get newSport;
+
+  /// No description provided for @editSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit sport'**
+  String get editSport;
+
+  /// No description provided for @sportIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ID'**
+  String get sportIdLabel;
+
+  /// No description provided for @sportIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowercase Latin letters, digits and _, for example squash. Cannot be changed later.'**
+  String get sportIdHint;
+
+  /// No description provided for @errSportId.
+  ///
+  /// In en, this message translates to:
+  /// **'2–30 characters: lowercase Latin letters, digits or _, starting with a letter'**
+  String get errSportId;
+
+  /// No description provided for @iconLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get iconLabel;
+
+  /// No description provided for @sportTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get sportTypeLabel;
+
+  /// No description provided for @placeOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Place only'**
+  String get placeOnly;
+
+  /// No description provided for @ratingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get ratingLabel;
+
+  /// No description provided for @ratingSimple.
+  ///
+  /// In en, this message translates to:
+  /// **'Level 1–5'**
+  String get ratingSimple;
+
+  /// No description provided for @ratingCompetitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating 1.0–7.0'**
+  String get ratingCompetitive;
+
+  /// No description provided for @defaultPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Default players'**
+  String get defaultPlayers;
+
+  /// No description provided for @sortOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Position in list'**
+  String get sortOrderLabel;
+
+  /// No description provided for @addBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Add banner'**
+  String get addBanner;
+
+  /// No description provided for @newBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'New banner'**
+  String get newBanner;
+
+  /// No description provided for @editBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit banner'**
+  String get editBanner;
+
+  /// No description provided for @bannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get bannerTitle;
+
+  /// No description provided for @bannerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle'**
+  String get bannerSubtitle;
+
+  /// No description provided for @linkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get linkLabel;
+
+  /// No description provided for @errUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'The link must start with https://'**
+  String get errUrl;
+
+  /// No description provided for @allCities.
+  ///
+  /// In en, this message translates to:
+  /// **'All cities'**
+  String get allCities;
+
+  /// No description provided for @noBanners.
+  ///
+  /// In en, this message translates to:
+  /// **'No banners yet'**
+  String get noBanners;
+
+  /// No description provided for @auditEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes recorded yet'**
+  String get auditEmpty;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get loadMore;
+
+  /// No description provided for @auditBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get auditBefore;
+
+  /// No description provided for @auditAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get auditAfter;
+
+  /// No description provided for @auditSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get auditSystem;
+
+  /// No description provided for @auditCreateVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue created'**
+  String get auditCreateVenue;
+
+  /// No description provided for @auditUpdateVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue updated'**
+  String get auditUpdateVenue;
+
+  /// No description provided for @auditDeleteVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue deleted'**
+  String get auditDeleteVenue;
+
+  /// No description provided for @auditCreateCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Court created'**
+  String get auditCreateCourt;
+
+  /// No description provided for @auditUpdateCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Court updated'**
+  String get auditUpdateCourt;
+
+  /// No description provided for @auditDuplicateCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Court duplicated'**
+  String get auditDuplicateCourt;
+
+  /// No description provided for @auditDeleteCourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Court deleted'**
+  String get auditDeleteCourt;
+
+  /// No description provided for @auditAssignOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner assigned'**
+  String get auditAssignOwner;
+
+  /// No description provided for @auditRemoveOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner removed'**
+  String get auditRemoveOwner;
+
+  /// No description provided for @auditCreateSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport created'**
+  String get auditCreateSport;
+
+  /// No description provided for @auditUpdateSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport updated'**
+  String get auditUpdateSport;
+
+  /// No description provided for @auditCreateBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner created'**
+  String get auditCreateBanner;
+
+  /// No description provided for @auditUpdateBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner updated'**
+  String get auditUpdateBanner;
+
+  /// No description provided for @auditDeleteBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner deleted'**
+  String get auditDeleteBanner;
+
+  /// No description provided for @auditVenueHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue hours changed'**
+  String get auditVenueHours;
+
+  /// No description provided for @auditCourtHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Court hours changed'**
+  String get auditCourtHours;
+
+  /// No description provided for @auditCourtPricing.
+  ///
+  /// In en, this message translates to:
+  /// **'Court prices changed'**
+  String get auditCourtPricing;
+
+  /// No description provided for @auditWalkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-in booking added'**
+  String get auditWalkIn;
+
+  /// No description provided for @auditBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Time blocked'**
+  String get auditBlock;
+
+  /// No description provided for @auditMarkBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking marked'**
+  String get auditMarkBooking;
+
+  /// No description provided for @entityVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue'**
+  String get entityVenue;
+
+  /// No description provided for @entityBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner'**
+  String get entityBanner;
+
+  /// No description provided for @entityBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking'**
+  String get entityBooking;
+
+  /// No description provided for @entityOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue owner'**
+  String get entityOwner;
 }
 
 class _AppLocalizationsDelegate

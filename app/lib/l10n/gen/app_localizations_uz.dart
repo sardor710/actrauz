@@ -518,4 +518,584 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get gamesPromoCta => 'Kort band qilish';
+
+  @override
+  String get myVenues => 'Mening maydonlarim';
+
+  @override
+  String get ownerCalendar => 'Bronlar taqvimi';
+
+  @override
+  String get noVenuesAssigned => 'Sizga hali maydon biriktirilmagan';
+
+  @override
+  String get prevWeek => 'Oldingi hafta';
+
+  @override
+  String get nextWeek => 'Keyingi hafta';
+
+  @override
+  String get slotFree => 'Boʻsh';
+
+  @override
+  String get slotBooked => 'Band';
+
+  @override
+  String get slotBlocked => 'Yopilgan';
+
+  @override
+  String get closedThatWeek => 'Bu hafta kort ishlamaydi';
+
+  @override
+  String get newBooking => 'Yangi bron';
+
+  @override
+  String get blockTime => 'Vaqtni yopish';
+
+  @override
+  String get customerName => 'Mijoz ismi';
+
+  @override
+  String get customerNameRequired => 'Mijoz ismini kiriting';
+
+  @override
+  String get customerPhone => 'Telefon raqami (ixtiyoriy)';
+
+  @override
+  String get slotsCountLabel => 'Vaqtlar soni';
+
+  @override
+  String get payCash => 'Naqd';
+
+  @override
+  String get payCard => 'Karta';
+
+  @override
+  String get payTransfer => 'Oʻtkazma';
+
+  @override
+  String get saveBooking => 'Bronni saqlash';
+
+  @override
+  String get blockReason => 'Sabab (ixtiyoriy)';
+
+  @override
+  String get blockConfirm => 'Bu vaqtni yopish';
+
+  @override
+  String get unblock => 'Vaqtni qayta ochish';
+
+  @override
+  String get customerLabel => 'Mijoz';
+
+  @override
+  String get sourceLabel => 'Manba';
+
+  @override
+  String get statusLabel => 'Holat';
+
+  @override
+  String get reasonLabel => 'Sabab';
+
+  @override
+  String get sourceApp => 'Ilova orqali bron';
+
+  @override
+  String get sourceWalkIn => 'Joyida yoki telefon orqali';
+
+  @override
+  String get sourceBlock => 'Maydon tomonidan yopilgan';
+
+  @override
+  String get markPaid => 'Toʻlandi deb belgilash';
+
+  @override
+  String get markNoShow => 'Kelmadi deb belgilash';
+
+  @override
+  String get statusPaid => 'Toʻlangan';
+
+  @override
+  String get statusNoShow => 'Kelmadi';
+
+  @override
+  String get statusUnverified => 'Tasdiqlanmagan';
+
+  @override
+  String get statusCancelledByVenue => 'Maydon bekor qilgan';
+
+  @override
+  String get markAfterStart =>
+      'Toʻlov va kelmaganlikni bron boshlangandan keyin belgilash mumkin';
+
+  @override
+  String get cancelByVenueMsg =>
+      'Vaqt darhol boʻshaydi. Ilova orqali bron qilgan oʻyinchi bronni maydon bekor qilganini koʻradi.';
+
+  @override
+  String get errNotAllowed => 'Siz bu maydonni boshqarmaysiz';
+
+  @override
+  String get bookingSaved => 'Bron saqlandi';
+
+  @override
+  String get ownerSettings => 'Ish vaqti va narxlar';
+
+  @override
+  String get ownerDashboard => 'Statistika';
+
+  @override
+  String get venueHours => 'Maydon ish vaqti';
+
+  @override
+  String get courtHours => 'Kort ish vaqti';
+
+  @override
+  String get sameAsVenue => 'Maydon bilan bir xil';
+
+  @override
+  String get openLabel => 'Ochiq';
+
+  @override
+  String get editLabel => 'Oʻzgartirish';
+
+  @override
+  String get saveLabel => 'Saqlash';
+
+  @override
+  String get savedMsg => 'Saqlandi';
+
+  @override
+  String get pricesTitle => 'Narxlar';
+
+  @override
+  String get hoursTitle => 'Soatlar';
+
+  @override
+  String get slotLengthLabel => 'Vaqt uzunligi';
+
+  @override
+  String get basePrice => 'Bir vaqt uchun asosiy narx';
+
+  @override
+  String get priceRules => 'Narx qoidalari';
+
+  @override
+  String get addRule => 'Qoida qoʻshish';
+
+  @override
+  String get removeRule => 'Qoidani oʻchirish';
+
+  @override
+  String get ruleFrom => 'Dan';
+
+  @override
+  String get ruleTo => 'Gacha';
+
+  @override
+  String get rulePrice => 'Bir vaqt narxi';
+
+  @override
+  String get noRules => 'Qoidalar yoʻq: barcha vaqtlar asosiy narxda';
+
+  @override
+  String rulesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta narx qoidasi',
+      zero: 'Narx qoidalari yoʻq',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get errInvalidHours =>
+      'Ochilish vaqti yopilishdan oldin boʻlishi kerak';
+
+  @override
+  String get errRulesOverlap =>
+      'Ikki qoida bir xil kun va vaqtga toʻgʻri keladi';
+
+  @override
+  String get errInvalidArgument =>
+      'Qiymatlarni tekshirib, qayta urinib koʻring';
+
+  @override
+  String get errPickWeekday => 'Kamida bitta kunni tanlang';
+
+  @override
+  String get errPrice => 'Narxni kiriting';
+
+  @override
+  String get period7 => 'Oxirgi 7 kun';
+
+  @override
+  String get periodMonth => 'Shu oy';
+
+  @override
+  String get allCourts => 'Barcha kortlar';
+
+  @override
+  String metricSplit(int app, int walkIn) {
+    return 'Ilova $app · joyida $walkIn';
+  }
+
+  @override
+  String get metricRevenue => 'Toʻlangan tushum';
+
+  @override
+  String get metricUnconfirmed => 'Tasdiqlanmagan tushum';
+
+  @override
+  String get metricDailyAvg => 'Kuniga bronlar';
+
+  @override
+  String get metricUtilisation => 'Bandlik';
+
+  @override
+  String get metricNoShows => 'Kelmaganlar';
+
+  @override
+  String get peakHours => 'Eng band soatlar';
+
+  @override
+  String get noDataPeriod => 'Bu davrda bronlar yoʻq';
+
+  @override
+  String get adminTitle => 'Admin paneli';
+
+  @override
+  String get adminOnly => 'Bu sahifa faqat Actra administratorlari uchun';
+
+  @override
+  String get adminSports => 'Sport turlari';
+
+  @override
+  String get adminBanners => 'Bannerlar';
+
+  @override
+  String get adminAudit => 'Oʻzgarishlar jurnali';
+
+  @override
+  String get adminAuditHint => 'Kim, nimani va qachon oʻzgartirgan';
+
+  @override
+  String venuesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta maydon',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sportsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta sport turi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bannersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta banner',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String courtsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta kort',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ownersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta egasi',
+      zero: 'Egalari yoʻq',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playersN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta oʻyinchi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get inactive => 'Faol emas';
+
+  @override
+  String get activeLabel => 'Faol';
+
+  @override
+  String get activeHint => 'Oʻyinchilar buni koʻradi';
+
+  @override
+  String get addVenue => 'Maydon qoʻshish';
+
+  @override
+  String get newVenue => 'Yangi maydon';
+
+  @override
+  String get venueDetails => 'Asosiy maʼlumotlar';
+
+  @override
+  String get nameLabel => 'Nomi';
+
+  @override
+  String get descriptionLabel => 'Tavsif';
+
+  @override
+  String get districtLabel => 'Tuman';
+
+  @override
+  String get nameRequiredAny => 'Kamida bitta tilda toʻldiring';
+
+  @override
+  String get saveVenueFirst =>
+      'Kort va egalarni qoʻshish uchun maydonni saqlang';
+
+  @override
+  String get addCourt => 'Kort qoʻshish';
+
+  @override
+  String get newCourt => 'Yangi kort';
+
+  @override
+  String get editCourt => 'Kortni tahrirlash';
+
+  @override
+  String get noCourts => 'Hozircha kortlar yoʻq';
+
+  @override
+  String get courtActions => 'Kort amallari';
+
+  @override
+  String get duplicateLabel => 'Nusxa olish';
+
+  @override
+  String get deleteLabel => 'Oʻchirish';
+
+  @override
+  String get deleteVenue => 'Maydonni oʻchirish';
+
+  @override
+  String deleteConfirmTitle(String name) {
+    return '“$name” oʻchirilsinmi?';
+  }
+
+  @override
+  String get deleteConfirmMsg => 'Buni ortga qaytarib boʻlmaydi.';
+
+  @override
+  String get errHasBookings =>
+      'Bronlar bor, shuning uchun oʻchirib boʻlmaydi. Oʻyinchilardan yashirish uchun faolsizlantiring.';
+
+  @override
+  String get deactivateInstead => 'Faolsizlantirish';
+
+  @override
+  String get errAlreadyExists => 'Bu ID band';
+
+  @override
+  String get errNotFound => 'Topilmadi. Yangilab, qayta urinib koʻring.';
+
+  @override
+  String get ownersTitle => 'Egalari';
+
+  @override
+  String get assignOwner => 'Egasini tayinlash';
+
+  @override
+  String get removeOwner => 'Egasini olib tashlash';
+
+  @override
+  String get noOwners => 'Egalari tayinlanmagan';
+
+  @override
+  String get searchUsers => 'Ism yoki telefon';
+
+  @override
+  String get searchUsersMin => 'Kamida 2 ta belgi kiriting';
+
+  @override
+  String get noUsersFound => 'Hech kim topilmadi';
+
+  @override
+  String get addSport => 'Sport turini qoʻshish';
+
+  @override
+  String get newSport => 'Yangi sport turi';
+
+  @override
+  String get editSport => 'Sport turini tahrirlash';
+
+  @override
+  String get sportIdLabel => 'ID';
+
+  @override
+  String get sportIdHint =>
+      'Kichik lotin harflari, raqamlar va _, masalan squash. Keyin oʻzgartirib boʻlmaydi.';
+
+  @override
+  String get errSportId =>
+      '2–30 ta belgi: kichik lotin harflari, raqamlar yoki _, birinchisi harf boʻlsin';
+
+  @override
+  String get iconLabel => 'Belgi';
+
+  @override
+  String get sportTypeLabel => 'Turi';
+
+  @override
+  String get placeOnly => 'Faqat joy';
+
+  @override
+  String get ratingLabel => 'Reyting';
+
+  @override
+  String get ratingSimple => 'Daraja 1–5';
+
+  @override
+  String get ratingCompetitive => 'Reyting 1.0–7.0';
+
+  @override
+  String get defaultPlayers => 'Standart oʻyinchilar soni';
+
+  @override
+  String get sortOrderLabel => 'Roʻyxatdagi oʻrni';
+
+  @override
+  String get addBanner => 'Banner qoʻshish';
+
+  @override
+  String get newBanner => 'Yangi banner';
+
+  @override
+  String get editBanner => 'Bannerni tahrirlash';
+
+  @override
+  String get bannerTitle => 'Sarlavha';
+
+  @override
+  String get bannerSubtitle => 'Qoʻshimcha matn';
+
+  @override
+  String get linkLabel => 'Havola';
+
+  @override
+  String get errUrl => 'Havola https:// bilan boshlanishi kerak';
+
+  @override
+  String get allCities => 'Barcha shaharlar';
+
+  @override
+  String get noBanners => 'Hozircha bannerlar yoʻq';
+
+  @override
+  String get auditEmpty => 'Hozircha oʻzgarishlar yoʻq';
+
+  @override
+  String get loadMore => 'Yana koʻrsatish';
+
+  @override
+  String get auditBefore => 'Oldin';
+
+  @override
+  String get auditAfter => 'Keyin';
+
+  @override
+  String get auditSystem => 'Tizim';
+
+  @override
+  String get auditCreateVenue => 'Maydon yaratildi';
+
+  @override
+  String get auditUpdateVenue => 'Maydon oʻzgartirildi';
+
+  @override
+  String get auditDeleteVenue => 'Maydon oʻchirildi';
+
+  @override
+  String get auditCreateCourt => 'Kort yaratildi';
+
+  @override
+  String get auditUpdateCourt => 'Kort oʻzgartirildi';
+
+  @override
+  String get auditDuplicateCourt => 'Kortdan nusxa olindi';
+
+  @override
+  String get auditDeleteCourt => 'Kort oʻchirildi';
+
+  @override
+  String get auditAssignOwner => 'Egasi tayinlandi';
+
+  @override
+  String get auditRemoveOwner => 'Egasi olib tashlandi';
+
+  @override
+  String get auditCreateSport => 'Sport turi yaratildi';
+
+  @override
+  String get auditUpdateSport => 'Sport turi oʻzgartirildi';
+
+  @override
+  String get auditCreateBanner => 'Banner yaratildi';
+
+  @override
+  String get auditUpdateBanner => 'Banner oʻzgartirildi';
+
+  @override
+  String get auditDeleteBanner => 'Banner oʻchirildi';
+
+  @override
+  String get auditVenueHours => 'Maydon ish vaqti oʻzgartirildi';
+
+  @override
+  String get auditCourtHours => 'Kort ish vaqti oʻzgartirildi';
+
+  @override
+  String get auditCourtPricing => 'Kort narxlari oʻzgartirildi';
+
+  @override
+  String get auditWalkIn => 'Joyida bron qoʻshildi';
+
+  @override
+  String get auditBlock => 'Vaqt bloklandi';
+
+  @override
+  String get auditMarkBooking => 'Bron belgilandi';
+
+  @override
+  String get entityVenue => 'Maydon';
+
+  @override
+  String get entityBanner => 'Banner';
+
+  @override
+  String get entityBooking => 'Bron';
+
+  @override
+  String get entityOwner => 'Maydon egasi';
 }

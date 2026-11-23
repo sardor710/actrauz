@@ -17,6 +17,14 @@ const _bookingErrors = <String, BookingError>{
   'hold_expired': BookingError.holdExpired,
   'not_found': BookingError.notFound,
   'not_cancellable': BookingError.notCancellable,
+  'not_allowed': BookingError.notAllowed,
+  'not_markable': BookingError.notMarkable,
+  'name_required': BookingError.nameRequired,
+  'invalid_argument': BookingError.invalidArgument,
+  'invalid_hours': BookingError.invalidHours,
+  'rules_overlap': BookingError.rulesOverlap,
+  'has_bookings': BookingError.hasBookings,
+  'already_exists': BookingError.alreadyExists,
 };
 
 const _joinErrors = <String, JoinError>{

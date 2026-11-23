@@ -57,6 +57,24 @@ export async function addCourt(pool, venueId, { slot = 90, basePrice = 180000, r
   return courtId;
 }
 
+/** Makes an existing user an owner of the venue (a row in venue_owners). */
+export async function addOwner(pool, venueId, userId) {
+  await pool.query(`insert into venue_owners (venue_id, user_id) values ($1, $2)`, [venueId, userId]);
+  return userId;
+}
+
+/** Makes an existing user an admin (a row in app_admins): acts on every venue. */
+export async function addAdmin(pool, userId) {
+  await pool.query(`insert into app_admins (user_id) values ($1)`, [userId]);
+  return userId;
+}
+
+/** Gives an existing user the account phone number `phone` ("+998901111111"). */
+export async function addPhone(pool, userId, phone) {
+  await pool.query(`insert into profile_contacts (user_id, phone) values ($1, $2)`, [userId, phone]);
+  return userId;
+}
+
 const pad = (n) => String(n).padStart(2, '0');
 
 /** Venue wall-clock time, as the API carries it: "2026-11-23T07:00:00". */

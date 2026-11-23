@@ -73,6 +73,15 @@ String bookingErrorText(AppLocalizations l, Object error) {
     BookingError.tooFarAhead => l.errTooFarAhead(BookingEngine.maxDaysAhead),
     BookingError.inPast => l.errInPast,
     BookingError.holdExpired => l.holdExpiredMsg,
+    BookingError.notAllowed => l.errNotAllowed,
+    BookingError.notMarkable => l.markAfterStart,
+    BookingError.nameRequired => l.customerNameRequired,
+    BookingError.invalidHours => l.errInvalidHours,
+    BookingError.rulesOverlap => l.errRulesOverlap,
+    BookingError.invalidArgument => l.errInvalidArgument,
+    BookingError.hasBookings => l.errHasBookings,
+    BookingError.alreadyExists => l.errAlreadyExists,
+    BookingError.notFound => l.errNotFound,
     _ => l.errGeneric,
   };
 }
