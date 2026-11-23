@@ -7,7 +7,7 @@ supabase/
   migrations/     schema, row-level security, booking and game functions
   seed.sql        sample content, GENERATED from app/lib/data/sample/sample_data.dart
   functions/      telegram-login, telegram-webhook (Deno edge functions)
-  scripts/        deploy.mjs, e2e.mjs
+  scripts/        deploy.mjs, e2e.mjs, e2e-owner.mjs
   tests/          database tests (Node + a throw-away Postgres, no Docker)
   .env            your secrets (git-ignored); .env.example is the template
 ```
@@ -48,6 +48,7 @@ Without `--dart-define-from-file` the app runs on built-in sample data with the 
 | `node scripts/deploy.mjs migrations` | Apply new migrations only. Use this instead of `db` once venue owners edit hours and prices: the sample content resets them for the sample venues. |
 | `node scripts/deploy.mjs seed` | Reload sample content; re-dates the sample games and tournaments from today. |
 | `node scripts/e2e.mjs` | Sign in two throw-away accounts through the real functions, book a slot, check the row in the database, check the second account is blocked, clean up. |
+| `node scripts/e2e-owner.mjs` | The same for venue owners and admins: a throw-away admin creates a venue and court and assigns an owner; the owner adds a walk-in and a block, changes prices and reads the dashboard; a plain player is refused throughout; everything made is deleted again. |
 | `node scripts/dev-login.mjs <token-or-bot-link> <phone>` | Test helper: plays Telegram's part for one sign-in attempt, so the app can be signed in where there is no Telegram (browser build, emulator). Needs the webhook secret from `.env`. Use made-up numbers only and delete the account afterwards. |
 
 ## How booking is kept correct

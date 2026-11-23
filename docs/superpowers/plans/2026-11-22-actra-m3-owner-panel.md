@@ -10,9 +10,9 @@
 
 **Spec:** [docs/actra-product-spec.md](../../actra-product-spec.md) §4, §5, §11, §12, §14. Roadmap: [2026-11-22-actra-roadmap.md](2026-11-22-actra-roadmap.md).
 
-**Work location:** worktree `D:\actra\.worktrees\m3-owner`, branch `m3-owner-panel`, based on `main` at `f693f62`. Nothing is committed or deployed without the user's say-so.
+**Work location:** worktree `D:\actra\.worktrees\m3-owner`, branch `m3-owner-panel`, based on `main` at `f693f62`. Committed on that branch (`ede911d` and a follow-up for the end-to-end scripts) and deployed to the hosted project on 2026-11-23 at the user's request; not pushed and not merged into `main`.
 
-## Status (2026-11-22)
+## Status (2026-11-23)
 
 | Part | State | Evidence |
 |---|---|---|
@@ -20,7 +20,9 @@
 | M3b hours, prices, dashboard | built and verified | `owner_settings.test.mjs`; 6 settings flow tests; both screens seen in a browser; second security review: nothing blocking, price cap (50 000 000, so 24 slots cannot overflow an integer) and currency filter added |
 | M3c admin | built and verified on sample data | backend `npm test` 169 pass (21 in `admin.test.mjs`); app `flutter analyze` clean and `flutter test` 241 pass (15 admin flow tests); admin home, venue editor (phone and desktop width) and sports list seen in a browser; the sport and banner forms were not looked at by eye |
 
-Not done: nothing is committed or deployed; the three new migrations have never run on the hosted project; the owner and admin screens have not been used against the real backend; no admin account exists yet; photo upload for banners and venues is out of scope; the audit log pages by timestamp only; in sample mode an admin can open the calendar only of venues v1, v4 and v6. Debug APK built from this branch (94.9 MB).
+| Deployment | the three migrations are applied to the hosted project | `node scripts/deploy.mjs migrations`: applied `owner`, `owner_settings`, `admin`; both scheduled jobs active; 25 new public functions, none callable by `anon`; RLS on `app_admins` and `audit_log`; `node scripts/e2e.mjs` PASSED (player flow after `hold_slots` and `cancel_booking` were redefined); `node scripts/e2e-owner.mjs` PASSED (admin creates a venue and court, assigns an owner; owner calendar, walk-in, block, mark paid, pricing, hours, dashboard, cancel; a player refused at every step; 11 audit rows), and it removed everything it made |
+
+Not done: not pushed and not merged into `main`; no admin account exists yet (needs the phone number of the first admin, then the insert in `supabase/README.md`); the owner and admin **screens** have not been used against the real backend: the app was run in a browser on the hosted project as a plain player (no "My venues" or "Admin" row, as expected), and the 25 owner and admin calls in the Dart repositories match the SQL functions by name and parameter, but making a throw-away browser account an admin on the live project was blocked by the permission system, so that walk-through waits for a real admin account; photo upload for banners and venues is out of scope; the audit log pages by timestamp only; in sample mode an admin can open the calendar only of venues v1, v4 and v6. Debug APK built from this branch (94.9 MB).
 
 Decisions made while building (spec proposals, open to change): a walk-in whose phone matches an account is linked to it but the owner is not told, the player cannot cancel it and it does not count toward the player's limit of 3 upcoming bookings; walk-ins may start in a slot that is in progress but not one that has ended; in sample mode the demo player manages venues v1, v4 and v6.
 
