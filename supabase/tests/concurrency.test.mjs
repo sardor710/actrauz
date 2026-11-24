@@ -135,3 +135,36 @@ test('the three-booking limit holds under simultaneous requests', async () => {
   assert.equal(results.filter((r) => r === null).length, 3, JSON.stringify(results));
   assert.equal(results.filter((r) => r === 'too_many_bookings').length, 2);
 });
+
+test('the last spot of a game: a join and an approval racing, exactly one gets in', async () => {
+  // 10 rounds on 10 games, each with one spot left, all fired together.
+  const rounds = [];
+  for (let i = 0; i < 10; i++) {
+    const host = await createUser(pool, `Host ${i}`);
+    const { rows } = await pool.query(
+      `insert into games (sport_id, city_id, venue_id, host_id, during, utc_offset_minutes, spots)
+       values ('padel', 'tashkent', $1, $2, tstzrange('2026-11-23 19:00+05', '2026-11-23 20:30+05'), 300, 2) returning id`,
+      [venueId, host],
+    );
+    const gameId = rows[0].id;
+    await pool.query(`insert into game_participants (game_id, user_id) values ($1, $2)`, [gameId, host]);
+    const x = await createUser(pool, `X ${i}`);
+    const y = await createUser(pool, `Y ${i}`);
+    const request = (await pool.query(`select (app.request_to_join($1, $2, $3)).id`, [y, gameId, now])).rows[0].id;
+    rounds.push({ host, gameId, x, request });
+  }
+
+  const results = await Promise.all(
+    rounds.flatMap(({ host, gameId, x, request }) => [
+      errorOf(pool.query(`select app.join_game($1, $2, $3)`, [x, gameId, now])),
+      errorOf(pool.query(`select app.decide_join_request($1, $2, true, $3)`, [host, request, now])),
+    ]),
+  );
+
+  for (let i = 0; i < rounds.length; i++) {
+    const pair = [results[2 * i], results[2 * i + 1]].sort();
+    assert.deepEqual(pair, [null, 'full'].sort(), `game ${i}: ${JSON.stringify(pair)}`);
+    const { rows } = await pool.query(`select count(*)::int as n from game_participants where game_id = $1`, [rounds[i].gameId]);
+    assert.equal(rows[0].n, 2);
+  }
+});

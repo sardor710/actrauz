@@ -48,8 +48,10 @@ async function game({ spots = 4, minLevel = 1, maxLevel = 5, others = [], cityId
   return id;
 }
 
-const join = (user, gameId) => pool.query(`select app.game_json(app.join_game($1, $2)) as g`, [user, gameId]).then((r) => r.rows[0].g);
-const leave = (user, gameId) => pool.query(`select app.game_json(app.leave_game($1, $2)) as g`, [user, gameId]).then((r) => r.rows[0].g);
+const join = (user, gameId) =>
+  pool.query(`select app.game_json(app.join_game($1, $2, $3), $1) as g`, [user, gameId, now]).then((r) => r.rows[0].g);
+const leave = (user, gameId) =>
+  pool.query(`select app.game_json(app.leave_game($1, $2, $3), $1) as g`, [user, gameId, now]).then((r) => r.rows[0].g);
 const list = (user, cityId = 'tashkent') =>
   pool.query(`select app.list_games($1, $2, $3) as g`, [user, cityId, now]).then((r) => r.rows.map((x) => x.g));
 
