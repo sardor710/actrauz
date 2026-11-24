@@ -2,6 +2,7 @@ import '../../core/localized_text.dart';
 import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/community.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
@@ -40,6 +41,9 @@ String isoDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${_two(d.mon
 String isoLocal(DateTime d) => '${isoDate(d)}T${_two(d.hour)}:${_two(d.minute)}:${_two(d.second)}';
 
 String _userId(Object? id, String? myUserId) => id == myUserId && id != null ? kMeId : (id as String? ?? '');
+
+/// The id to send to the backend for [id]: [kMeId] is the signed-in user.
+String userIdOut(String id, String? myUserId) => id == kMeId && myUserId != null ? myUserId : id;
 
 List<Row> _rows(Object? value) => [for (final r in (value as List? ?? const [])) Map<String, dynamic>.from(r as Map)];
 
@@ -116,7 +120,9 @@ TournamentItem tournamentFromRow(Row row) => TournamentItem(
   cityId: row['city_id'] as String,
   sportId: row['sport_id'] as String,
   title: textOf(row, 'title'),
-  venueName: row['venues'] == null ? const LocalizedText() : textOf(Map<String, dynamic>.from(row['venues'] as Map), 'name'),
+  venueName: row['venues'] == null
+      ? const LocalizedText()
+      : textOf(Map<String, dynamic>.from(row['venues'] as Map), 'name'),
   start: wallClock(row['starts_on'] as String),
   end: wallClock(row['ends_on'] as String),
   minFee: row['min_fee'] as int? ?? 0,
@@ -227,10 +233,7 @@ OwnerSlot ownerSlotFromJson(Row json) => OwnerSlot(
 /// The JSON returned by `owner_calendar`: `{ "slots": [...], "bookings": [...] }`.
 OwnerCalendar ownerCalendarFromJson(Row json) => OwnerCalendar(
   slots: [for (final s in _rows(json['slots'])) ownerSlotFromJson(s)],
-  bookings: {
-    for (final b in _rows(json['bookings']))
-      b['id'] as String: ownerBookingFromJson(b),
-  },
+  bookings: {for (final b in _rows(json['bookings'])) b['id'] as String: ownerBookingFromJson(b)},
 );
 
 Map<String, Object?> _dayHoursJson(int weekday, DayHours? h) => {
@@ -241,9 +244,7 @@ Map<String, Object?> _dayHoursJson(int weekday, DayHours? h) => {
 
 /// `p_hours` of `owner_set_venue_hours`: exactly seven objects, Monday
 /// first; a closed (or missing) weekday has null minutes.
-List<Map<String, Object?>> venueHoursJson(WeekHours hours) => [
-  for (var d = 1; d <= 7; d++) _dayHoursJson(d, hours[d]),
-];
+List<Map<String, Object?>> venueHoursJson(WeekHours hours) => [for (var d = 1; d <= 7; d++) _dayHoursJson(d, hours[d])];
 
 /// `p_hours` of `owner_set_court_hours`: only the overridden weekdays.
 List<Map<String, Object?>> courtHoursJson(WeekHours override) => [
@@ -253,12 +254,7 @@ List<Map<String, Object?>> courtHoursJson(WeekHours override) => [
 /// `p_rules` of `owner_set_court_pricing`, in the given order.
 List<Map<String, Object?>> priceRulesJson(List<PriceRule> rules) => [
   for (final r in rules)
-    {
-      'weekdays': r.weekdays.toList()..sort(),
-      'from_minute': r.fromMinute,
-      'to_minute': r.toMinute,
-      'price': r.price,
-    },
+    {'weekdays': r.weekdays.toList()..sort(), 'from_minute': r.fromMinute, 'to_minute': r.toMinute, 'price': r.price},
 ];
 
 /// `UZS` / `KZT`.
@@ -422,13 +418,59 @@ SlotView slotFromRow(Row row) => SlotView(
   },
 );
 
-/// The JSON returned by `list_games`, `get_game`, `join_game`, `leave_game`.
+double? _double(Object? value) => (value as num?)?.toDouble();
+
+/// An instant, as the backend writes `timestamptz`.
+DateTime _instant(Object? value) => DateTime.parse(value as String).toUtc();
+
+Reliability reliabilityFromJson(Row json) => Reliability(
+  score: json['score'] as int,
+  badge: switch (json['badge']) {
+    'new' => ReliabilityBadge.isNew,
+    'reliable' => ReliabilityBadge.reliable,
+    'limited' => ReliabilityBadge.limited,
+    'blocked' => ReliabilityBadge.blocked,
+    final other => throw FormatException('Unknown reliability badge "$other"'),
+  },
+);
+
+Reliability _reliabilityOf(Object? value) =>
+    value == null ? Reliability.fresh : reliabilityFromJson(Map<String, dynamic>.from(value as Map));
+
+/// `{ id, name, level, reliability }` of a game's participants and of a
+/// request's interested players. [idKey] is `user_id` in a join request.
+GameMember gameMemberFromJson(Row json, {required String? myUserId, String idKey = 'id'}) => GameMember(
+  id: _userId(json[idKey], myUserId),
+  name: json['name'] as String? ?? '',
+  level: json['level'] as int? ?? 1,
+  reliability: _reliabilityOf(json['reliability']),
+);
+
+MyGameStatus? _myGameStatus(Object? value) => switch (value) {
+  null => null,
+  'host' => MyGameStatus.host,
+  'participant' => MyGameStatus.participant,
+  'invited' => MyGameStatus.invited,
+  'requested' => MyGameStatus.requested,
+  _ => throw FormatException('Unknown game status "$value"'),
+};
+
+/// The JSON returned by `list_games`, `get_game`, `join_game`, `leave_game`,
+/// `create_game` and the other game functions. `join_requests` is only there
+/// for the host.
 Game gameFromJson(Row json, {required String? myUserId}) => Game(
   id: json['id'] as String,
   sportId: json['sport_id'] as String,
   cityId: json['city_id'] as String,
-  venueId: json['venue_id'] as String,
+  venueId: json['venue_id'] as String?,
   hostId: _userId(json['host_id'], myUserId),
+  kind: switch (json['kind']) {
+    null || 'booked' => GameKind.booked,
+    'place' => GameKind.place,
+    'map_point' => GameKind.mapPoint,
+    final other => throw FormatException('Unknown game kind "$other"'),
+  },
+  visibility: json['visibility'] == 'invite_only' ? GameVisibility.inviteOnly : GameVisibility.public,
   start: wallClock(json['starts_local'] as String),
   end: wallClock(json['ends_local'] as String),
   spots: json['spots'] as int,
@@ -438,7 +480,140 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
   pricePerPlayer: json['price_per_player'] as int?,
   bookingId: json['booking_id'] as String?,
   note: json['note'] as String?,
+  meetingPoint: json['meeting_point'] as String?,
+  meetingLat: _double(json['meeting_lat']),
+  meetingLng: _double(json['meeting_lng']),
+  distanceKm: _double(json['distance_km']),
+  pace: json['pace'] as String?,
+  myStatus: _myGameStatus(json['my_status']),
+  participants: [for (final m in _rows(json['participants'])) gameMemberFromJson(m, myUserId: myUserId)],
+  joinRequests: [
+    for (final r in _rows(json['join_requests']))
+      JoinRequest(
+        id: r['id'] as String,
+        member: gameMemberFromJson(r, myUserId: myUserId, idKey: 'user_id'),
+        createdAt: _instant(r['created_at']),
+      ),
+  ],
+  cancelled: json['status'] == 'cancelled',
 );
+
+/// The JSON returned by `get_game_request`, `list_game_requests` and the other
+/// request functions.
+GameRequest gameRequestFromJson(Row json, {required String? myUserId}) {
+  final interested = [for (final m in _rows(json['interested'])) gameMemberFromJson(m, myUserId: myUserId)];
+  return GameRequest(
+    id: json['id'] as String,
+    sportId: json['sport_id'] as String,
+    cityId: json['city_id'] as String,
+    hostId: _userId(json['host_id'], myUserId),
+    hostName: json['host_name'] as String? ?? '',
+    venueId: json['venue_id'] as String?,
+    area: json['area'] as String?,
+    start: wallClock(json['starts_local'] as String),
+    end: wallClock(json['ends_local'] as String),
+    playersNeeded: json['players_needed'] as int,
+    minLevel: json['min_level'] as int? ?? 1,
+    maxLevel: json['max_level'] as int? ?? 5,
+    note: json['note'] as String?,
+    status: switch (json['status']) {
+      null || 'open' => GameRequestStatus.open,
+      'converted' => GameRequestStatus.converted,
+      'expired' => GameRequestStatus.expired,
+      'cancelled' => GameRequestStatus.cancelled,
+      final other => throw FormatException('Unknown request status "$other"'),
+    },
+    gameId: json['game_id'] as String?,
+    createdAt: _instant(json['created_at']),
+    interested: interested,
+    interestedCount: json['interested_count'] as int? ?? interested.length,
+    myStatus: switch (json['my_status']) {
+      null => null,
+      'host' => MyRequestStatus.host,
+      'interested' => MyRequestStatus.interested,
+      final other => throw FormatException('Unknown request player status "$other"'),
+    },
+  );
+}
+
+/// One row of `list_players`, or the result of `player_profile`.
+PlayerProfile playerProfileFromJson(Row json, {required String? myUserId}) => PlayerProfile(
+  id: _userId(json['id'], myUserId),
+  name: json['name'] as String? ?? '',
+  cityId: json['city_id'] as String?,
+  levels: {for (final e in (json['levels'] as Map? ?? const {}).entries) e.key as String: e.value as int},
+  reliability: _reliabilityOf(json['reliability']),
+  gamesPlayed: json['games_played'] as int? ?? 0,
+);
+
+/// One row of `my_notifications`.
+AppNotification notificationFromJson(Row json) => AppNotification(
+  id: json['id'] as String,
+  kind: json['kind'] as String,
+  category: json['category'] as String,
+  payload: Map<String, Object?>.from(json['payload'] as Map? ?? const {}),
+  createdAt: _instant(json['created_at']),
+  read: json['read'] as bool? ?? false,
+);
+
+/// The JSON returned by `my_settings`.
+CommunitySettings communitySettingsFromJson(Row json) => CommunitySettings(
+  mutedCategories: {for (final c in (json['muted_categories'] as List? ?? const [])) c as String},
+  hiddenFromSearch: json['hidden_from_search'] as bool? ?? false,
+  reliability: _reliabilityOf(json['reliability']),
+);
+
+String _visibilityCode(GameVisibility v) => v == GameVisibility.inviteOnly ? 'invite_only' : 'public';
+
+/// `p_game` of `create_game`. A key with no value is left out: the database
+/// reads a missing key and a null differently.
+Map<String, Object?> gameDraftJson(GameDraft draft) => {
+  'sport_id': draft.sportId,
+  'spots': draft.spots,
+  'min_level': draft.minLevel,
+  'max_level': draft.maxLevel,
+  'visibility': _visibilityCode(draft.visibility),
+  if (_blankToNull(draft.note) != null) 'note': _blankToNull(draft.note),
+  if (_blankToNull(draft.pace) != null) 'pace': _blankToNull(draft.pace),
+  if (draft.distanceKm != null) 'distance_km': draft.distanceKm,
+  if (draft.bookingId != null) 'booking_id': draft.bookingId,
+  if (draft.venueId != null) 'venue_id': draft.venueId,
+  if (_blankToNull(draft.meetingPoint) != null) 'meeting_point': _blankToNull(draft.meetingPoint),
+  if (draft.meetingLat != null) 'meeting_lat': draft.meetingLat,
+  if (draft.meetingLng != null) 'meeting_lng': draft.meetingLng,
+  if (draft.start != null) 'starts_local': isoLocal(draft.start!),
+  if (draft.end != null) 'ends_local': isoLocal(draft.end!),
+};
+
+/// `p_place` of `convert_game_request`. Only what the player chose is sent:
+/// the database falls back to the request's own spots, times and venue for
+/// every key that is missing, which a null would defeat.
+Map<String, Object?> placePickJson(PlacePick place) => {
+  if (place.bookingId != null) 'booking_id': place.bookingId,
+  if (place.venueId != null) 'venue_id': place.venueId,
+  if (_blankToNull(place.meetingPoint) != null) 'meeting_point': _blankToNull(place.meetingPoint),
+  if (place.meetingLat != null) 'meeting_lat': place.meetingLat,
+  if (place.meetingLng != null) 'meeting_lng': place.meetingLng,
+  if (place.spots != null) 'spots': place.spots,
+  if (place.start != null) 'starts_local': isoLocal(place.start!),
+  if (place.end != null) 'ends_local': isoLocal(place.end!),
+  if (place.visibility != null) 'visibility': _visibilityCode(place.visibility!),
+  if (_blankToNull(place.pace) != null) 'pace': _blankToNull(place.pace),
+  if (place.distanceKm != null) 'distance_km': place.distanceKm,
+};
+
+/// `p_request` of `create_game_request`.
+Map<String, Object?> gameRequestDraftJson(GameRequestDraft draft) => {
+  'sport_id': draft.sportId,
+  'players_needed': draft.playersNeeded,
+  'min_level': draft.minLevel,
+  'max_level': draft.maxLevel,
+  'starts_local': isoLocal(draft.start),
+  'ends_local': isoLocal(draft.end),
+  if (draft.venueId != null) 'venue_id': draft.venueId,
+  if (_blankToNull(draft.area) != null) 'area': _blankToNull(draft.area),
+  if (_blankToNull(draft.note) != null) 'note': _blankToNull(draft.note),
+};
 
 /// A profile row with `player_levels` embedded.
 Player playerFromRow(Row row, {required String? myUserId}) => Player(

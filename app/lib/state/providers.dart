@@ -8,11 +8,15 @@ import '../core/markets.dart';
 import '../data/auth/auth_repository.dart';
 import '../data/repositories.dart';
 import '../data/sample/sample_repositories.dart';
+import '../data/social.dart';
 import '../data/supabase/supabase_auth_repository.dart';
 import '../data/supabase/supabase_booking_repository.dart';
 import '../data/supabase/supabase_catalog_repository.dart';
 import '../data/supabase/supabase_game_repository.dart';
+import '../data/supabase/supabase_notification_repository.dart';
+import '../data/supabase/supabase_social_repository.dart';
 import '../domain/booking_engine.dart';
+import '../domain/community.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
 import '../domain/pricing.dart';
@@ -87,6 +91,18 @@ final gameRepositoryProvider = Provider<GameRepository>(
       : ref.watch(sampleBackendProvider),
 );
 
+final socialRepositoryProvider = Provider<SocialRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseSocialRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider),
+);
+
+final notificationRepositoryProvider = Provider<NotificationRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseNotificationRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider),
+);
+
 final sportsProvider = FutureProvider<List<Sport>>((ref) => ref.watch(catalogRepositoryProvider).sports());
 
 final venuesProvider = FutureProvider<List<Venue>>(
@@ -119,6 +135,49 @@ final gameProvider = FutureProvider.family<Game, String>((ref, id) => ref.watch(
 
 final playerProvider = FutureProvider.family<Player, String>((ref, id) => ref.watch(gameRepositoryProvider).player(id));
 
+/// Open Game Requests ("looking for players") in the current city, plus the
+/// player's own.
+final gameRequestsProvider = FutureProvider<List<GameRequest>>(
+  (ref) => ref.watch(gameRepositoryProvider).requests(ref.watch(currentCityProvider).id),
+);
+
+final gameRequestProvider = FutureProvider.family<GameRequest, String>(
+  (ref, id) => ref.watch(gameRepositoryProvider).request(id),
+);
+
+/// A search in the Find players list: the city is the current one.
+typedef PlayerSearch = ({String? sportId, int minLevel, int maxLevel, String? query});
+
+const PlayerSearch kAllPlayers = (sportId: null, minLevel: 1, maxLevel: 5, query: null);
+
+final playersProvider = FutureProvider.family<List<PlayerProfile>, PlayerSearch>(
+  (ref, search) => ref
+      .watch(socialRepositoryProvider)
+      .players(
+        ref.watch(currentCityProvider).id,
+        sportId: search.sportId,
+        minLevel: search.minLevel,
+        maxLevel: search.maxLevel,
+        query: search.query,
+      ),
+);
+
+final playerProfileProvider = FutureProvider.family<PlayerProfile, String>(
+  (ref, id) => ref.watch(socialRepositoryProvider).profile(id),
+);
+
+/// The newest page of the inbox. Older pages are loaded with
+/// `NotificationRepository.inbox(before: …)` by the screen.
+final inboxProvider = FutureProvider<List<AppNotification>>(
+  (ref) => ref.watch(notificationRepositoryProvider).inbox(),
+);
+
+final unreadCountProvider = FutureProvider<int>((ref) => ref.watch(notificationRepositoryProvider).unreadCount());
+
+final communitySettingsProvider = FutureProvider<CommunitySettings>(
+  (ref) => ref.watch(notificationRepositoryProvider).settings(),
+);
+
 /// A venue with its next free slots today, for the home feed.
 typedef FreeToday = ({Venue venue, List<SlotView> next});
 
@@ -149,6 +208,16 @@ int? venueFromPrice(Venue venue, DateTime today) {
     if (range != null && (min == null || range.min < min)) min = range.min;
   }
   return min;
+}
+
+/// Refreshes everything that depends on games and Game Requests.
+void refreshGames(WidgetRef ref) {
+  ref.invalidate(gamesProvider);
+  ref.invalidate(gameProvider);
+  ref.invalidate(gameRequestsProvider);
+  ref.invalidate(gameRequestProvider);
+  ref.invalidate(inboxProvider);
+  ref.invalidate(unreadCountProvider);
 }
 
 /// Refreshes everything that depends on bookings.

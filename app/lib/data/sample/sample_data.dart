@@ -37,6 +37,20 @@ const kSampleSports = <Sport>[
     iconKey: 'volleyball',
     defaultPlayers: 12,
   ),
+  Sport(
+    id: 'running',
+    name: LocalizedText(uz: 'Yugurish', ru: 'Бег', en: 'Running'),
+    iconKey: 'running',
+    bookable: false,
+    defaultPlayers: 4,
+  ),
+  Sport(
+    id: 'gym',
+    name: LocalizedText(uz: 'Sport zali', ru: 'Тренажёрный зал', en: 'Gym'),
+    iconKey: 'gym',
+    bookable: false,
+    defaultPlayers: 2,
+  ),
 ];
 
 const _weekdays = {1, 2, 3, 4, 5};
@@ -500,5 +514,126 @@ const kTournamentSeeds = <TournamentSeed>[
     maxFee: 25000,
     slotsTotal: 24,
     slotsFilled: 9,
+  ),
+];
+
+/// A sample Game Request ("looking for players"), placed relative to "today".
+class RequestSeed {
+  const RequestSeed({
+    required this.id,
+    required this.cityId,
+    required this.sportId,
+    required this.hostId,
+    required this.daysAhead,
+    required this.fromHour,
+    required this.toHour,
+    required this.playersNeeded,
+    required this.interestedIds,
+    this.area,
+    this.minLevel = 1,
+    this.maxLevel = 5,
+    this.note,
+  });
+
+  final String id;
+  final String cityId;
+  final String sportId;
+  final String hostId;
+  final int daysAhead;
+  final int fromHour;
+  final int toHour;
+  final int playersNeeded;
+
+  /// In the order they tapped "I'm in".
+  final List<String> interestedIds;
+  final String? area;
+  final int minLevel;
+  final int maxLevel;
+  final String? note;
+}
+
+const kRequestSeeds = <RequestSeed>[
+  RequestSeed(
+    id: 'rq1',
+    cityId: 'tashkent',
+    sportId: 'padel',
+    hostId: 'p1',
+    daysAhead: 1,
+    fromHour: 18,
+    toHour: 21,
+    playersNeeded: 2,
+    interestedIds: ['p5'],
+    area: 'Yunusobod',
+    minLevel: 2,
+    maxLevel: 4,
+    note: 'Any evening court is fine',
+  ),
+  RequestSeed(
+    id: 'rq2',
+    cityId: 'tashkent',
+    sportId: 'running',
+    hostId: 'p6',
+    daysAhead: 2,
+    fromHour: 7,
+    toHour: 9,
+    playersNeeded: 4,
+    interestedIds: ['p3', 'p7'],
+    area: 'Bunyodkor park',
+  ),
+  RequestSeed(
+    id: 'rq3',
+    cityId: 'almaty',
+    sportId: 'tennis',
+    hostId: 'p4',
+    daysAhead: 1,
+    fromHour: 17,
+    toHour: 20,
+    playersNeeded: 1,
+    interestedIds: [],
+    area: 'Bostandyk',
+    minLevel: 3,
+  ),
+];
+
+/// An inbox entry the demo player starts with, placed relative to "now".
+class NotificationSeed {
+  const NotificationSeed({
+    required this.id,
+    required this.kind,
+    required this.category,
+    required this.payload,
+    required this.hoursAgo,
+    required this.read,
+  });
+
+  final String id;
+  final String kind;
+  final String category;
+  final Map<String, Object?> payload;
+  final int hoursAgo;
+  final bool read;
+}
+
+const kNotificationSeeds = <NotificationSeed>[
+  NotificationSeed(
+    id: 'ns1',
+    kind: 'booking_confirmed',
+    category: 'bookings',
+    payload: {
+      'booking_id': 'sample',
+      'sport_id': 'padel',
+      'venue_name': {'uz': 'Lochin Padel Club', 'ru': 'Lochin Padel Club', 'en': 'Lochin Padel Club'},
+    },
+    hoursAgo: 30,
+    read: true,
+  ),
+  // The demo player manages Lochin Padel Club.
+  NotificationSeed(
+    id: 'ns2',
+    kind: 'venue_new_booking',
+    category: 'venue',
+    payload: {'booking_id': 'sample', 'venue_id': 'v1', 'sport_id': 'padel', 'court_name': 'Court 1', 'actor_name': 'Aziz'},
+    hoursAgo: 3,
+    read: false,
   ),
 ];

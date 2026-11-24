@@ -19,7 +19,8 @@ class GameCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
-    final venue = ref.watch(venueProvider(game.venueId)).valueOrNull;
+    final venueId = game.venueId;
+    final venue = venueId == null ? null : ref.watch(venueProvider(venueId)).valueOrNull;
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     final sport = sports.where((s) => s.id == game.sportId).firstOrNull;
     final now = ref.watch(cityNowProvider)();

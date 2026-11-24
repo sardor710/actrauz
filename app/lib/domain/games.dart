@@ -1,3 +1,7 @@
+import 'community.dart';
+
+export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
+
 class Player {
   const Player({required this.id, required this.name, this.levels = const {}});
 
@@ -11,30 +15,76 @@ class Player {
   int levelFor(String sportId) => levels[sportId] ?? 1;
 }
 
-/// An Available Game: place and time are already fixed (product spec §9.1).
+/// Where a game happens (product spec §9.1).
+enum GameKind {
+  /// On the host's own court booking: time, venue and price come from it.
+  booked,
+
+  /// At a venue, for sports that have no slots (running, gym).
+  place,
+
+  /// At a meeting point on the map.
+  mapPoint,
+}
+
+enum GameVisibility {
+  public,
+
+  /// Only the host, the people in it and the people invited or asking can see it.
+  inviteOnly,
+}
+
+/// How the signed-in player stands in a game; null when they have no part in it.
+enum MyGameStatus { host, participant, invited, requested }
+
+/// A player asking to join a game, waiting for the host.
+class JoinRequest {
+  const JoinRequest({required this.id, required this.member, required this.createdAt});
+
+  final String id;
+  final GameMember member;
+  final DateTime createdAt;
+}
+
+/// A game: place and time are fixed (product spec §9.1).
 class Game {
   const Game({
     required this.id,
     required this.sportId,
     required this.cityId,
-    required this.venueId,
     required this.hostId,
     required this.start,
     required this.end,
     required this.spots,
     required this.participantIds,
+    this.venueId,
+    this.kind = GameKind.booked,
+    this.visibility = GameVisibility.public,
     this.minLevel = 1,
     this.maxLevel = 5,
     this.pricePerPlayer,
     this.bookingId,
     this.note,
+    this.meetingPoint,
+    this.meetingLat,
+    this.meetingLng,
+    this.distanceKm,
+    this.pace,
+    this.myStatus,
+    this.participants = const [],
+    this.joinRequests = const [],
+    this.cancelled = false,
   });
 
   final String id;
   final String sportId;
   final String cityId;
-  final String venueId;
+
+  /// Null for a game on a map point.
+  final String? venueId;
   final String hostId;
+  final GameKind kind;
+  final GameVisibility visibility;
   final DateTime start;
   final DateTime end;
 
@@ -46,26 +96,136 @@ class Game {
   final int? pricePerPlayer;
   final String? bookingId;
   final String? note;
+  final String? meetingPoint;
+  final double? meetingLat;
+  final double? meetingLng;
+  final double? distanceKm;
+  final String? pace;
+
+  /// The signed-in player's part in it.
+  final MyGameStatus? myStatus;
+
+  /// Name, level and reliability of each participant, the host first. Empty
+  /// when only [participantIds] are known.
+  final List<GameMember> participants;
+
+  /// Pending requests to join. Only the host receives them.
+  final List<JoinRequest> joinRequests;
+  final bool cancelled;
 
   int get spotsLeft => spots - participantIds.length;
   bool get isFull => spotsLeft <= 0;
 
-  Game copyWith({List<String>? participantIds}) => Game(
+  Game copyWith({
+    List<String>? participantIds,
+    int? spots,
+    String? note,
+    bool clearNote = false,
+    int? pricePerPlayer,
+    MyGameStatus? myStatus,
+    bool clearMyStatus = false,
+    List<GameMember>? participants,
+    List<JoinRequest>? joinRequests,
+    bool? cancelled,
+  }) => Game(
     id: id,
     sportId: sportId,
     cityId: cityId,
     venueId: venueId,
     hostId: hostId,
+    kind: kind,
+    visibility: visibility,
     start: start,
     end: end,
-    spots: spots,
+    spots: spots ?? this.spots,
     participantIds: participantIds ?? this.participantIds,
     minLevel: minLevel,
     maxLevel: maxLevel,
-    pricePerPlayer: pricePerPlayer,
+    pricePerPlayer: pricePerPlayer ?? this.pricePerPlayer,
     bookingId: bookingId,
-    note: note,
+    note: clearNote ? null : (note ?? this.note),
+    meetingPoint: meetingPoint,
+    meetingLat: meetingLat,
+    meetingLng: meetingLng,
+    distanceKm: distanceKm,
+    pace: pace,
+    myStatus: clearMyStatus ? null : (myStatus ?? this.myStatus),
+    participants: participants ?? this.participants,
+    joinRequests: joinRequests ?? this.joinRequests,
+    cancelled: cancelled ?? this.cancelled,
   );
+}
+
+/// What a host fills in to start a game (the keys of `create_game`). A booked
+/// sport sets [bookingId]; a place-only sport sets [venueId] or a meeting
+/// point, and its own [start] and [end].
+class GameDraft {
+  const GameDraft({
+    required this.sportId,
+    required this.spots,
+    this.minLevel = 1,
+    this.maxLevel = 5,
+    this.visibility = GameVisibility.public,
+    this.note,
+    this.pace,
+    this.distanceKm,
+    this.bookingId,
+    this.venueId,
+    this.meetingPoint,
+    this.meetingLat,
+    this.meetingLng,
+    this.start,
+    this.end,
+  });
+
+  final String sportId;
+  final int spots;
+  final int minLevel;
+  final int maxLevel;
+  final GameVisibility visibility;
+  final String? note;
+  final String? pace;
+  final double? distanceKm;
+  final String? bookingId;
+  final String? venueId;
+  final String? meetingPoint;
+  final double? meetingLat;
+  final double? meetingLng;
+
+  /// Venue or city wall-clock time; not used with [bookingId].
+  final DateTime? start;
+  final DateTime? end;
+}
+
+/// Where a Game Request becomes a game: a booking of the poster's own, a
+/// venue, or a meeting point. Anything left out takes the request's own value
+/// (spots: the poster and the players needed; times: the request's window).
+class PlacePick {
+  const PlacePick({
+    this.bookingId,
+    this.venueId,
+    this.meetingPoint,
+    this.meetingLat,
+    this.meetingLng,
+    this.spots,
+    this.start,
+    this.end,
+    this.visibility,
+    this.pace,
+    this.distanceKm,
+  });
+
+  final String? bookingId;
+  final String? venueId;
+  final String? meetingPoint;
+  final double? meetingLat;
+  final double? meetingLng;
+  final int? spots;
+  final DateTime? start;
+  final DateTime? end;
+  final GameVisibility? visibility;
+  final String? pace;
+  final double? distanceKm;
 }
 
 enum JoinError {
@@ -74,6 +234,29 @@ enum JoinError {
   levelOutOfRange,
   notParticipant,
   hostCannotLeave,
+
+  /// The game does not exist for this player: unknown, already started,
+  /// invite-only without an invite, or not the host's to run.
+  notFound,
+
+  /// A request to join is already waiting for the host.
+  alreadyRequested,
+
+  /// Reliability is too low to join, ask, create or post (spec §8.3).
+  reliabilityTooLow,
+
+  /// The booking is not the player's own confirmed booking for this sport.
+  bookingNotUsable,
+
+  /// The booking already has an open game.
+  gameExists,
+  invalidArgument,
+  inPast,
+  tooFarAhead,
+  forbidden,
+
+  /// The game has started: it can no longer be cancelled.
+  notCancellable,
 
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
@@ -88,13 +271,19 @@ class JoinException implements Exception {
   String toString() => 'JoinException(${error.name})';
 }
 
-/// One-tap join for players inside the level range. Players outside it will
-/// send a join request instead (Milestone 4).
-Game joinGame(Game game, Player player) {
+/// One-tap join for players inside the level range. An invited player
+/// ([invited]) opens an invite-only game and skips the level check; everyone
+/// else outside the range sends a join request instead.
+Game joinGame(Game game, Player player, {bool invited = false}) {
+  if (game.visibility == GameVisibility.inviteOnly && !invited && !game.participantIds.contains(player.id)) {
+    throw const JoinException(JoinError.notFound);
+  }
   if (game.participantIds.contains(player.id)) throw const JoinException(JoinError.alreadyJoined);
   if (game.isFull) throw const JoinException(JoinError.full);
-  final level = player.levelFor(game.sportId);
-  if (level < game.minLevel || level > game.maxLevel) throw const JoinException(JoinError.levelOutOfRange);
+  if (!invited) {
+    final level = player.levelFor(game.sportId);
+    if (level < game.minLevel || level > game.maxLevel) throw const JoinException(JoinError.levelOutOfRange);
+  }
   return game.copyWith(participantIds: [...game.participantIds, player.id]);
 }
 

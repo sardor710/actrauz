@@ -1,3 +1,4 @@
+import '../domain/community.dart';
 import '../domain/games.dart';
 import 'sample/sample_data.dart';
 
@@ -20,11 +21,23 @@ class Team {
   final int upcomingGames;
 }
 
-/// Teams and players for the Social tab. Kept apart from the booking and game
-/// repositories so it can gain a backend implementation on its own.
+/// Teams, finding players and public profiles (product spec §9.3, §9.4).
+/// Teams are still sample data; players come from the backend. Never returns
+/// a phone number. The signed-in player is not in [players], and has id
+/// `kMeId` in [profile].
 abstract class SocialRepository {
   Future<List<Team>> teams(String cityId);
-  Future<List<Player>> players(String cityId);
+
+  /// In the city, by name and by level in [sportId] (no level counts as 1),
+  /// leaving out players who hid themselves. Name order.
+  Future<List<PlayerProfile>> players(
+    String cityId, {
+    String? sportId,
+    int minLevel = 1,
+    int maxLevel = 5,
+    String? query,
+  });
+  Future<PlayerProfile> profile(String userId);
 }
 
 /// Fictional sample teams.
@@ -39,6 +52,28 @@ const kSampleTeams = <Team>[
   Team(id: 'tm8', name: 'Astana Five', sportId: 'football', cityId: 'astana', memberCount: 27, upcomingGames: 0),
 ];
 
+/// Players matching a search, from [pool], as profiles with [reliabilityOf].
+/// Shared by the stand-alone sample repository and the sample backend.
+List<PlayerProfile> searchPlayers(
+  Iterable<Player> pool, {
+  String? sportId,
+  int minLevel = 1,
+  int maxLevel = 5,
+  String? query,
+  Reliability Function(String id)? reliabilityOf,
+}) {
+  final needle = query?.trim().toLowerCase() ?? '';
+  return [
+    for (final p in pool)
+      if ((needle.isEmpty || p.name.toLowerCase().contains(needle)) &&
+          (sportId == null || (p.levelFor(sportId) >= minLevel && p.levelFor(sportId) <= maxLevel)))
+        profileOf(p, reliability: reliabilityOf?.call(p.id) ?? Reliability.fresh),
+  ]..sort((a, b) => a.name.compareTo(b.name));
+}
+
+PlayerProfile profileOf(Player p, {Reliability reliability = Reliability.fresh, int gamesPlayed = 0}) =>
+    PlayerProfile(id: p.id, name: p.name, levels: p.levels, reliability: reliability, gamesPlayed: gamesPlayed);
+
 class SampleSocialRepository implements SocialRepository {
   const SampleSocialRepository();
 
@@ -47,5 +82,19 @@ class SampleSocialRepository implements SocialRepository {
 
   /// Sample players are not tied to a city yet.
   @override
-  Future<List<Player>> players(String cityId) async => kSamplePlayers;
+  Future<List<PlayerProfile>> players(
+    String cityId, {
+    String? sportId,
+    int minLevel = 1,
+    int maxLevel = 5,
+    String? query,
+  }) async => searchPlayers(kSamplePlayers, sportId: sportId, minLevel: minLevel, maxLevel: maxLevel, query: query);
+
+  @override
+  Future<PlayerProfile> profile(String userId) async => profileOf(
+    kSamplePlayers.firstWhere(
+      (p) => p.id == userId,
+      orElse: () => Player(id: userId, name: userId),
+    ),
+  );
 }

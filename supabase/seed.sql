@@ -19,7 +19,9 @@ insert into public.sports (id, name_uz, name_ru, name_en, icon_key, bookable, co
   ('padel', 'Padel', 'Падел', 'Padel', 'padel', true, true, 4, 1),
   ('tennis', 'Tennis', 'Теннис', 'Tennis', 'tennis', true, true, 2, 2),
   ('basketball', 'Basketbol', 'Баскетбол', 'Basketball', 'basketball', true, false, 10, 3),
-  ('volleyball', 'Voleybol', 'Волейбол', 'Volleyball', 'volleyball', true, false, 12, 4)
+  ('volleyball', 'Voleybol', 'Волейбол', 'Volleyball', 'volleyball', true, false, 12, 4),
+  ('running', 'Yugurish', 'Бег', 'Running', 'running', false, false, 4, 5),
+  ('gym', 'Sport zali', 'Тренажёрный зал', 'Gym', 'gym', false, false, 2, 6)
 on conflict (id) do update set name_uz = excluded.name_uz, name_ru = excluded.name_ru, name_en = excluded.name_en, icon_key = excluded.icon_key, bookable = excluded.bookable, competitive_rating = excluded.competitive_rating, default_players = excluded.default_players, sort_order = excluded.sort_order;
 
 -- Venues

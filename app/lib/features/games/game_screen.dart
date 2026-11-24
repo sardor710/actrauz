@@ -40,7 +40,8 @@ class GameScreen extends ConsumerWidget {
       body: AsyncBody(
         value: ref.watch(gameProvider(gameId)),
         builder: (game) {
-          final venue = ref.watch(venueProvider(game.venueId)).valueOrNull;
+          final venueId = game.venueId;
+          final venue = venueId == null ? null : ref.watch(venueProvider(venueId)).valueOrNull;
           final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
           final sport = sports.where((s) => s.id == game.sportId).firstOrNull;
           final currency = cityById(game.cityId).currency;
@@ -55,7 +56,7 @@ class GameScreen extends ConsumerWidget {
                   padding: EdgeInsets.zero,
                   children: [
                     PhotoBox(
-                      asset: venuePhoto(game.venueId),
+                      asset: venueId == null ? kGamesPromoPhoto : venuePhoto(venueId),
                       height: 250,
                       radius: 0,
                       darken: 0.55,

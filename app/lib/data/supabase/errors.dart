@@ -25,6 +25,7 @@ const _bookingErrors = <String, BookingError>{
   'rules_overlap': BookingError.rulesOverlap,
   'has_bookings': BookingError.hasBookings,
   'already_exists': BookingError.alreadyExists,
+  'reliability_too_low': BookingError.reliabilityTooLow,
 };
 
 const _joinErrors = <String, JoinError>{
@@ -33,6 +34,16 @@ const _joinErrors = <String, JoinError>{
   'level_out_of_range': JoinError.levelOutOfRange,
   'not_participant': JoinError.notParticipant,
   'host_cannot_leave': JoinError.hostCannotLeave,
+  'not_found': JoinError.notFound,
+  'already_requested': JoinError.alreadyRequested,
+  'reliability_too_low': JoinError.reliabilityTooLow,
+  'booking_not_usable': JoinError.bookingNotUsable,
+  'game_exists': JoinError.gameExists,
+  'invalid_argument': JoinError.invalidArgument,
+  'in_past': JoinError.inPast,
+  'too_far_ahead': JoinError.tooFarAhead,
+  'forbidden': JoinError.forbidden,
+  'not_cancellable': JoinError.notCancellable,
 };
 
 /// The rule a failed booking call broke, or `unavailable` for anything else

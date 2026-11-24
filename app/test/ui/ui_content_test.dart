@@ -25,7 +25,8 @@ void main() {
       for (final tournament in kTournamentSeeds) {
         expectFile(tournamentPhoto(tournament.id));
       }
-      for (final sport in kSampleSports) {
+      // Running and gym have no artwork yet: SportBadge falls back to a line icon.
+      for (final sport in kSampleSports.where((s) => s.bookable)) {
         expectFile(sportIconAsset(sport.id));
       }
       for (final asset in [kWaveIcon, kTrophyIcon, kGamesPromoPhoto, 'assets/fonts/Manrope.ttf']) {

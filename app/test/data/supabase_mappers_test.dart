@@ -2,6 +2,7 @@ import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/supabase/errors.dart';
 import 'package:actra/data/supabase/mappers.dart';
 import 'package:actra/domain/booking_engine.dart';
+import 'package:actra/domain/community.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/pricing.dart';
@@ -64,8 +65,20 @@ Map<String, dynamic> venueRow() => {
       'sort_order': 0,
       // Deliberately out of order: sort_order decides which rule wins.
       'price_rules': [
-        {'weekdays': [1, 2, 3, 4, 5, 6, 7], 'from_minute': 0, 'to_minute': 1440, 'price': 111, 'sort_order': 1},
-        {'weekdays': [1, 2, 3, 4, 5], 'from_minute': 1080, 'to_minute': 1380, 'price': 250000, 'sort_order': 0},
+        {
+          'weekdays': [1, 2, 3, 4, 5, 6, 7],
+          'from_minute': 0,
+          'to_minute': 1440,
+          'price': 111,
+          'sort_order': 1,
+        },
+        {
+          'weekdays': [1, 2, 3, 4, 5],
+          'from_minute': 1080,
+          'to_minute': 1380,
+          'price': 250000,
+          'sort_order': 0,
+        },
       ],
       'working_hours': <Map<String, dynamic>>[],
     },
@@ -176,7 +189,11 @@ void main() {
         'released': BookingStatus.released,
       };
       for (final entry in expected.entries) {
-        expect(bookingFromJson(bookingJson(status: entry.key), myUserId: me).status, entry.value, reason: entry.key);
+        expect(
+          bookingFromJson(bookingJson(status: entry.key), myUserId: me).status,
+          entry.value,
+          reason: entry.key,
+        );
       }
       expect(() => bookingStatusOf('teleported'), throwsFormatException);
     });
@@ -199,7 +216,12 @@ void main() {
       expect(slot.state, SlotState.mine);
       for (final entry in {'free': SlotState.free, 'taken': SlotState.taken, 'past': SlotState.past}.entries) {
         expect(
-          slotFromRow({'starts_local': '2026-11-23T07:00:00', 'ends_local': '2026-11-23T08:30:00', 'price': 1, 'state': entry.key}).state,
+          slotFromRow({
+            'starts_local': '2026-11-23T07:00:00',
+            'ends_local': '2026-11-23T08:30:00',
+            'price': 1,
+            'state': entry.key,
+          }).state,
           entry.value,
         );
       }
@@ -241,7 +263,11 @@ void main() {
     });
 
     test('a game I host has me as host', () {
-      final game = gameFromJson({...json, 'host_id': me, 'participant_ids': [me]}, myUserId: me);
+      final game = gameFromJson({
+        ...json,
+        'host_id': me,
+        'participant_ids': [me],
+      }, myUserId: me);
       expect(game.hostId, kMeId);
       expect(game.participantIds, [kMeId]);
     });
@@ -277,7 +303,13 @@ void main() {
       expect(sport.competitiveRating, isTrue);
       expect(sport.defaultPlayers, 4);
 
-      final banner = bannerFromRow({'id': 'b', 'title_en': 'Book', 'subtitle_ru': 'Сразу', 'url': 'https://example.com', 'color_seed': 3});
+      final banner = bannerFromRow({
+        'id': 'b',
+        'title_en': 'Book',
+        'subtitle_ru': 'Сразу',
+        'url': 'https://example.com',
+        'color_seed': 3,
+      });
       expect(banner.title.en, 'Book');
       expect(banner.subtitle.resolve('en'), 'Сразу');
 
@@ -347,6 +379,371 @@ void main() {
         throwsA(isA<JoinException>().having((e) => e.error, 'error', JoinError.unavailable)),
       );
       expect(await guardBooking(() async => 7), 7);
+    });
+  });
+
+  group('community', () {
+    const reliabilityJson = {'score': 86, 'badge': 'reliable'};
+
+    Map<String, dynamic> member(String id, String name, {int? level = 3}) => {
+      'id': id,
+      'name': name,
+      'level': level,
+      'reliability': reliabilityJson,
+    };
+
+    test('a game on a map point has no venue, with participants and join requests', () {
+      final game = gameFromJson({
+        'id': 'game-2',
+        'sport_id': 'running',
+        'city_id': 'tashkent',
+        'venue_id': null,
+        'host_id': me,
+        'kind': 'map_point',
+        'visibility': 'invite_only',
+        'status': 'open',
+        'starts_local': '2026-11-23T07:00:00',
+        'ends_local': '2026-11-23T08:00:00',
+        'spots': 6,
+        'min_level': 1,
+        'max_level': 5,
+        'price_per_player': null,
+        'booking_id': null,
+        'note': 'Easy pace',
+        'meeting_point': 'Bunyodkor park, main gate',
+        'meeting_lat': 41,
+        'meeting_lng': 69.25,
+        'distance_km': 5,
+        'pace': '6:00/km',
+        'my_status': 'host',
+        'participant_ids': [me, other],
+        'participants': [member(me, 'Sardor'), member(other, 'Aziz', level: null)],
+        'join_requests': [
+          {
+            'id': 'req-1',
+            'user_id': '33333333-3333-3333-3333-333333333333',
+            'name': 'Madina',
+            'level': 4,
+            'reliability': {'score': 60, 'badge': 'limited'},
+            'created_at': '2026-11-22T05:30:00+00:00',
+          },
+        ],
+      }, myUserId: me);
+
+      expect(game.kind, GameKind.mapPoint);
+      expect(game.visibility, GameVisibility.inviteOnly);
+      expect(game.venueId, isNull);
+      expect(game.cancelled, isFalse);
+      expect(game.meetingPoint, 'Bunyodkor park, main gate');
+      expect(game.meetingLat, 41.0);
+      expect(game.meetingLng, 69.25);
+      expect(game.distanceKm, 5.0);
+      expect(game.pace, '6:00/km');
+      expect(game.myStatus, MyGameStatus.host);
+      expect(game.hostId, kMeId);
+      expect(game.participantIds, [kMeId, other]);
+      expect(game.participants.map((m) => m.id), [kMeId, other]);
+      expect(game.participants.first.reliability.badge, ReliabilityBadge.reliable);
+      expect(game.participants.first.reliability.score, 86);
+      expect(game.participants.last.level, 1, reason: 'no level counts as 1');
+      final request = game.joinRequests.single;
+      expect(request.id, 'req-1');
+      expect(request.member.id, '33333333-3333-3333-3333-333333333333');
+      expect(request.member.name, 'Madina');
+      expect(request.member.level, 4);
+      expect(request.member.reliability.badge, ReliabilityBadge.limited);
+      expect(request.createdAt, DateTime.utc(2026, 11, 22, 5, 30));
+    });
+
+    test('a game for a player who is not the host has no join requests and a status', () {
+      final base = {
+        'id': 'g',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'venue_id': 'venue-1',
+        'host_id': other,
+        'starts_local': '2026-11-23T19:00:00',
+        'ends_local': '2026-11-23T20:30:00',
+        'spots': 4,
+        'participant_ids': [other],
+      };
+      expect(gameFromJson({...base, 'my_status': 'invited'}, myUserId: me).myStatus, MyGameStatus.invited);
+      expect(gameFromJson({...base, 'my_status': 'requested'}, myUserId: me).myStatus, MyGameStatus.requested);
+      expect(gameFromJson({...base, 'my_status': 'participant'}, myUserId: me).myStatus, MyGameStatus.participant);
+      final plain = gameFromJson(base, myUserId: me);
+      expect(plain.myStatus, isNull);
+      expect(plain.kind, GameKind.booked);
+      expect(plain.visibility, GameVisibility.public);
+      expect(plain.joinRequests, isEmpty);
+      expect(plain.participants, isEmpty);
+      expect(gameFromJson({...base, 'status': 'cancelled'}, myUserId: me).cancelled, isTrue);
+    });
+
+    test('a game request keeps the interested players in order and marks me', () {
+      final request = gameRequestFromJson({
+        'id': 'r1',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'host_id': other,
+        'host_name': 'Aziz',
+        'venue_id': null,
+        'area': 'Yunusobod',
+        'starts_local': '2026-11-24T18:00:00',
+        'ends_local': '2026-11-24T21:00:00',
+        'players_needed': 3,
+        'min_level': 2,
+        'max_level': 4,
+        'note': null,
+        'status': 'open',
+        'game_id': null,
+        'created_at': '2026-11-22T05:00:00+00:00',
+        'interested': [member(other, 'Aziz'), member(me, 'Sardor')],
+        'interested_count': 2,
+        'my_status': 'interested',
+      }, myUserId: me);
+      expect(request.hostId, other);
+      expect(request.hostName, 'Aziz');
+      expect(request.area, 'Yunusobod');
+      expect(request.venueId, isNull);
+      expect(request.start, DateTime.utc(2026, 11, 24, 18));
+      expect(request.end, DateTime.utc(2026, 11, 24, 21));
+      expect(request.playersNeeded, 3);
+      expect(request.minLevel, 2);
+      expect(request.status, GameRequestStatus.open);
+      expect(request.interested.map((m) => m.id), [other, kMeId]);
+      expect(request.interestedCount, 2);
+      expect(request.myStatus, MyRequestStatus.interested);
+      expect(request.createdAt, DateTime.utc(2026, 11, 22, 5));
+      expect(request.gameId, isNull);
+
+      final mine = gameRequestFromJson({
+        'id': 'r2',
+        'sport_id': 'running',
+        'city_id': 'tashkent',
+        'host_id': me,
+        'host_name': 'Sardor',
+        'starts_local': '2026-11-24T07:00:00',
+        'ends_local': '2026-11-24T08:00:00',
+        'players_needed': 2,
+        'status': 'converted',
+        'game_id': 'game-5',
+        'created_at': '2026-11-22T05:00:00+00:00',
+        'interested': <Object>[],
+        'interested_count': 0,
+        'my_status': 'host',
+      }, myUserId: me);
+      expect(mine.hostId, kMeId);
+      expect(mine.myStatus, MyRequestStatus.host);
+      expect(mine.status, GameRequestStatus.converted);
+      expect(mine.gameId, 'game-5');
+      expect(mine.minLevel, 1);
+      expect(mine.maxLevel, 5);
+    });
+
+    test('a player profile has levels, reliability and games played, and I am kMeId', () {
+      final profile = playerProfileFromJson({
+        'id': me,
+        'name': 'Sardor',
+        'city_id': 'tashkent',
+        'levels': {'padel': 3, 'football': 2},
+        'reliability': {'score': 40, 'badge': 'blocked'},
+        'games_played': 7,
+      }, myUserId: me);
+      expect(profile.id, kMeId);
+      expect(profile.name, 'Sardor');
+      expect(profile.cityId, 'tashkent');
+      expect(profile.levels, {'padel': 3, 'football': 2});
+      expect(profile.levelFor('padel'), 3);
+      expect(profile.levelFor('tennis'), 1);
+      expect(profile.reliability.badge, ReliabilityBadge.blocked);
+      expect(profile.gamesPlayed, 7);
+    });
+
+    test('every reliability badge maps', () {
+      expect(reliabilityFromJson({'score': 80, 'badge': 'new'}).badge, ReliabilityBadge.isNew);
+      expect(reliabilityFromJson({'score': 90, 'badge': 'reliable'}).badge, ReliabilityBadge.reliable);
+      expect(reliabilityFromJson({'score': 60, 'badge': 'limited'}).badge, ReliabilityBadge.limited);
+      expect(reliabilityFromJson({'score': 10, 'badge': 'blocked'}).badge, ReliabilityBadge.blocked);
+      expect(() => reliabilityFromJson({'score': 1, 'badge': 'mystery'}), throwsFormatException);
+    });
+
+    test('settings', () {
+      final settings = communitySettingsFromJson({
+        'muted_categories': ['games', 'venue'],
+        'hidden_from_search': true,
+        'reliability': {'score': 55, 'badge': 'limited'},
+      });
+      expect(settings.mutedCategories, {'games', 'venue'});
+      expect(settings.hiddenFromSearch, isTrue);
+      expect(settings.reliability.badge, ReliabilityBadge.limited);
+    });
+
+    test('a notification keeps its payload and read state', () {
+      final n = notificationFromJson({
+        'id': 'n1',
+        'kind': 'game_joined',
+        'category': 'games',
+        'payload': {'game_id': 'g1', 'actor_name': 'Aziz', 'sport_id': 'padel', 'starts_local': '2026-11-23T19:00:00'},
+        'created_at': '2026-11-22T05:00:00.123456+00:00',
+        'read': false,
+      });
+      expect(n.kind, 'game_joined');
+      expect(n.category, 'games');
+      expect(n.payload['actor_name'], 'Aziz');
+      expect(n.read, isFalse);
+      expect(n.createdAt, DateTime.utc(2026, 11, 22, 5, 0, 0, 123, 456));
+      expect(n.createdAt.isUtc, isTrue);
+    });
+
+    test('each notification kind opens its screen', () {
+      AppNotification n(String kind, [Map<String, Object?> payload = const {}]) => AppNotification(
+        id: 'n',
+        kind: kind,
+        category: 'x',
+        payload: payload,
+        createdAt: DateTime.utc(2026),
+        read: false,
+      );
+      for (final kind in ['booking_confirmed', 'booking_cancelled_by_venue', 'booking_reminder']) {
+        expect(n(kind, {'booking_id': 'b1'}).route, '/bookings', reason: kind);
+      }
+      for (final kind in ['venue_new_booking', 'venue_booking_cancelled']) {
+        expect(n(kind, {'venue_id': 'v1'}).route, '/owner/v1', reason: kind);
+      }
+      for (final kind in [
+        'game_joined',
+        'game_left',
+        'join_request',
+        'join_approved',
+        'join_declined',
+        'game_full',
+        'game_changed',
+        'game_cancelled',
+        'game_removed',
+        'game_reminder',
+        'game_invite',
+        'request_converted',
+      ]) {
+        expect(n(kind, {'game_id': 'g9'}).route, '/games/g9', reason: kind);
+      }
+      for (final kind in ['request_interest', 'request_expired']) {
+        expect(n(kind, {'request_id': 'r4'}).route, '/games/requests/r4', reason: kind);
+      }
+      // Nothing to open: an unknown kind, or a payload without its id.
+      expect(n('something_new').route, isNull);
+      expect(n('game_joined').route, isNull);
+      expect(n('venue_new_booking').route, isNull);
+    });
+
+    test('a game draft sends only what it has', () {
+      expect(
+        gameDraftJson(
+          GameDraft(
+            sportId: 'running',
+            spots: 6,
+            minLevel: 2,
+            maxLevel: 4,
+            visibility: GameVisibility.inviteOnly,
+            note: ' Easy ',
+            meetingPoint: 'Park',
+            meetingLat: 41.3,
+            meetingLng: 69.2,
+            distanceKm: 5,
+            pace: '6:00',
+            start: DateTime.utc(2026, 11, 23, 7),
+            end: DateTime.utc(2026, 11, 23, 8),
+          ),
+        ),
+        {
+          'sport_id': 'running',
+          'spots': 6,
+          'min_level': 2,
+          'max_level': 4,
+          'visibility': 'invite_only',
+          'note': 'Easy',
+          'meeting_point': 'Park',
+          'meeting_lat': 41.3,
+          'meeting_lng': 69.2,
+          'distance_km': 5.0,
+          'pace': '6:00',
+          'starts_local': '2026-11-23T07:00:00',
+          'ends_local': '2026-11-23T08:00:00',
+        },
+      );
+      // A booked game: the booking carries the time, so there are no null keys at all.
+      expect(gameDraftJson(const GameDraft(sportId: 'padel', spots: 4, bookingId: 'b-1')), {
+        'sport_id': 'padel',
+        'spots': 4,
+        'min_level': 1,
+        'max_level': 5,
+        'visibility': 'public',
+        'booking_id': 'b-1',
+      });
+    });
+
+    test('a place pick omits what it does not set, so the backend defaults apply', () {
+      expect(placePickJson(const PlacePick(bookingId: 'b-1')), {'booking_id': 'b-1'});
+      expect(
+        placePickJson(
+          PlacePick(venueId: 'v-1', spots: 5, start: DateTime.utc(2026, 11, 24, 7), end: DateTime.utc(2026, 11, 24, 8)),
+        ),
+        {'venue_id': 'v-1', 'spots': 5, 'starts_local': '2026-11-24T07:00:00', 'ends_local': '2026-11-24T08:00:00'},
+      );
+      expect(placePickJson(const PlacePick(meetingPoint: 'Park', meetingLat: 1.5, meetingLng: 2.5)), {
+        'meeting_point': 'Park',
+        'meeting_lat': 1.5,
+        'meeting_lng': 2.5,
+      });
+    });
+
+    test('a game request draft', () {
+      expect(
+        gameRequestDraftJson(
+          GameRequestDraft(
+            sportId: 'padel',
+            playersNeeded: 3,
+            minLevel: 2,
+            start: DateTime.utc(2026, 11, 24, 18),
+            end: DateTime.utc(2026, 11, 24, 21),
+            area: ' Yunusobod ',
+          ),
+        ),
+        {
+          'sport_id': 'padel',
+          'players_needed': 3,
+          'min_level': 2,
+          'max_level': 5,
+          'starts_local': '2026-11-24T18:00:00',
+          'ends_local': '2026-11-24T21:00:00',
+          'area': 'Yunusobod',
+        },
+      );
+    });
+
+    test('the new rule codes map to their errors', () {
+      const join = {
+        'already_requested': JoinError.alreadyRequested,
+        'not_found': JoinError.notFound,
+        'reliability_too_low': JoinError.reliabilityTooLow,
+        'booking_not_usable': JoinError.bookingNotUsable,
+        'game_exists': JoinError.gameExists,
+        'invalid_argument': JoinError.invalidArgument,
+        'in_past': JoinError.inPast,
+        'too_far_ahead': JoinError.tooFarAhead,
+        'forbidden': JoinError.forbidden,
+        'not_cancellable': JoinError.notCancellable,
+      };
+      for (final entry in join.entries) {
+        expect(
+          joinExceptionFor(PostgrestException(message: entry.key, code: 'P0001')).error,
+          entry.value,
+          reason: entry.key,
+        );
+      }
+      expect(
+        bookingExceptionFor(const PostgrestException(message: 'reliability_too_low', code: 'P0001')).error,
+        BookingError.reliabilityTooLow,
+      );
     });
   });
 }

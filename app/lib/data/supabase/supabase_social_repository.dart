@@ -1,0 +1,48 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../domain/community.dart';
+import '../social.dart';
+import 'mappers.dart';
+
+/// Players and profiles from the database. Teams are still sample data
+/// (product spec §9.3 comes later).
+class SupabaseSocialRepository implements SocialRepository {
+  SupabaseSocialRepository(this._client);
+
+  final SupabaseClient _client;
+
+  String? get _me => _client.auth.currentUser?.id;
+
+  @override
+  Future<List<Team>> teams(String cityId) => const SampleSocialRepository().teams(cityId);
+
+  @override
+  Future<List<PlayerProfile>> players(
+    String cityId, {
+    String? sportId,
+    int minLevel = 1,
+    int maxLevel = 5,
+    String? query,
+  }) async {
+    final rows = await _client.rpc(
+      'list_players',
+      params: {
+        'p_city_id': cityId,
+        'p_sport_id': sportId,
+        'p_min_level': minLevel,
+        'p_max_level': maxLevel,
+        'p_query': query,
+      },
+    );
+    return [
+      for (final row in rows as List) playerProfileFromJson(Map<String, dynamic>.from(row as Map), myUserId: _me),
+    ];
+  }
+
+  @override
+  Future<PlayerProfile> profile(String userId) async {
+    final json = await _client.rpc('player_profile', params: {'p_user_id': userIdOut(userId, _me)});
+    if (json == null) throw StateError('Unknown player $userId');
+    return playerProfileFromJson(Map<String, dynamic>.from(json as Map), myUserId: _me);
+  }
+}

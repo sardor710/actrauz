@@ -2,6 +2,7 @@ import '../../core/localized_text.dart';
 import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/community.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
@@ -9,14 +10,17 @@ import '../../domain/pricing.dart';
 import '../admin_repository.dart';
 import '../owner_repository.dart';
 import '../repositories.dart';
-import '../supabase/mappers.dart' show bannerDraftJson, courtDraftJson, sportDraftJson, venueDraftJson;
+import '../social.dart';
+import '../supabase/mappers.dart' show bannerDraftJson, courtDraftJson, isoLocal, sportDraftJson, venueDraftJson;
 import 'sample_data.dart';
 
 /// In-memory stand-in for the backend. State lives for one app run.
-class SampleBackend implements CatalogRepository, BookingRepository, GameRepository {
+class SampleBackend
+    implements CatalogRepository, BookingRepository, GameRepository, SocialRepository, NotificationRepository {
   SampleBackend({required this.utcNow, this.meName = ''}) {
     _engine = BookingEngine(venueById: _venue);
     _seedGames();
+    _seedCommunity();
   }
 
   /// Current UTC time; injected so tests can fix the clock.
@@ -47,6 +51,13 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
   /// This run's admin and owner changes, oldest first.
   final List<AuditEntry> _audit = [];
   final Map<String, Game> _games = {};
+  final Map<String, GameRequest> _requests = {};
+
+  /// Reliability events per player; only the demo player starts with any.
+  final Map<String, List<ReliabilityEvent>> _reliabilityEvents = {};
+  final List<AppNotification> _inbox = [];
+  CommunitySettings _settings = const CommunitySettings();
+  int _nextId = 1;
 
   Venue _venue(String id) => _venues[id] ?? (throw StateError('Unknown venue $id'));
 
@@ -54,12 +65,22 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
   bool _manages(String venueId) => _venues.containsKey(venueId) && (_owners[venueId]?.contains(kMeId) ?? false);
 
   /// What players see of a venue: only its active courts.
-  Venue _public(Venue v) =>
-      v.courts.any((c) => _inactiveCourts.contains(c.id))
-          ? v.copyWith(courts: [for (final c in v.courts) if (!_inactiveCourts.contains(c.id)) c])
-          : v;
+  Venue _public(Venue v) => v.courts.any((c) => _inactiveCourts.contains(c.id))
+      ? v.copyWith(
+          courts: [
+            for (final c in v.courts)
+              if (!_inactiveCourts.contains(c.id)) c,
+          ],
+        )
+      : v;
 
-  void _log(String action, String entity, String? entityId, {Map<String, dynamic>? before, Map<String, dynamic>? after}) {
+  void _log(
+    String action,
+    String entity,
+    String? entityId, {
+    Map<String, dynamic>? before,
+    Map<String, dynamic>? after,
+  }) {
     _audit.add(
       AuditEntry(
         id: '${_audit.length + 1}',
@@ -111,6 +132,57 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
     }
   }
 
+  /// Sample Game Requests, the demo player's reliability history and the
+  /// notifications they start with.
+  void _seedCommunity() {
+    for (final seed in kRequestSeeds) {
+      final cityNow = _cityNow(seed.cityId);
+      final day = dateOnly(cityNow).add(Duration(days: seed.daysAhead));
+      final request = GameRequest(
+        id: seed.id,
+        sportId: seed.sportId,
+        cityId: seed.cityId,
+        hostId: seed.hostId,
+        hostName: _nameOf(seed.hostId),
+        area: seed.area,
+        start: day.add(Duration(hours: seed.fromHour)),
+        end: day.add(Duration(hours: seed.toHour)),
+        playersNeeded: seed.playersNeeded,
+        minLevel: seed.minLevel,
+        maxLevel: seed.maxLevel,
+        note: seed.note,
+        createdAt: utcNow().subtract(const Duration(hours: 5)),
+        interested: [for (final id in seed.interestedIds) _member(id, seed.sportId)],
+      );
+      _requests[request.id] = request;
+    }
+
+    // Three completed games in the last 40 days: a reliable player.
+    for (final (i, daysAgo) in [10, 25, 40].indexed) {
+      _reliabilityEvents[kMeId] = [
+        ...?_reliabilityEvents[kMeId],
+        ReliabilityEvent(
+          kind: ReliabilityKind.gameCompleted,
+          ref: 'seed-${i + 1}',
+          at: utcNow().subtract(Duration(days: daysAgo)),
+        ),
+      ];
+    }
+
+    for (final seed in kNotificationSeeds) {
+      _inbox.add(
+        AppNotification(
+          id: seed.id,
+          kind: seed.kind,
+          category: seed.category,
+          payload: seed.payload,
+          createdAt: utcNow().subtract(Duration(hours: seed.hoursAgo)),
+          read: seed.read,
+        ),
+      );
+    }
+  }
+
   // ---- CatalogRepository ----
 
   @override
@@ -133,8 +205,9 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
 
   @override
   Future<List<BannerItem>> banners(String cityId) async => [
-    for (final b in _banners.values.where((b) => b.active && (b.cityId == null || b.cityId == cityId)).toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)))
+    for (final b
+        in _banners.values.where((b) => b.active && (b.cityId == null || b.cityId == cityId)).toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)))
       BannerItem(id: b.id, title: b.title, subtitle: b.subtitle, url: b.url, colorSeed: _bannerColors[b.id] ?? 0),
   ];
 
@@ -171,14 +244,30 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
       _engine.availability(venueId, courtId, date, now: _nowAt(_venue(venueId)), userId: kMeId);
 
   @override
-  Future<Booking> hold(String venueId, String courtId, List<SlotTime> slots) async =>
-      _engine.hold(userId: kMeId, venueId: venueId, courtId: courtId, slots: slots, now: _nowAt(_venue(venueId)));
+  Future<Booking> hold(String venueId, String courtId, List<SlotTime> slots) async => _engine.hold(
+    userId: kMeId,
+    venueId: venueId,
+    courtId: courtId,
+    slots: slots,
+    now: _nowAt(_venue(venueId)),
+    reliability: _reliability(kMeId),
+  );
 
   @override
   Future<Booking> confirm(String bookingId, {int? players, String? note}) async {
     final booking = _engine.byId(bookingId);
     if (booking == null) throw const BookingException(BookingError.notFound);
-    return _engine.confirm(bookingId, now: _nowAt(_venue(booking.venueId)), players: players, note: note);
+    final confirmed = _engine.confirm(bookingId, now: _nowAt(_venue(booking.venueId)), players: players, note: note);
+    _notify(kMeId, 'booking_confirmed', 'bookings', _bookingNote(confirmed));
+    if (_manages(confirmed.venueId)) {
+      _notify(kMeId, 'venue_new_booking', 'venue', {
+        ..._bookingNote(confirmed),
+        'venue_id': confirmed.venueId,
+        'court_name': _venue(confirmed.venueId).court(confirmed.courtId).name.en,
+        'actor_name': meName,
+      });
+    }
+    return confirmed;
   }
 
   @override
@@ -188,35 +277,771 @@ class SampleBackend implements CatalogRepository, BookingRepository, GameReposit
   Future<Booking> cancel(String bookingId) async {
     final booking = _engine.byId(bookingId);
     if (booking == null) throw const BookingException(BookingError.notFound);
-    return _engine.cancel(bookingId, now: _nowAt(_venue(booking.venueId)));
+    final cancelled = _engine.cancel(bookingId, now: _nowAt(_venue(booking.venueId)));
+    if (cancelled.lateCancellation) recordReliability(kMeId, ReliabilityKind.lateCancel, bookingId);
+    if (_manages(cancelled.venueId)) {
+      _notify(kMeId, 'venue_booking_cancelled', 'venue', {
+        ..._bookingNote(cancelled),
+        'venue_id': cancelled.venueId,
+        'court_name': _venue(cancelled.venueId).court(cancelled.courtId).name.en,
+        'actor_name': meName,
+      });
+    }
+    _cancelGamesOn(bookingId, kMeId);
+    return cancelled;
   }
 
   @override
   Future<List<Booking>> myBookings() async => _engine.bookingsOf(kMeId);
 
+  // ---- Reliability (the same rules as the database, plan: Reliability) ----
+
+  Reliability _reliability(String userId) => reliabilityFrom(_reliabilityEvents[userId] ?? const [], now: utcNow());
+
+  void _requireReliable(String userId) {
+    if (_reliability(userId).isBlocked) throw const JoinException(JoinError.reliabilityTooLow);
+  }
+
+  /// Records a reliability event for [userId]. One event per kind and ref;
+  /// paid and no-show replace each other for the same booking.
+  void recordReliability(String userId, ReliabilityKind kind, String ref) {
+    final events = _reliabilityEvents.putIfAbsent(userId, () => []);
+    final opposite = switch (kind) {
+      ReliabilityKind.bookingPaid => ReliabilityKind.noShow,
+      ReliabilityKind.noShow => ReliabilityKind.bookingPaid,
+      _ => null,
+    };
+    events.removeWhere((e) => e.ref == ref && (e.kind == kind || e.kind == opposite));
+    events.add(ReliabilityEvent(kind: kind, ref: ref, at: utcNow()));
+  }
+
+  // ---- Inbox ----
+
+  DateTime _lastStamp = DateTime.utc(2000);
+
+  /// Writes to the demo player's inbox, unless they muted the category. Only
+  /// the demo player has an inbox in sample mode.
+  void _notify(String userId, String kind, String category, Map<String, Object?> payload) {
+    if (userId != kMeId || _settings.mutedCategories.contains(category)) return;
+    // Strictly increasing, so paging by date never skips or repeats an entry.
+    var at = utcNow();
+    if (!at.isAfter(_lastStamp)) at = _lastStamp.add(const Duration(milliseconds: 1));
+    _lastStamp = at;
+    _inbox.add(
+      AppNotification(
+        id: 'n${_nextId++}',
+        kind: kind,
+        category: category,
+        payload: payload,
+        createdAt: at,
+        read: false,
+      ),
+    );
+  }
+
+  Map<String, Object?> _gameNote(Game g) => {'game_id': g.id, 'sport_id': g.sportId, 'starts_local': isoLocal(g.start)};
+
+  Map<String, Object?> _requestNote(GameRequest r) => {
+    'request_id': r.id,
+    'sport_id': r.sportId,
+    'starts_local': isoLocal(r.start),
+  };
+
+  Map<String, Object?> _bookingNote(Booking b) {
+    final venue = _venue(b.venueId);
+    return {
+      'booking_id': b.id,
+      'sport_id': venue.court(b.courtId).sportId,
+      'starts_local': isoLocal(b.start),
+      'venue_name': {'uz': venue.name.uz, 'ru': venue.name.ru, 'en': venue.name.en},
+    };
+  }
+
+  /// Every participant but [except] hears about the game.
+  void _notifyGame(Game g, String kind, {String? except}) {
+    for (final id in g.participantIds) {
+      if (id != except) _notify(id, kind, 'games', _gameNote(g));
+    }
+  }
+
+  void _notifyIfFull(Game g, String filler) {
+    if (g.isFull) _notifyGame(g, 'game_full', except: filler);
+  }
+
+  // ---- Who is who ----
+
+  Player _playerOf(String id) => id == kMeId
+      ? _me
+      : kSamplePlayers.firstWhere(
+          (p) => p.id == id,
+          orElse: () => Player(id: id, name: id),
+        );
+
+  String _nameOf(String id) => id == kMeId ? meName : _playerOf(id).name;
+
+  bool _exists(String userId) => userId == kMeId || kSamplePlayers.any((p) => p.id == userId);
+
+  GameMember _member(String userId, String sportId) => GameMember(
+    id: userId,
+    name: _nameOf(userId),
+    level: _playerOf(userId).levelFor(sportId),
+    reliability: _reliability(userId),
+  );
+
+  /// Sample players live in Tashkent, like the demo player until they choose a city.
+  static const _homeCityId = 'tashkent';
+
+  DateTime _cityNow(String cityId) => venueNow(cityById(cityId), utcNow: utcNow());
+
+  // ---- Games: rules ----
+
+  /// Invite state per game and invited player.
+  final Map<String, Map<String, _Invite>> _invites = {};
+
+  final Map<String, List<_JoinAsk>> _joinAsks = {};
+
+  _Invite? _inviteOf(String gameId, String userId) => _invites[gameId]?[userId];
+
+  bool _isInvited(String gameId, String userId) => _inviteOf(gameId, userId) == _Invite.pending;
+
+  _JoinAsk? _pendingAsk(String gameId, String userId) =>
+      (_joinAsks[gameId] ?? const []).where((a) => a.userId == userId && a.status == _AskStatus.pending).firstOrNull;
+
+  bool _canSee(String viewer, Game g) =>
+      g.visibility == GameVisibility.public ||
+      g.hostId == viewer ||
+      g.participantIds.contains(viewer) ||
+      _inviteOf(g.id, viewer) != null ||
+      (_joinAsks[g.id] ?? const []).any((a) => a.userId == viewer);
+
+  bool _started(Game g) => !g.start.isAfter(_cityNow(g.cityId));
+
+  /// An open game that has not started and that [viewer] may see; anything
+  /// else does not exist for them.
+  Game _live(String id, {String? viewer}) {
+    final g = _games[id];
+    if (g == null || g.cancelled || _started(g) || (viewer != null && !_canSee(viewer, g))) {
+      throw const JoinException(JoinError.notFound);
+    }
+    return g;
+  }
+
+  /// A game of [userId]'s own that has not started.
+  Game _hosted(String id, String userId) {
+    final g = _games[id];
+    if (g == null || g.hostId != userId || g.cancelled || _started(g)) throw const JoinException(JoinError.notFound);
+    return g;
+  }
+
+  /// The game as [viewer] sees it: who is in, their status, and, for the
+  /// host, the requests waiting.
+  Game _view(Game g, String viewer) {
+    final status = g.hostId == viewer
+        ? MyGameStatus.host
+        : g.participantIds.contains(viewer)
+        ? MyGameStatus.participant
+        : _isInvited(g.id, viewer)
+        ? MyGameStatus.invited
+        : _pendingAsk(g.id, viewer) != null
+        ? MyGameStatus.requested
+        : null;
+    return g.copyWith(
+      participants: [for (final id in g.participantIds) _member(id, g.sportId)],
+      joinRequests: g.hostId == viewer
+          ? [
+              for (final a in _joinAsks[g.id] ?? const <_JoinAsk>[])
+                if (a.status == _AskStatus.pending)
+                  JoinRequest(id: a.id, member: _member(a.userId, g.sportId), createdAt: a.createdAt),
+            ]
+          : const [],
+      myStatus: status,
+      clearMyStatus: status == null,
+    );
+  }
+
+  /// The player became a participant: their invite is accepted and any open
+  /// request is closed.
+  void _closePending(String gameId, String userId) {
+    if (_invites[gameId]?[userId] == _Invite.pending) _invites[gameId]![userId] = _Invite.accepted;
+    _pendingAsk(gameId, userId)?.status = _AskStatus.approved;
+  }
+
+  /// The people in the game took a new player: [joined] is the game after.
+  Game _save(Game g) => _games[g.id] = g;
+
+  /// Acts as [userId]: sample players use these to join, ask and be invited.
+  Future<Game> joinAs(String userId, String id) async {
+    _requireReliable(userId);
+    final g = _live(id);
+    final invited = _isInvited(id, userId);
+    final joined = _save(joinGame(g, _playerOf(userId), invited: invited));
+    _closePending(id, userId);
+    _notify(g.hostId, 'game_joined', 'games', {..._gameNote(g), 'actor_name': _nameOf(userId)});
+    _notifyIfFull(joined, userId);
+    return _view(joined, userId);
+  }
+
+  Future<Game> leaveAs(String userId, String id) async {
+    final g = _games[id];
+    if (g == null) throw const JoinException(JoinError.notFound);
+    final left = _save(leaveGame(g, userId));
+    if (!g.cancelled && g.end.isAfter(_cityNow(g.cityId))) {
+      if (g.start.difference(_cityNow(g.cityId)) < BookingEngine.freeCancelWindow) {
+        recordReliability(userId, ReliabilityKind.lateCancel, id);
+      }
+      _notify(g.hostId, 'game_left', 'games', {..._gameNote(g), 'actor_name': _nameOf(userId)});
+    }
+    return _view(left, userId);
+  }
+
+  Future<Game> requestToJoinAs(String userId, String id) async {
+    _requireReliable(userId);
+    final g = _live(id, viewer: userId);
+    if (g.participantIds.contains(userId)) throw const JoinException(JoinError.alreadyJoined);
+    if (_pendingAsk(id, userId) != null) throw const JoinException(JoinError.alreadyRequested);
+    if (g.isFull) throw const JoinException(JoinError.full);
+    final ask = _JoinAsk(id: 'jr${_nextId++}', gameId: id, userId: userId, createdAt: utcNow());
+    (_joinAsks[id] ??= []).add(ask);
+    _notify(g.hostId, 'join_request', 'games', {..._gameNote(g), 'request_id': ask.id, 'actor_name': _nameOf(userId)});
+    return _view(g, userId);
+  }
+
+  Future<Game> inviteAs(String userId, String id, String inviteeId) async {
+    final g = _hosted(id, userId);
+    if (!_exists(inviteeId)) throw const JoinException(JoinError.notFound);
+    if (g.participantIds.contains(inviteeId)) throw const JoinException(JoinError.alreadyJoined);
+    final previous = _inviteOf(id, inviteeId);
+    (_invites[id] ??= {})[inviteeId] = _Invite.pending;
+    if (previous != _Invite.pending) {
+      _notify(inviteeId, 'game_invite', 'invites', {..._gameNote(g), 'actor_name': _nameOf(userId)});
+    }
+    return _view(g, userId);
+  }
+
+  /// A new game hosted by [userId]: from their own booking for a bookable
+  /// sport, at a venue or meeting point for a place-only one.
+  Future<Game> createAs(String userId, GameDraft draft) async {
+    _requireReliable(userId);
+    if (draft.spots < 2 ||
+        draft.spots > 30 ||
+        draft.minLevel < 1 ||
+        draft.maxLevel > 5 ||
+        draft.minLevel > draft.maxLevel ||
+        (draft.distanceKm != null && draft.distanceKm! <= 0)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    final sport = _sports[draft.sportId];
+    if (sport == null || !sport.active) throw const JoinException(JoinError.notFound);
+
+    final String cityId;
+    final GameKind kind;
+    final DateTime start;
+    final DateTime end;
+    String? venueId;
+    String? bookingId;
+    String? meeting;
+    int? price;
+    if (sport.sport.bookable) {
+      final booking = draft.bookingId == null ? null : _engine.byId(draft.bookingId!);
+      if (booking == null ||
+          booking.userId != userId ||
+          booking.source != BookingSource.app ||
+          booking.status != BookingStatus.confirmed ||
+          !booking.start.isAfter(_nowAt(_venue(booking.venueId))) ||
+          _venue(booking.venueId).court(booking.courtId).sportId != sport.sport.id) {
+        throw const JoinException(JoinError.bookingNotUsable);
+      }
+      if (_games.values.any((g) => g.bookingId == booking.id && !g.cancelled)) {
+        throw const JoinException(JoinError.gameExists);
+      }
+      kind = GameKind.booked;
+      cityId = _venue(booking.venueId).cityId;
+      venueId = booking.venueId;
+      bookingId = booking.id;
+      start = booking.start;
+      end = booking.end;
+      price = _perPlayer(booking.totalPrice, draft.spots);
+    } else {
+      if (draft.venueId != null) {
+        if (!_venues.containsKey(draft.venueId) || _inactiveVenues.contains(draft.venueId)) {
+          throw const JoinException(JoinError.notFound);
+        }
+        kind = GameKind.place;
+        venueId = draft.venueId;
+        cityId = _venue(draft.venueId!).cityId;
+      } else {
+        meeting = _blank(draft.meetingPoint);
+        final lat = draft.meetingLat;
+        final lng = draft.meetingLng;
+        if (meeting == null ||
+            (lat == null) != (lng == null) ||
+            (lat != null && (lat < -90 || lat > 90)) ||
+            (lng != null && (lng < -180 || lng > 180))) {
+          throw const JoinException(JoinError.invalidArgument);
+        }
+        kind = GameKind.mapPoint;
+        cityId = _homeCityId;
+      }
+      _checkWindow(cityId, draft.start, draft.end);
+      start = draft.start!;
+      end = draft.end!;
+    }
+
+    final game = Game(
+      id: 'gm${_nextId++}',
+      sportId: sport.sport.id,
+      cityId: cityId,
+      venueId: venueId,
+      hostId: userId,
+      kind: kind,
+      visibility: draft.visibility,
+      start: start,
+      end: end,
+      spots: draft.spots,
+      participantIds: [userId],
+      minLevel: draft.minLevel,
+      maxLevel: draft.maxLevel,
+      pricePerPlayer: price,
+      bookingId: bookingId,
+      note: _blank(draft.note),
+      meetingPoint: meeting,
+      meetingLat: meeting == null ? null : draft.meetingLat,
+      meetingLng: meeting == null ? null : draft.meetingLng,
+      distanceKm: draft.distanceKm,
+      pace: _blank(draft.pace),
+    );
+    return _view(_save(game), userId);
+  }
+
+  static String? _blank(String? text) {
+    final t = text?.trim();
+    return t == null || t.isEmpty ? null : t;
+  }
+
+  /// The share each player pays: the court price over the spots, rounded up.
+  static int _perPlayer(int total, int spots) => (total + spots - 1) ~/ spots;
+
+  /// The window of a place-only game or a Game Request: in the future, within
+  /// 14 days, at most 12 hours long.
+  void _checkWindow(String cityId, DateTime? start, DateTime? end) {
+    if (start == null || end == null) throw const JoinException(JoinError.invalidArgument);
+    final now = _cityNow(cityId);
+    if (!start.isAfter(now)) throw const JoinException(JoinError.inPast);
+    if (dateOnly(start).difference(dateOnly(now)).inDays > BookingEngine.maxDaysAhead) {
+      throw const JoinException(JoinError.tooFarAhead);
+    }
+    if (!end.isAfter(start) || end.difference(start) > const Duration(hours: 12)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+  }
+
+  /// The games on a booking that is no longer happening are cancelled and
+  /// their players told (except [actor]). Nobody's reliability changes.
+  void _cancelGamesOn(String bookingId, String actor) {
+    for (final g in _games.values.toList()) {
+      if (g.bookingId != bookingId || g.cancelled) continue;
+      final cancelled = _save(g.copyWith(cancelled: true));
+      _notifyGame(cancelled, 'game_cancelled', except: actor);
+    }
+  }
+
   // ---- GameRepository ----
 
   @override
   Future<List<Game>> games(String cityId) async {
-    final open = _games.values.where((g) {
-      final upcoming = g.start.isAfter(_nowAt(_venue(g.venueId)));
-      return g.cityId == cityId && upcoming && (!g.isFull || g.participantIds.contains(kMeId));
-    }).toList()..sort((a, b) => a.start.compareTo(b.start));
-    return open;
+    bool listed(Game g) {
+      if (g.cancelled || _started(g)) return false;
+      final mine = g.hostId == kMeId || g.participantIds.contains(kMeId) || _isInvited(g.id, kMeId);
+      final inCity = g.cityId == cityId && _canSee(kMeId, g) && (!g.isFull || g.participantIds.contains(kMeId));
+      return inCity || mine;
+    }
+
+    return [
+      for (final g in _games.values.where(listed).toList()..sort((a, b) => a.start.compareTo(b.start))) _view(g, kMeId),
+    ];
   }
 
   @override
-  Future<Game> game(String id) async => _games[id] ?? (throw StateError('Unknown game $id'));
+  Future<Game> game(String id) async {
+    final g = _games[id];
+    if (g == null || !_canSee(kMeId, g)) throw StateError('Unknown game $id');
+    return _view(g, kMeId);
+  }
 
   @override
-  Future<Game> join(String id) async => _games[id] = joinGame(await game(id), _me);
+  Future<Game> join(String id) => joinAs(kMeId, id);
 
   @override
-  Future<Game> leave(String id) async => _games[id] = leaveGame(await game(id), kMeId);
+  Future<Game> leave(String id) => leaveAs(kMeId, id);
 
   @override
-  Future<Player> player(String id) async =>
-      id == kMeId ? _me : kSamplePlayers.firstWhere((p) => p.id == id, orElse: () => Player(id: id, name: id));
+  Future<Player> player(String id) async => _playerOf(id);
+
+  @override
+  Future<Game> create(GameDraft draft) => createAs(kMeId, draft);
+
+  @override
+  Future<Game> requestToJoin(String gameId) => requestToJoinAs(kMeId, gameId);
+
+  @override
+  Future<Game> withdrawRequest(String requestId) async {
+    final ask = [
+      for (final asks in _joinAsks.values) ...asks,
+    ].where((a) => a.id == requestId && a.userId == kMeId && a.status == _AskStatus.pending).firstOrNull;
+    if (ask == null) throw const JoinException(JoinError.notFound);
+    ask.status = _AskStatus.withdrawn;
+    return _view(_games[ask.gameId]!, kMeId);
+  }
+
+  @override
+  Future<Game> decideRequest(String requestId, {required bool approve}) async {
+    final ask = [for (final asks in _joinAsks.values) ...asks].where((a) => a.id == requestId).firstOrNull;
+    final g = ask == null ? null : _games[ask.gameId];
+    if (ask == null || g == null || g.hostId != kMeId || ask.status != _AskStatus.pending) {
+      throw const JoinException(JoinError.notFound);
+    }
+    if (!approve) {
+      ask.status = _AskStatus.declined;
+      _notify(ask.userId, 'join_declined', 'games', _gameNote(g));
+      return _view(g, kMeId);
+    }
+    if (g.cancelled || _started(g)) throw const JoinException(JoinError.notFound);
+    if (g.participantIds.contains(ask.userId)) throw const JoinException(JoinError.alreadyJoined);
+    if (g.isFull) throw const JoinException(JoinError.full);
+    // The requester may have been blocked since asking.
+    _requireReliable(ask.userId);
+    final joined = _save(g.copyWith(participantIds: [...g.participantIds, ask.userId]));
+    _closePending(g.id, ask.userId);
+    _notify(ask.userId, 'join_approved', 'games', _gameNote(g));
+    _notifyIfFull(joined, ask.userId);
+    return _view(joined, kMeId);
+  }
+
+  @override
+  Future<Game> invite(String gameId, String userId) => inviteAs(kMeId, gameId, userId);
+
+  @override
+  Future<Game> declineInvite(String gameId) async {
+    if (!_isInvited(gameId, kMeId)) throw const JoinException(JoinError.notFound);
+    _invites[gameId]![kMeId] = _Invite.declined;
+    return _view(_games[gameId]!, kMeId);
+  }
+
+  @override
+  Future<Game> removeParticipant(String gameId, String userId) async {
+    final g = _hosted(gameId, kMeId);
+    if (userId == kMeId) throw const JoinException(JoinError.hostCannotLeave);
+    if (!g.participantIds.contains(userId)) throw const JoinException(JoinError.notParticipant);
+    final removed = _save(leaveGame(g, userId));
+    _notify(userId, 'game_removed', 'games', _gameNote(g));
+    return _view(removed, kMeId);
+  }
+
+  @override
+  Future<Game> updateGame(String gameId, {String? note, required int spots}) async {
+    final g = _hosted(gameId, kMeId);
+    if (spots < 2 || spots > 30 || spots < g.participantIds.length) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    final newNote = note == null ? g.note : _blank(note);
+    if (newNote == g.note && spots == g.spots) return _view(g, kMeId);
+    final booking = g.bookingId == null ? null : _engine.byId(g.bookingId!);
+    final updated = _save(
+      g.copyWith(
+        spots: spots,
+        note: newNote,
+        clearNote: newNote == null,
+        pricePerPlayer: booking == null ? null : _perPlayer(booking.totalPrice, spots),
+      ),
+    );
+    _notifyGame(updated, 'game_changed', except: kMeId);
+    return _view(updated, kMeId);
+  }
+
+  @override
+  Future<Game> cancelGame(String gameId, {required bool cancelBooking}) async {
+    final g = _games[gameId];
+    if (g == null || g.hostId != kMeId || g.cancelled) throw const JoinException(JoinError.notFound);
+    if (_started(g)) throw const JoinException(JoinError.notCancellable);
+    final cancelled = _save(g.copyWith(cancelled: true));
+    _notifyGame(cancelled, 'game_cancelled', except: kMeId);
+    final booking = g.bookingId == null ? null : _engine.byId(g.bookingId!);
+    if (cancelBooking &&
+        booking != null &&
+        booking.userId == kMeId &&
+        booking.source == BookingSource.app &&
+        booking.status == BookingStatus.confirmed &&
+        booking.start.isAfter(_nowAt(_venue(booking.venueId)))) {
+      await cancel(booking.id);
+    }
+    return _view(cancelled, kMeId);
+  }
+
+  // ---- Game Requests ----
+
+  GameRequest _requestView(GameRequest r, String viewer) {
+    final status = r.hostId == viewer
+        ? MyRequestStatus.host
+        : r.interested.any((m) => m.id == viewer)
+        ? MyRequestStatus.interested
+        : null;
+    return r.copyWith(
+      interested: [for (final m in r.interested) _member(m.id, r.sportId)],
+      myStatus: status,
+      clearMyStatus: status == null,
+    );
+  }
+
+  /// An open request whose window has not ended, which [mustHost] limits to
+  /// the poster's own.
+  GameRequest _openRequest(String id, {String? host}) {
+    final r = _requests[id];
+    if (r == null || !r.isOpen || !r.end.isAfter(_cityNow(r.cityId)) || (host != null && r.hostId != host)) {
+      throw const JoinException(JoinError.notFound);
+    }
+    return r;
+  }
+
+  GameRequest _saveRequest(GameRequest r) => _requests[r.id] = r;
+
+  Future<GameRequest> createRequestAs(String userId, GameRequestDraft draft) async {
+    _requireReliable(userId);
+    if (draft.playersNeeded < 1 ||
+        draft.playersNeeded > 29 ||
+        draft.minLevel < 1 ||
+        draft.maxLevel > 5 ||
+        draft.minLevel > draft.maxLevel) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    final sport = _sports[draft.sportId];
+    if (sport == null || !sport.active) throw const JoinException(JoinError.notFound);
+    if (draft.venueId != null && (!_venues.containsKey(draft.venueId) || _inactiveVenues.contains(draft.venueId))) {
+      throw const JoinException(JoinError.notFound);
+    }
+    final cityId = draft.venueId == null ? _homeCityId : _venue(draft.venueId!).cityId;
+    _checkWindow(cityId, draft.start, draft.end);
+    return _requestView(
+      _saveRequest(
+        GameRequest(
+          id: 'rqn${_nextId++}',
+          sportId: draft.sportId,
+          cityId: cityId,
+          hostId: userId,
+          hostName: _nameOf(userId),
+          venueId: draft.venueId,
+          area: _blank(draft.area),
+          start: draft.start,
+          end: draft.end,
+          playersNeeded: draft.playersNeeded,
+          minLevel: draft.minLevel,
+          maxLevel: draft.maxLevel,
+          note: _blank(draft.note),
+          createdAt: utcNow(),
+        ),
+      ),
+      userId,
+    );
+  }
+
+  /// "I'm in", as [userId].
+  Future<GameRequest> interestAs(String userId, String id) async {
+    _requireReliable(userId);
+    final r = _openRequest(id);
+    if (r.hostId == userId) throw const JoinException(JoinError.invalidArgument);
+    if (r.interested.any((m) => m.id == userId)) throw const JoinException(JoinError.alreadyJoined);
+    final updated = _saveRequest(r.copyWith(interested: [...r.interested, _member(userId, r.sportId)]));
+    _notify(r.hostId, 'request_interest', 'requests', {..._requestNote(r), 'actor_name': _nameOf(userId)});
+    return _requestView(updated, userId);
+  }
+
+  @override
+  Future<List<GameRequest>> requests(String cityId) async => [
+    for (final r
+        in _requests.values
+            .where((r) => r.isOpen && r.end.isAfter(_cityNow(r.cityId)) && (r.cityId == cityId || r.hostId == kMeId))
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start)))
+      _requestView(r, kMeId),
+  ];
+
+  @override
+  Future<GameRequest> request(String id) async {
+    final r = _requests[id];
+    if (r == null) throw StateError('Unknown request $id');
+    return _requestView(r, kMeId);
+  }
+
+  @override
+  Future<GameRequest> createRequest(GameRequestDraft draft) => createRequestAs(kMeId, draft);
+
+  @override
+  Future<GameRequest> imIn(String id) => interestAs(kMeId, id);
+
+  @override
+  Future<GameRequest> withdrawInterest(String id) async {
+    final r = _requests[id];
+    if (r == null || !r.isOpen || !r.interested.any((m) => m.id == kMeId)) {
+      throw const JoinException(JoinError.notFound);
+    }
+    return _requestView(
+      _saveRequest(
+        r.copyWith(
+          interested: [
+            for (final m in r.interested)
+              if (m.id != kMeId) m,
+          ],
+        ),
+      ),
+      kMeId,
+    );
+  }
+
+  @override
+  Future<GameRequest> removeInterested(String id, String userId) async {
+    final r = _openRequest(id, host: kMeId);
+    if (!r.interested.any((m) => m.id == userId)) throw const JoinException(JoinError.notFound);
+    return _requestView(
+      _saveRequest(
+        r.copyWith(
+          interested: [
+            for (final m in r.interested)
+              if (m.id != userId) m,
+          ],
+        ),
+      ),
+      kMeId,
+    );
+  }
+
+  @override
+  Future<GameRequest> cancelRequest(String id) async {
+    final r = _openRequest(id, host: kMeId);
+    return _requestView(_saveRequest(r.copyWith(status: GameRequestStatus.cancelled)), kMeId);
+  }
+
+  @override
+  Future<Game> convertRequest(String id, PlacePick place) async {
+    final r = _openRequest(id, host: kMeId);
+    final hasPlace = place.bookingId != null || place.venueId != null || _blank(place.meetingPoint) != null;
+    final game = await createAs(
+      kMeId,
+      GameDraft(
+        sportId: r.sportId,
+        spots: place.spots ?? 1 + r.playersNeeded,
+        minLevel: r.minLevel,
+        maxLevel: r.maxLevel,
+        visibility: place.visibility ?? GameVisibility.public,
+        note: r.note,
+        pace: place.pace,
+        distanceKm: place.distanceKm,
+        bookingId: place.bookingId,
+        venueId: place.venueId ?? (hasPlace ? null : r.venueId),
+        meetingPoint: place.meetingPoint,
+        meetingLat: place.meetingLat,
+        meetingLng: place.meetingLng,
+        start: place.start ?? r.start,
+        end: place.end ?? r.end,
+      ),
+    );
+    var current = _games[game.id]!;
+    for (final member in r.interested) {
+      var added = false;
+      if (!current.isFull && !current.participantIds.contains(member.id)) {
+        current = _save(current.copyWith(participantIds: [...current.participantIds, member.id]));
+        added = true;
+      }
+      _notify(member.id, 'request_converted', 'requests', {..._requestNote(r), 'game_id': game.id, 'added': added});
+    }
+    _saveRequest(r.copyWith(status: GameRequestStatus.converted, gameId: game.id));
+    return _view(current, kMeId);
+  }
+
+  // ---- SocialRepository ----
+
+  @override
+  Future<List<Team>> teams(String cityId) async => kSampleTeams.where((t) => t.cityId == cityId).toList();
+
+  @override
+  Future<List<PlayerProfile>> players(
+    String cityId, {
+    String? sportId,
+    int minLevel = 1,
+    int maxLevel = 5,
+    String? query,
+  }) async => searchPlayers(
+    kSamplePlayers,
+    sportId: sportId,
+    minLevel: minLevel,
+    maxLevel: maxLevel,
+    query: query,
+    reliabilityOf: _reliability,
+  );
+
+  @override
+  Future<PlayerProfile> profile(String userId) async => profileOf(
+    _playerOf(userId),
+    reliability: _reliability(userId),
+    gamesPlayed: (_reliabilityEvents[userId] ?? const []).where((e) => e.kind == ReliabilityKind.gameCompleted).length,
+  );
+
+  // ---- NotificationRepository ----
+
+  @override
+  Future<List<AppNotification>> inbox({DateTime? before}) async {
+    final entries = [
+      for (final n in _inbox)
+        if (before == null || n.createdAt.isBefore(before)) n,
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return entries.take(50).toList();
+  }
+
+  @override
+  Future<int> unreadCount() async => _inbox.where((n) => !n.read).length;
+
+  @override
+  Future<void> markRead([List<String>? ids]) async {
+    for (var i = 0; i < _inbox.length; i++) {
+      if (ids == null || ids.contains(_inbox[i].id)) _inbox[i] = _inbox[i].copyWith(read: true);
+    }
+  }
+
+  @override
+  Future<CommunitySettings> settings() async => CommunitySettings(
+    mutedCategories: {..._settings.mutedCategories},
+    hiddenFromSearch: _settings.hiddenFromSearch,
+    reliability: _reliability(kMeId),
+  );
+
+  @override
+  Future<void> saveSettings(CommunitySettings settings) async {
+    if (!settings.mutedCategories.every(kNotificationCategories.contains)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    _settings = CommunitySettings(
+      mutedCategories: {...settings.mutedCategories},
+      hiddenFromSearch: settings.hiddenFromSearch,
+    );
+  }
+
+  // ---- Booking hooks the owner repository calls ----
+
+  /// A venue cancelled [booking]: the player hears, the games on it are off.
+  void _venueCancelled(Booking booking) {
+    if (booking.source == BookingSource.app) {
+      _notify(booking.userId, 'booking_cancelled_by_venue', 'bookings', _bookingNote(booking));
+    }
+    _cancelGamesOn(booking.id, kMeId);
+  }
+
+  /// An owner marked an app booking paid or no-show; walk-ins count for nothing.
+  void _marked(Booking booking, BookingOutcome outcome) {
+    if (booking.source != BookingSource.app) return;
+    recordReliability(
+      booking.userId,
+      outcome == BookingOutcome.paid ? ReliabilityKind.bookingPaid : ReliabilityKind.noShow,
+      booking.id,
+    );
+  }
 
   // ---- Owner ----
 
@@ -281,7 +1106,12 @@ class _SampleOwnerRepository implements OwnerRepository {
   /// The session name for the demo player, the sample name for anyone else.
   String _nameOf(String userId) => userId == kMeId
       ? _backend.meName
-      : kSamplePlayers.firstWhere((p) => p.id == userId, orElse: () => Player(id: userId, name: userId)).name;
+      : kSamplePlayers
+            .firstWhere(
+              (p) => p.id == userId,
+              orElse: () => Player(id: userId, name: userId),
+            )
+            .name;
 
   OwnerBooking _view(Booking booking) => OwnerBooking.fromBooking(booking, nameOf: _nameOf);
 
@@ -337,13 +1167,17 @@ class _SampleOwnerRepository implements OwnerRepository {
   @override
   Future<OwnerBooking> cancel(String bookingId) async {
     final booking = _ownedBooking(bookingId);
-    return _logged('owner_cancel_booking', booking, _engine.cancelByVenue(bookingId, now: _now(booking.venueId)));
+    final cancelled = _engine.cancelByVenue(bookingId, now: _now(booking.venueId));
+    _backend._venueCancelled(cancelled);
+    return _logged('owner_cancel_booking', booking, cancelled);
   }
 
   @override
   Future<OwnerBooking> mark(String bookingId, BookingOutcome outcome) async {
     final booking = _ownedBooking(bookingId);
-    return _logged('owner_mark_booking', booking, _engine.mark(bookingId, outcome, now: _now(booking.venueId)));
+    final marked = _engine.mark(bookingId, outcome, now: _now(booking.venueId));
+    _backend._marked(marked, outcome);
+    return _logged('owner_mark_booking', booking, marked);
   }
 
   // ---- Settings: the same validation as the database functions ----
@@ -352,7 +1186,9 @@ class _SampleOwnerRepository implements OwnerRepository {
     final valid =
         hours.keys.every((d) => d >= 1 && d <= 7) &&
         (!allDays || hours.length == 7) &&
-        hours.values.every((h) => h == null || (h.openMinute >= 0 && h.openMinute < h.closeMinute && h.closeMinute <= 1440));
+        hours.values.every(
+          (h) => h == null || (h.openMinute >= 0 && h.openMinute < h.closeMinute && h.closeMinute <= 1440),
+        );
     if (!valid) throw const BookingException(BookingError.invalidHours);
   }
 
@@ -458,14 +1294,24 @@ class _SampleOwnerRepository implements OwnerRepository {
         'base_price': basePrice,
         'rules': [
           for (final r in rules)
-            {'weekdays': r.weekdays.toList()..sort(), 'from_minute': r.fromMinute, 'to_minute': r.toMinute, 'price': r.price},
+            {
+              'weekdays': r.weekdays.toList()..sort(),
+              'from_minute': r.fromMinute,
+              'to_minute': r.toMinute,
+              'price': r.price,
+            },
         ],
       },
     );
   }
 
   @override
-  Future<OwnerDashboard> dashboard(String venueId, {String? courtId, required DateTime from, required DateTime to}) async {
+  Future<OwnerDashboard> dashboard(
+    String venueId, {
+    String? courtId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
     _owned(venueId);
     return _engine.ownerDashboard(venueId, courtId: courtId, from: from, to: to);
   }
@@ -499,7 +1345,12 @@ class _SampleAdminRepository implements AdminRepository {
 
   String _ownerName(String userId) => userId == kMeId
       ? _b.meName
-      : kSamplePlayers.firstWhere((p) => p.id == userId, orElse: () => Player(id: userId, name: userId)).name;
+      : kSamplePlayers
+            .firstWhere(
+              (p) => p.id == userId,
+              orElse: () => Player(id: userId, name: userId),
+            )
+            .name;
 
   /// The venue and court for [courtId].
   (Venue, Court) _findCourt(String courtId) {
@@ -514,10 +1365,11 @@ class _SampleAdminRepository implements AdminRepository {
   AdminVenue _adminVenue(Venue v) => AdminVenue(
     venue: v,
     active: !_b._inactiveVenues.contains(v.id),
-    inactiveCourtIds: {for (final c in v.courts) if (_b._inactiveCourts.contains(c.id)) c.id},
-    owners: [
-      for (final id in _b._owners[v.id] ?? const <String>{}) OwnerRef(userId: id, name: _ownerName(id)),
-    ],
+    inactiveCourtIds: {
+      for (final c in v.courts)
+        if (_b._inactiveCourts.contains(c.id)) c.id,
+    },
+    owners: [for (final id in _b._owners[v.id] ?? const <String>{}) OwnerRef(userId: id, name: _ownerName(id))],
   );
 
   @override
@@ -555,7 +1407,9 @@ class _SampleAdminRepository implements AdminRepository {
       address: _clean(draft.address),
       district: _clean(draft.district),
       phone: draft.phone.trim(),
-      hours: existing?.hours ?? weekHours(weekdays: const DayHours.hm(8, 0, 22, 0), weekend: const DayHours.hm(8, 0, 22, 0)),
+      hours:
+          existing?.hours ??
+          weekHours(weekdays: const DayHours.hm(8, 0, 22, 0), weekend: const DayHours.hm(8, 0, 22, 0)),
       courts: existing?.courts ?? const [],
       amenities: List.unmodifiable(draft.amenities),
       colorSeed: existing?.colorSeed ?? _b._venues.length,
@@ -687,7 +1541,12 @@ class _SampleAdminRepository implements AdminRepository {
     final (venue, court) = _findCourt(courtId);
     if (_b._engine.hasBookings(courtId: courtId)) throw const BookingException(BookingError.hasBookings);
     final before = courtDraftJson(CourtDraft.from(court, active: !_b._inactiveCourts.contains(courtId)));
-    _b._venues[venue.id] = venue.copyWith(courts: [for (final c in venue.courts) if (c.id != courtId) c]);
+    _b._venues[venue.id] = venue.copyWith(
+      courts: [
+        for (final c in venue.courts)
+          if (c.id != courtId) c,
+      ],
+    );
     _b._inactiveCourts.remove(courtId);
     _b._log('admin_delete_court', 'court', courtId, before: before);
   }
@@ -821,4 +1680,19 @@ class _SampleAdminRepository implements AdminRepository {
     if (limit < 1 || limit > 100) _invalid();
     return _b._audit.reversed.where((e) => before == null || e.at.isBefore(before)).take(limit).toList();
   }
+}
+
+enum _Invite { pending, accepted, declined }
+
+enum _AskStatus { pending, approved, declined, withdrawn }
+
+/// A request to join a game, waiting for the host.
+class _JoinAsk {
+  _JoinAsk({required this.id, required this.gameId, required this.userId, required this.createdAt});
+
+  final String id;
+  final String gameId;
+  final String userId;
+  final DateTime createdAt;
+  _AskStatus status = _AskStatus.pending;
 }

@@ -231,7 +231,8 @@ void main() {
     await tap(tester, find.text('Place only'));
     await tap(tester, key('save-sport'));
     expect(find.text('Squash'), findsOneWidget);
-    expect(find.textContaining('Place only'), findsOneWidget);
+    // Running and gym are place-only too, so Squash is the third.
+    expect(find.textContaining('Place only'), findsNWidgets(3));
     await settleSnackbars(tester);
 
     // Editing keeps the id and does not offer to change it.

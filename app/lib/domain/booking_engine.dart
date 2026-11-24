@@ -1,4 +1,5 @@
 import '../core/markets.dart';
+import 'community.dart' show Reliability;
 import 'models.dart';
 import 'owner.dart';
 import 'pricing.dart';
@@ -140,6 +141,9 @@ enum BookingError {
   /// Creating a sport whose id is taken.
   alreadyExists,
 
+  /// Reliability is too low to book (spec §8.3).
+  reliabilityTooLow,
+
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
 }
@@ -212,17 +216,22 @@ class BookingEngine {
     required String courtId,
     required List<SlotTime> slots,
     required DateTime now,
+    Reliability reliability = Reliability.fresh,
   }) {
+    if (reliability.isBlocked) throw const BookingException(BookingError.reliabilityTooLow);
     final (:court, :sorted) = _checkedSlots(venueId, courtId, slots);
     final start = sorted.first.start;
     final end = sorted.last.end;
     if (!start.isAfter(now)) throw const BookingException(BookingError.inPast);
     _checkDaysAhead(start, now);
 
+    // A limited player has one upcoming booking at a time instead of three.
     final upcoming = _bookings.where(
       (b) => b.userId == userId && b.status == BookingStatus.confirmed && b.start.isAfter(now),
     );
-    if (upcoming.length >= maxUpcoming) throw const BookingException(BookingError.tooManyBookings);
+    if (upcoming.length >= (reliability.isLimited ? 1 : maxUpcoming)) {
+      throw const BookingException(BookingError.tooManyBookings);
+    }
 
     for (final b in _bookings.where((b) => b.userId == userId && b.status == BookingStatus.held).toList()) {
       _replace(b.copyWith(status: BookingStatus.released, clearHold: true));

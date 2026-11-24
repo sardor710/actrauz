@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/social.dart';
-import '../domain/games.dart';
 import 'providers.dart';
 
 /// Venues the player has marked with a heart. Kept for this app run only
@@ -23,12 +22,7 @@ final gamesSportFilterProvider = StateProvider<String?>((ref) => null);
 /// Day chosen on the Games tab as days from today. `null` = every day.
 final gamesDayProvider = StateProvider<int?>((ref) => null);
 
-final socialRepositoryProvider = Provider<SocialRepository>((ref) => const SampleSocialRepository());
-
 final teamsProvider = FutureProvider<List<Team>>(
   (ref) => ref.watch(socialRepositoryProvider).teams(ref.watch(currentCityProvider).id),
 );
 
-final playersProvider = FutureProvider<List<Player>>(
-  (ref) => ref.watch(socialRepositoryProvider).players(ref.watch(currentCityProvider).id),
-);

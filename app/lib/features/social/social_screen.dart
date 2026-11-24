@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../data/social.dart';
-import '../../domain/games.dart';
+import '../../domain/community.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../../state/ui_providers.dart';
@@ -49,7 +49,7 @@ class SocialScreen extends ConsumerWidget {
               ),
             ),
             AsyncBody(
-              value: ref.watch(playersProvider),
+              value: ref.watch(playersProvider(kAllPlayers)),
               builder: (players) => SectionCard(
                 title: l.playersNearYou,
                 contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -147,7 +147,7 @@ class _TeamTile extends StatelessWidget {
 class _PlayerRow extends StatelessWidget {
   const _PlayerRow({required this.player, required this.sports});
 
-  final Player player;
+  final PlayerProfile player;
   final List<Sport> sports;
 
   @override
