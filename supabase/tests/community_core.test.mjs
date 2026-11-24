@@ -137,6 +137,61 @@ test('my_notifications pages by p_before and respects the limit', async () => {
   assert.equal(older.length, 1);
 });
 
+test('my_notifications pages through entries that share a created_at with the id tie-breaker', async () => {
+  // As game_full to several players: one statement, one clock (with
+  // microseconds, which a web client's DateTime drops).
+  for (let i = 0; i < 3; i++) {
+    await pool.query(`select app.notify($1, 'game_full', 'games', '{}', $2::timestamptz + interval '123456 microseconds')`, [ali, now]);
+  }
+  await pool.query(`select app.notify($1, 'game_joined', 'games', '{}', $2::timestamptz - interval '1 minute')`, [ali, now]);
+  const page = (args) => asUser(pool, ali, (c) => rpc(c, 'my_notifications', args)).then((rows) => rows.map((r) => r.r));
+
+  const first = await page([2, null, null]);
+  assert.equal(first.length, 2);
+  const last = first[1];
+  const second = await page([2, last.created_at, last.id]);
+  assert.equal(second.length, 2);
+  const third = await page([2, second[1].created_at, second[1].id]);
+  assert.equal(third.length, 0);
+
+  const ids = [...first, ...second].map((n) => n.id);
+  assert.equal(new Set(ids).size, 4, 'no entry twice');
+  assert.deepEqual(
+    [...first, ...second].map((n) => n.kind),
+    ['game_full', 'game_full', 'game_full', 'game_joined'],
+  );
+
+  // A cursor at millisecond precision (as a web client sends it) pages the same.
+  const ms = new Date(last.created_at).toISOString();
+  assert.deepEqual((await page([2, ms, last.id])).map((n) => n.id), second.map((n) => n.id));
+  // Without an id, p_before alone still means strictly older.
+  assert.deepEqual((await page([50, last.created_at])).map((n) => n.kind), ['game_joined']);
+});
+
+test('other players can read names from profiles, but not the muted categories or hidden flag', async () => {
+  await pool.query(`update profiles set muted_categories = array['games'], hidden_from_search = true where id = $1`, [vali]);
+  const name = await asUser(pool, ali, (c) => c.query('select full_name from profiles where id = $1', [vali]));
+  assert.equal(name.rows[0].full_name, 'Vali');
+  const visible = await asUser(pool, ali, (c) =>
+    c.query('select id, full_name, city_id, language, terms_accepted_at, created_at from profiles where id = $1', [vali]),
+  );
+  assert.equal(visible.rows.length, 1);
+  for (const sql of [
+    'select muted_categories from profiles',
+    'select hidden_from_search from profiles',
+    'select * from profiles',
+    // Not even their own: settings come from my_settings().
+    `select muted_categories from profiles where id = '${ali}'`,
+  ]) {
+    await expectError(asUser(pool, ali, (c) => c.query(sql)), '42501');
+  }
+  // The player still edits their own profile as the app does (no returned row).
+  await asUser(pool, ali, (c) => c.query(`update profiles set full_name = 'Ali B' where id = $1`, [ali]));
+  assert.equal((await one('select full_name from profiles where id = $1', [ali])).full_name, 'Ali B');
+  const settings = await asUser(pool, vali, (c) => rpc(c, 'my_settings'));
+  assert.deepEqual(settings[0].r.muted_categories, ['games']);
+});
+
 // --- reliability ----------------------------------------------------------
 
 test('a new user scores 80 and is new', async () => {
@@ -291,6 +346,20 @@ test('send_reminders sends one reminder 1 h 50 m before, then none', async () =>
   assert.equal(notes[0].payload.booking_id, id);
   assert.equal((await one(`select app.send_reminders($1) as n`, [when])).n, 0);
   assert.equal((await notesOf(ali, 'booking_reminder')).length, 1);
+});
+
+test('a booking confirmed less than two hours before its start gets no reminder', async () => {
+  // Booked at 08:15 for 10:00: inside the window, so marked reminded at once.
+  const late = await book(ali, ten, { at: tashkent(monday, 8, 15) });
+  assert.ok((await one(`select reminded_at from bookings where id = $1`, [late])).reminded_at);
+  // Booked at 08:15 for 11:30: outside it, so the job reminds as usual.
+  const later = await book(vali, eleven30, { at: tashkent(monday, 8, 15) });
+  assert.equal((await one(`select reminded_at from bookings where id = $1`, [later])).reminded_at, null);
+
+  assert.equal((await one(`select app.send_reminders($1) as n`, [tashkent(monday, 8, 20)])).n, 0);
+  assert.equal((await one(`select app.send_reminders($1) as n`, [tashkent(monday, 9, 40)])).n, 1);
+  assert.equal((await notesOf(ali, 'booking_reminder')).length, 0);
+  assert.equal((await notesOf(vali, 'booking_reminder')).length, 1);
 });
 
 // --- settings and API surface --------------------------------------------

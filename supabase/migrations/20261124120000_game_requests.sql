@@ -320,7 +320,10 @@ begin
     order by i.created_at, i.user_id
   loop
     v_added := false;
+    -- A player blocked since tapping is told, but not added (as join_game
+    -- would refuse them).
     if v_count < v_game.spots
+       and app.reliability(v_user, p_now)->>'badge' <> 'blocked'
        and not exists (select 1 from public.game_participants p where p.game_id = v_game.id and p.user_id = v_user) then
       insert into public.game_participants (game_id, user_id, joined_at) values (v_game.id, v_user, p_now);
       v_count := v_count + 1;
@@ -445,6 +448,34 @@ set search_path = ''
 as $$
   select app.player_json(pr) from public.profiles pr where pr.id = p_id
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Deleting a venue, redefined from 20261123120000_admin.sql: games and Game
+-- Requests reference venues too, so they block the delete like bookings and
+-- tournaments (deactivate the venue instead). The public wrapper and its
+-- grants are unchanged.
+-- ---------------------------------------------------------------------------
+
+create or replace function app.admin_delete_venue(p_user uuid, p_venue_id uuid, p_now timestamptz) returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_venue public.venues;
+begin
+  perform app.require_admin(p_user);
+  select v.* into v_venue from public.venues v where v.id = p_venue_id for update;
+  if not found then raise exception 'not_found'; end if;
+  if exists (select 1 from public.bookings b where b.venue_id = p_venue_id)
+     or exists (select 1 from public.tournaments t where t.venue_id = p_venue_id)
+     or exists (select 1 from public.games g where g.venue_id = p_venue_id)
+     or exists (select 1 from public.game_requests r where r.venue_id = p_venue_id) then
+    raise exception 'has_bookings';
+  end if;
+
+  delete from public.venues v where v.id = p_venue_id;
+  perform app.audit(p_user, 'delete_venue', 'venue', p_venue_id::text, to_jsonb(v_venue), null, p_now);
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- What the app calls

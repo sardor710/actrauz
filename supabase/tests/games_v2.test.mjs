@@ -5,6 +5,8 @@
 
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { after, before, beforeEach, test } from 'node:test';
 import { asAnon, asUser, createUser, errorOf, expectError, freshDb } from './helpers/db.mjs';
 import { addCourt, addOwner, addVenue, tashkent } from './helpers/fixtures.mjs';
@@ -285,6 +287,22 @@ test('only the host invites; a player already in cannot be invited; an invite ca
   assert.equal(await errorOf(pool.query(`select app.decline_invite($1, $2)`, [p, id])), 'not_found');
 });
 
+test('the city list shows only public games: an invite-only one I declined stays out, though it still opens', async () => {
+  const { host, id } = await liveGame({ visibility: 'invite_only' });
+  const p = await player('Declined');
+  const listed = async () =>
+    asUser(pool, p, async (c) => (await c.query(`select public.list_games('tashkent') as g`)).rows.map((r) => r.g.id));
+  await asUser(pool, host, (c) => c.query('select public.invite_to_game($1, $2)', [id, p]));
+  assert.ok((await listed()).includes(id), 'a pending invite lists it');
+  await asUser(pool, p, (c) => c.query('select public.decline_invite($1)', [id]));
+  assert.ok(!(await listed()).includes(id));
+  const fetched = await asUser(pool, p, async (c) => (await c.query('select public.get_game($1) as g', [id])).rows[0].g);
+  assert.equal(fetched.id, id, 'get_game keeps can_see_game');
+  // A public game in the city is still listed.
+  const open = await liveGame();
+  assert.ok((await listed()).includes(open.id));
+});
+
 test('a stranger cannot ask to join an invite-only game', async () => {
   const { id } = await liveGame({ visibility: 'invite_only' });
   const stranger = await player('Stranger');
@@ -472,6 +490,38 @@ test('host_remove_participant removes a player without a reliability event', asy
   assert.equal(await errorOf(remove(host, p)), 'not_participant');
 });
 
+test('a removed player cannot join or ask again until the host invites them', async () => {
+  const { host, id } = await bookedGame();
+  const p = await player('Removed');
+  await join(p, id);
+  await pool.query(`select app.host_remove_participant($1, $2, $3, $4)`, [host, id, p, now]);
+  assert.equal((await one(`select status from game_join_requests where game_id = $1 and user_id = $2`, [id, p])).status, 'removed');
+  assert.equal(await errorOf(join(p, id)), 'not_found');
+  assert.equal(await errorOf(requestToJoin(p, id)), 'not_found');
+  assert.equal((await json(id, p)).my_status, null);
+  assert.equal((await json(id, host)).join_requests.length, 0, 'a removal is not a request for the host');
+  assert.equal(await count(id), 1);
+
+  await invite(host, id, p);
+  assert.equal((await one(`select count(*)::int as n from game_join_requests where game_id = $1 and user_id = $2 and status = 'removed'`, [id, p])).n, 0);
+  const back = await join(p, id);
+  assert.equal(back.my_status, 'participant');
+  // Leaving of their own accord later does not bar them again.
+  await leave(p, id);
+  assert.equal((await join(p, id)).my_status, 'participant');
+});
+
+test('a removed player of an invite-only game is let back in by a new invite', async () => {
+  const { host, id } = await bookedGame({ visibility: 'invite_only' });
+  const p = await player('Invited twice');
+  await invite(host, id, p);
+  await join(p, id);
+  await pool.query(`select app.host_remove_participant($1, $2, $3, $4)`, [host, id, p, now]);
+  assert.equal(await errorOf(join(p, id)), 'not_found');
+  await invite(host, id, p);
+  assert.equal((await join(p, id)).my_status, 'participant');
+});
+
 test('the host cancels the game and the booking: participants hear, the host does not', async () => {
   const { host, bookingId, id } = await bookedGame();
   const p = await player('Player');
@@ -548,6 +598,20 @@ test('game reminders go to participants once, two hours before', async () => {
   assert.equal((await notesOf(p, 'game_reminder')).length, 1);
   assert.equal((await notesOf(host, 'game_reminder')).length, 1);
   assert.equal((await notesOf(p, 'game_reminder'))[0].payload.game_id, id);
+});
+
+test('a game created less than two hours before its start gets no reminder; one created earlier does', async () => {
+  const runner = await player('Early riser');
+  const run = { sport_id: 'running', meeting_point: 'Park', spots: 4, starts_local: '2026-11-23T07:00:00', ends_local: '2026-11-23T08:00:00' };
+  const soon = await create(runner, run, tashkent('2026-11-23', 5, 30));
+  assert.ok((await one(`select reminded_at from games where id = $1`, [soon.id])).reminded_at);
+  const early = await create(runner, { ...run, starts_local: '2026-11-23T09:00:00', ends_local: '2026-11-23T10:00:00' }, tashkent('2026-11-23', 5, 30));
+  assert.equal((await one(`select reminded_at from games where id = $1`, [early.id])).reminded_at, null);
+
+  await pool.query(`select app.send_reminders($1)`, [tashkent('2026-11-23', 5, 40)]);
+  await pool.query(`select app.send_reminders($1)`, [tashkent('2026-11-23', 7, 30)]);
+  const reminders = await notesOf(runner, 'game_reminder');
+  assert.deepEqual(reminders.map((n) => n.payload.game_id), [early.id]);
 });
 
 test('complete_games gives each participant one game_completed, once', async () => {
@@ -664,6 +728,69 @@ test('through the API: request, approve, update, remove and cancel as the signed
   await rpc(other.host, 'select public.invite_to_game($1, $2) as g', [other.id, p]);
   const declined = await rpc(p, 'select public.decline_invite($1) as g', [other.id]);
   assert.equal(declined.my_status, null);
+});
+
+test('the one-off backfill: games on cancelled bookings are cancelled, ended open games completed, silently', async () => {
+  // The template database is migrated empty, so run the migration's
+  // backfill block on rows seeded here, in a database of its own.
+  const source = await readFile(path.join(process.env.ACTRA_ROOT, 'migrations', '20261124110000_games_v2.sql'), 'utf8');
+  const block = source.match(/-- backfill:start\r?\n([\s\S]*?)-- backfill:end/)?.[1];
+  assert.ok(block && block.includes('update public.games'), 'the backfill block is marked in the migration');
+
+  const fresh = await freshDb('backfill');
+  try {
+    const p = fresh.pool;
+    const q = async (sql, params) => (await p.query(sql, params)).rows[0];
+    const venue = await addVenue(p, { name: 'Backfill venue' });
+    const [host, guest] = [await createUser(p, 'Host'), await createUser(p, 'Guest')];
+    const cancelledBooking = async (start) => {
+      const court = await addCourt(p, venue);
+      const held = await q(`select (app.hold_slots($1, $2, $3::timestamp[], $4)).id`, [host, court, [start], now]);
+      await p.query(`select app.confirm_booking($1, $2, null, null, $3)`, [host, held.id, now]);
+      // As a venue cancellation made before games reacted to it.
+      await p.query(`update bookings set status = 'cancelled_by_venue', cancelled_at = $2 where id = $1`, [held.id, now]);
+      return held.id;
+    };
+    // hoursFrom/hoursTo are relative to the real clock, which the backfill uses.
+    const game = async ({ hoursFrom, hoursTo, bookingId = null, status = 'open' }) => {
+      const { id } = await q(
+        `insert into games (sport_id, city_id, venue_id, host_id, kind, booking_id, status, during, utc_offset_minutes, spots)
+         values ($1, 'tashkent', $2, $3, $4, $5, $6,
+                 tstzrange(now() + make_interval(hours => $7), now() + make_interval(hours => $8)), 300, 4)
+         returning id`,
+        [bookingId ? 'padel' : 'gym', venue, host, bookingId ? 'booked' : 'place', bookingId, status, hoursFrom, hoursTo],
+      );
+      await p.query(`insert into game_participants (game_id, user_id, joined_at) values ($1, $2, now() - interval '1 week'), ($1, $3, now() - interval '1 week')`, [id, host, guest]);
+      return id;
+    };
+    const ended = await game({ hoursFrom: -3, hoursTo: -2 });
+    const onCancelled = await game({ hoursFrom: 24, hoursTo: 25, bookingId: await cancelledBooking('2026-11-23T10:00:00') });
+    const endedOnCancelled = await game({ hoursFrom: -5, hoursTo: -4, bookingId: await cancelledBooking('2026-11-23T13:00:00') });
+    const upcoming = await game({ hoursFrom: 24, hoursTo: 25 });
+    const alreadyCancelled = await game({ hoursFrom: -3, hoursTo: -2, status: 'cancelled' });
+    await p.query('delete from notifications');
+
+    await p.query(block);
+    await p.query(block);
+
+    const row = (id) => q(`select status, completed_at, upper(during) as ends from games where id = $1`, [id]);
+    const e = await row(ended);
+    assert.equal(e.status, 'open');
+    assert.equal(e.completed_at.toISOString(), e.ends.toISOString(), 'completed at its end');
+    for (const id of [onCancelled, endedOnCancelled]) {
+      const r = await row(id);
+      assert.equal(r.status, 'cancelled');
+      assert.equal(r.completed_at, null);
+    }
+    assert.deepEqual([(await row(upcoming)).status, (await row(upcoming)).completed_at], ['open', null]);
+    assert.deepEqual([(await row(alreadyCancelled)).status, (await row(alreadyCancelled)).completed_at], ['cancelled', null]);
+    assert.equal((await q('select count(*)::int as n from notifications')).n, 0, 'no notifications');
+    assert.equal((await q('select count(*)::int as n from reliability_events')).n, 0, 'no reliability events');
+    // complete_games has nothing left to do with them afterwards.
+    assert.equal((await q('select app.complete_games(now()) as n')).n, 0);
+  } finally {
+    await fresh.end();
+  }
 });
 
 test('through the API: create a place game', async () => {

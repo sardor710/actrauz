@@ -226,6 +226,47 @@ test('the spots are never exceeded when converting', async () => {
   assert.equal((await notesOf(b, 'request_converted'))[0].payload.added, false);
 });
 
+test('converting skips an interested player blocked since tapping: told, not added, and the spot goes to the next', async () => {
+  const poster = await player('Poster');
+  const r = await create(poster, { sport_id: 'running', ...window, players_needed: 1 });
+  const [blocked, next] = [await player('Soon blocked'), await player('Next')];
+  await interest(blocked, r.id, tap(1));
+  await interest(next, r.id, tap(2));
+  for (let i = 0; i < 2; i++) {
+    await pool.query(`select app.reliability_event($1, 'no_show', $2, $3)`, [blocked, randomUUID(), now]);
+  }
+  const game = await convert(poster, r.id, { meeting_point: 'Gate', spots: 2 });
+  assert.deepEqual(game.participant_ids, [poster, next]);
+  assert.equal((await notesOf(blocked, 'request_converted'))[0].payload.added, false);
+  assert.equal((await notesOf(next, 'request_converted'))[0].payload.added, true);
+});
+
+test('a venue that a game or a Game Request uses cannot be deleted (has_bookings); an unused one can', async () => {
+  const admin = await player('Admin');
+  await pool.query(`insert into app_admins (user_id) values ($1)`, [admin]);
+  const del = (id) => pool.query(`select app.admin_delete_venue($1, $2, $3)`, [admin, id, now]);
+  const exists = async (id) => (await one(`select count(*)::int as n from venues where id = $1`, [id])).n === 1;
+
+  const gameVenue = await addVenue(pool, { name: 'Game venue' });
+  const host = await player('Gym host');
+  await pool.query(`select app.create_game($1, $2::jsonb, $3)`, [
+    host,
+    JSON.stringify({ sport_id: 'gym', venue_id: gameVenue, spots: 2, starts_local: `${saturday}T10:00:00`, ends_local: `${saturday}T11:00:00` }),
+    now,
+  ]);
+  assert.equal(await errorOf(del(gameVenue)), 'has_bookings');
+  assert.ok(await exists(gameVenue));
+
+  const requestVenue = await addVenue(pool, { name: 'Request venue' });
+  await create(await player('Poster'), { sport_id: 'gym', ...window, venue_id: requestVenue, players_needed: 1 });
+  assert.equal(await errorOf(del(requestVenue)), 'has_bookings');
+  assert.ok(await exists(requestVenue));
+
+  const unused = await addVenue(pool, { name: 'Unused venue' });
+  await del(unused);
+  assert.ok(!(await exists(unused)));
+});
+
 test('request validation', async () => {
   const poster = await player('Poster');
   const ok = { sport_id: 'football', ...window, players_needed: 3 };

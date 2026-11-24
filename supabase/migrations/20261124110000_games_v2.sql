@@ -30,6 +30,20 @@ alter table public.games
 
 create index games_booking_idx on public.games (booking_id) where booking_id is not null;
 
+-- One-off backfill of the games that exist before this migration, so the
+-- new jobs do not act on them later: games on a booking that has been
+-- cancelled are cancelled (no notifications), then open games that have
+-- already ended are completed at their end (no reliability events).
+-- Cancelled first, so a cancelled game never gets completed_at. Idempotent;
+-- tests/games_v2.test.mjs runs the block between the markers on seeded rows.
+-- backfill:start
+update public.games g set status = 'cancelled'
+where g.status = 'open' and g.completed_at is null
+  and exists (select 1 from public.bookings b where b.id = g.booking_id and b.status like 'cancelled%');
+update public.games g set completed_at = upper(g.during)
+where g.status = 'open' and g.completed_at is null and upper(g.during) <= now();
+-- backfill:end
+
 -- ---------------------------------------------------------------------------
 -- Requests to join and invites
 -- ---------------------------------------------------------------------------
@@ -38,7 +52,9 @@ create table public.game_join_requests (
   id uuid primary key default gen_random_uuid(),
   game_id uuid not null references public.games (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
-  status text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'withdrawn')),
+  -- 'removed': the host took the player out of the game. It bars them from
+  -- joining or asking again until the host invites them (spec §14).
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'withdrawn', 'removed')),
   created_at timestamptz not null default now(),
   decided_at timestamptz
 );
@@ -94,6 +110,15 @@ as $$
       or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)
       or exists (select 1 from public.game_invites i where i.game_id = g.id and i.user_id = p_user)
       or exists (select 1 from public.game_join_requests r where r.game_id = g.id and r.user_id = p_user)))
+$$;
+
+-- The host removed the player from the game and has not invited them since.
+create function app.removed_from_game(p_game_id uuid, p_user uuid) returns boolean
+language sql
+set search_path = ''
+as $$
+  select exists (select 1 from public.game_join_requests r
+                 where r.game_id = p_game_id and r.user_id = p_user and r.status = 'removed')
 $$;
 
 -- Notifies every participant but p_except; returns how many were addressed.
@@ -360,10 +385,14 @@ begin
 
   insert into public.games (
     sport_id, city_id, venue_id, host_id, booking_id, during, utc_offset_minutes, spots, min_level, max_level,
-    price_per_player, note, kind, visibility, meeting_point, meeting_lat, meeting_lng, distance_km, pace, created_at)
+    price_per_player, note, kind, visibility, meeting_point, meeting_lat, meeting_lng, distance_km, pace, created_at,
+    reminded_at)
   values (
     v_sport.id, v_city_id, v_venue_id, p_user, v_booking_id, v_during, v_offset, v_spots, v_min, v_max,
-    v_price, v_note, v_kind, v_visibility, v_meeting, v_lat, v_lng, v_distance, v_pace, p_now)
+    v_price, v_note, v_kind, v_visibility, v_meeting, v_lat, v_lng, v_distance, v_pace, p_now,
+    -- Created inside the reminder window (send_reminders: at most 2 h ahead):
+    -- the host just made it, so no reminder follows straight away.
+    case when lower(v_during) <= p_now + interval '2 hours' then p_now end)
   returning * into v_game;
 
   insert into public.game_participants (game_id, user_id, joined_at) values (v_game.id, p_user, p_now);
@@ -398,6 +427,8 @@ begin
   v_invited := exists (select 1 from public.game_invites i
                        where i.game_id = p_game_id and i.user_id = p_user and i.status = 'pending');
   if v_game.visibility = 'invite_only' and not v_invited then raise exception 'not_found'; end if;
+  -- Removed by the host: the game is closed to them until they are invited.
+  if app.removed_from_game(p_game_id, p_user) then raise exception 'not_found'; end if;
 
   if exists (select 1 from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user) then
     raise exception 'already_joined';
@@ -470,7 +501,8 @@ begin
   perform app.require_reliable(p_user, p_now);
 
   select g.* into v_game from public.games g where g.id = p_game_id for update;
-  if not found or not app.can_see_game(p_user, v_game) or v_game.status <> 'open' or lower(v_game.during) <= p_now then
+  if not found or not app.can_see_game(p_user, v_game) or v_game.status <> 'open' or lower(v_game.during) <= p_now
+     or app.removed_from_game(p_game_id, p_user) then
     raise exception 'not_found';
   end if;
   if exists (select 1 from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user) then
@@ -585,6 +617,10 @@ begin
     raise exception 'already_joined';
   end if;
 
+  -- Inviting a player the host removed earlier lets them back in.
+  delete from public.game_join_requests r
+  where r.game_id = p_game_id and r.user_id = p_invitee and r.status = 'removed';
+
   select i.status into v_previous from public.game_invites i where i.game_id = p_game_id and i.user_id = p_invitee;
   insert into public.game_invites (game_id, user_id, invited_by, status, created_at)
   values (p_game_id, p_invitee, p_user, 'pending', p_now)
@@ -616,7 +652,9 @@ end $$;
 -- Host tools
 -- ---------------------------------------------------------------------------
 
--- No reliability event: the host chose this, not the player.
+-- No reliability event: the host chose this, not the player. The removal is
+-- recorded (a 'removed' row), so the player cannot simply join or ask again;
+-- an invite from the host lifts it.
 create function app.host_remove_participant(p_user uuid, p_game_id uuid, p_member uuid, p_now timestamptz)
 returns public.games
 language plpgsql
@@ -634,6 +672,11 @@ begin
 
   delete from public.game_participants p where p.game_id = p_game_id and p.user_id = p_member;
   if not found then raise exception 'not_participant'; end if;
+
+  if not app.removed_from_game(p_game_id, p_member) then
+    insert into public.game_join_requests (game_id, user_id, status, created_at, decided_at)
+    values (p_game_id, p_member, 'removed', p_now, p_now);
+  end if;
 
   perform app.notify(p_member, 'game_removed', 'games', app.game_note(v_game), p_now);
   return v_game;
@@ -808,9 +851,11 @@ end $$;
 -- Discovery
 -- ---------------------------------------------------------------------------
 
--- In the city: games the player may see that are open, have not started and
--- are not full unless the player is in them. Anywhere: every upcoming open
--- game the player hosts, plays in or is invited to. Earliest first.
+-- In the city: public games that are open, have not started and are not
+-- full unless the player is in them. Anywhere: every upcoming open game the
+-- player hosts, plays in or is invited to (so invite-only games appear only
+-- here, never to someone who merely once had an invite or a request).
+-- Earliest first.
 create or replace function app.list_games(p_user uuid, p_city_id text, p_now timestamptz) returns setof jsonb
 language sql
 set search_path = ''
@@ -821,7 +866,7 @@ as $$
     and lower(g.during) > p_now
     and (
       (g.city_id = p_city_id
-       and app.can_see_game(p_user, g)
+       and g.visibility = 'public'
        and ((select count(*) from public.game_participants p where p.game_id = g.id) < g.spots
             or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)))
       or (p_user is not null and (

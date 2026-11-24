@@ -17,6 +17,13 @@ alter table public.profiles
 
 alter table public.bookings add column reminded_at timestamptz;
 
+-- The two settings are the player's own business (my_settings reads them):
+-- other players may read every profile column but these. Column grants
+-- replace the table-wide select from 20261122100100_profiles.sql. Reading
+-- profiles only through functions is a known limit left for later.
+revoke select on table public.profiles from authenticated;
+grant select (id, full_name, city_id, language, terms_accepted_at, created_at) on table public.profiles to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Notifications: written by app.notify only, read by their owner.
 -- ---------------------------------------------------------------------------
@@ -323,7 +330,10 @@ begin
       hold_expires_at = null,
       players = coalesce(p_players, b.players),
       note = coalesce(nullif(btrim(p_note), ''), b.note),
-      confirmed_at = p_now
+      confirmed_at = p_now,
+      -- Confirmed inside the reminder window (send_reminders: at most 2 h
+      -- ahead): the player just booked it, so no reminder follows at once.
+      reminded_at = case when lower(b.during) <= p_now + interval '2 hours' then p_now else b.reminded_at end
   where b.id = p_booking_id
   returning * into v_booking;
 
@@ -484,7 +494,13 @@ on conflict (id) do nothing;
 -- What the app calls
 -- ---------------------------------------------------------------------------
 
-create function public.my_notifications(p_limit integer default 50, p_before timestamptz default null)
+-- Newest first. The next page starts after the last entry shown: pass its
+-- created_at and id (several entries can share a created_at, e.g. game_full
+-- to every participant). Ordered and compared at millisecond precision,
+-- because a web client's DateTime keeps no microseconds; without
+-- p_before_id, everything strictly older than p_before.
+create function public.my_notifications(
+  p_limit integer default 50, p_before timestamptz default null, p_before_id uuid default null)
 returns setof jsonb
 language sql stable security definer
 set search_path = ''
@@ -493,8 +509,12 @@ as $$
     'id', n.id, 'kind', n.kind, 'category', n.category, 'payload', n.payload,
     'created_at', n.created_at, 'read', n.read_at is not null)
   from public.notifications n
-  where n.user_id = (select auth.uid()) and (p_before is null or n.created_at < p_before)
-  order by n.created_at desc, n.id desc
+  where n.user_id = (select auth.uid())
+    and (p_before is null
+         or (p_before_id is null and date_trunc('milliseconds', n.created_at) < date_trunc('milliseconds', p_before))
+         or (p_before_id is not null
+             and (date_trunc('milliseconds', n.created_at), n.id) < (date_trunc('milliseconds', p_before), p_before_id)))
+  order by date_trunc('milliseconds', n.created_at) desc, n.id desc
   limit greatest(1, least(coalesce(p_limit, 50), 100))
 $$;
 
@@ -553,7 +573,7 @@ begin
 end $$;
 
 revoke all on function
-  public.my_notifications(integer, timestamptz),
+  public.my_notifications(integer, timestamptz, uuid),
   public.unread_notification_count(),
   public.mark_notifications_read(uuid[]),
   public.my_reliability(),
@@ -562,7 +582,7 @@ revoke all on function
 from public, anon, authenticated;
 
 grant execute on function
-  public.my_notifications(integer, timestamptz),
+  public.my_notifications(integer, timestamptz, uuid),
   public.unread_notification_count(),
   public.mark_notifications_read(uuid[]),
   public.my_reliability(),
