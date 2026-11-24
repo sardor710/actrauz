@@ -734,5 +734,90 @@
   "errGameExists": "This booking already has a game",
   "errForbidden": "You cannot do this in this game",
   "errNotCancellable": "The game has already started, so it cannot be cancelled",
-  "errUnavailable": "Cannot reach the server. Check your connection."
+  "errUnavailable": "Cannot reach the server. Check your connection.",
+  "gamesTabRequests": "Requests",
+  "homeRequests": "Game Requests",
+  "interestedOf": "{count} of {total} interested",
+  "@interestedOf": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "requestTitle": "{host} wants to play {sport}",
+  "@requestTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "sport": {
+        "type": "String"
+      }
+    }
+  },
+  "needsPlayers": "{count, plural, one{Needs {count} more player} other{Needs {count} more players}}",
+  "@needsPlayers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRequests": "No Game Requests yet. Post one to find players.",
+  "postRequest": "Post a request",
+  "createRequestTitle": "Game Request",
+  "requestPlayersNeeded": "Players needed",
+  "requestWindowLabel": "When can you play?",
+  "requestFrom": "From",
+  "requestTo": "To",
+  "areaLabel": "Area (optional)",
+  "areaHint": "For example, Yunusobod",
+  "venueOptional": "Venue (optional)",
+  "anyVenue": "Any venue",
+  "postRequestCta": "Post request",
+  "imIn": "I'm in",
+  "leaveRequest": "Leave",
+  "interestedPlayers": "Interested",
+  "noInterestedYet": "Nobody has said they are in yet",
+  "makeItAGame": "Make it a game",
+  "convertHint": "The players who are in are added in the order they tapped, while spots last.",
+  "gameEndTime": "End",
+  "cancelRequestLabel": "Cancel request",
+  "cancelRequestTitle": "Cancel this request?",
+  "cancelRequestMsg": "The players who said they are in will no longer see it.",
+  "keepRequest": "Keep request",
+  "requestCancelledMsg": "Request cancelled",
+  "removeInterestedMsg": "They will be taken off the list.",
+  "requestConvertedBanner": "This request became a game",
+  "openGameCta": "Open the game",
+  "requestClosedBanner": "This request is closed",
+  "findPlayers": "Find players",
+  "searchPlayersHint": "Search by name",
+  "noPlayersFound": "No players found",
+  "gamesPlayed": "{count, plural, one{{count} game played} other{{count} games played}}",
+  "@gamesPlayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerProfileTitle": "Player profile",
+  "profileLevels": "Levels",
+  "noLevelsYet": "No levels set yet",
+  "inviteToGame": "Invite to a game",
+  "chooseGameToInvite": "Choose a game",
+  "noGamesToInvite": "You have no open game with a free spot. Create one first.",
+  "inviteSent": "{name} was invited",
+  "@inviteSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -16,6 +16,7 @@ import '../common/formatters.dart';
 import '../common/widgets.dart';
 import '../home/home_screen.dart';
 import 'game_card.dart';
+import 'request_card.dart';
 
 /// Open games in the city, filtered by day, sport and the player's level.
 class GamesScreen extends ConsumerStatefulWidget {
@@ -49,6 +50,7 @@ class _GamesScreenState extends ConsumerState<GamesScreen> {
     final today = dateOnly(ref.watch(cityNowProvider)());
     final me = ref.watch(playerProvider(kMeId)).valueOrNull;
     final sportName = sports.where((s) => s.id == sportId).firstOrNull?.name.resolve(context.lang);
+    final tab = ref.watch(gamesTabProvider);
 
     bool matches(Game g) {
       if (sportId != null && g.sportId != sportId) return false;
@@ -63,108 +65,114 @@ class _GamesScreenState extends ConsumerState<GamesScreen> {
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/games/new'),
+        onPressed: () => context.push(tab == 0 ? '/games/new' : '/games/requests/new'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 3,
         icon: const Icon(Icons.add_circle_outline_rounded),
-        label: Text(l.createGame.toUpperCase(), style: manrope(14, 800, color: Colors.white, letterSpacing: 0.4)),
+        label: Text(
+          (tab == 0 ? l.createGame : l.postRequest).toUpperCase(),
+          style: manrope(14, 800, color: Colors.white, letterSpacing: 0.4),
+        ),
       ),
       body: SafeArea(
         bottom: false,
-        child: AsyncBody(
-          value: ref.watch(gamesProvider),
-          builder: (games) {
-            final shown = games.where(matches).toList();
-            return ListView(
-              padding: const EdgeInsets.only(bottom: 96),
-              children: [
-                const AppHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-                  child: SizedBox(
-                    height: 168,
-                    child: PromoCard(
-                      photo: kGamesPromoPhoto,
-                      title: l.gamesPromoTitle,
-                      subtitle: l.gamesPromoText,
-                      cta: l.gamesPromoCta,
-                      onTap: () => context.go('/venues'),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 82,
-                  child: Row(
+        child: tab == 1
+            ? const _RequestsList()
+            : AsyncBody(
+                value: ref.watch(gamesProvider),
+                builder: (games) {
+                  final shown = games.where(matches).toList();
+                  return ListView(
+                    padding: const EdgeInsets.only(bottom: 96),
                     children: [
-                      const SizedBox(width: 16),
-                      _MonthTag(text: DateFormat('MMM', context.lang).format(today).toUpperCase()),
-                      Expanded(
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          itemCount: _days + 1,
-                          itemBuilder: (context, i) {
-                            if (i == 0) {
-                              return _DayItem(
-                                top: l.allDays,
-                                bottom: null,
-                                selected: day == null,
-                                onTap: () => ref.read(gamesDayProvider.notifier).state = null,
-                              );
-                            }
-                            final offset = i - 1;
-                            final date = today.add(Duration(days: offset));
-                            return _DayItem(
-                              top: offset == 0 ? l.today : weekdayShort(context.lang, date),
-                              bottom: '${date.day}',
-                              selected: day == offset,
-                              onTap: () => ref.read(gamesDayProvider.notifier).state = offset,
-                            );
-                          },
+                      const AppHeader(),
+                      const GamesTabSwitch(),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                        child: SizedBox(
+                          height: 168,
+                          child: PromoCard(
+                            photo: kGamesPromoPhoto,
+                            title: l.gamesPromoTitle,
+                            subtitle: l.gamesPromoText,
+                            cta: l.gamesPromoCta,
+                            onTap: () => context.go('/venues'),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 44,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      FilterChipButton(
-                        label: sportName ?? l.filterSport,
-                        selected: sportId != null,
-                        dropdown: true,
-                        onTap: () => _pickSport(sports),
+                      SizedBox(
+                        height: 82,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 16),
+                            _MonthTag(text: DateFormat('MMM', context.lang).format(today).toUpperCase()),
+                            Expanded(
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                itemCount: _days + 1,
+                                itemBuilder: (context, i) {
+                                  if (i == 0) {
+                                    return _DayItem(
+                                      top: l.allDays,
+                                      bottom: null,
+                                      selected: day == null,
+                                      onTap: () => ref.read(gamesDayProvider.notifier).state = null,
+                                    );
+                                  }
+                                  final offset = i - 1;
+                                  final date = today.add(Duration(days: offset));
+                                  return _DayItem(
+                                    top: offset == 0 ? l.today : weekdayShort(context.lang, date),
+                                    bottom: '${date.day}',
+                                    selected: day == offset,
+                                    onTap: () => ref.read(gamesDayProvider.notifier).state = offset,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      FilterChipButton(
-                        label: l.myLevel,
-                        icon: Icons.bar_chart_rounded,
-                        selected: _myLevel,
-                        onTap: () => setState(() => _myLevel = !_myLevel),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 44,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            FilterChipButton(
+                              label: sportName ?? l.filterSport,
+                              selected: sportId != null,
+                              dropdown: true,
+                              onTap: () => _pickSport(sports),
+                            ),
+                            FilterChipButton(
+                              label: l.myLevel,
+                              icon: Icons.bar_chart_rounded,
+                              selected: _myLevel,
+                              onTap: () => setState(() => _myLevel = !_myLevel),
+                            ),
+                          ],
+                        ),
                       ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 16, 10),
+                        child: Text(l.homeGames.toUpperCase(), style: AppText.sectionTitle),
+                      ),
+                      if (shown.isEmpty)
+                        EmptyState(icon: Icons.groups_outlined, text: l.noGames)
+                      else
+                        for (final game in shown)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: GameCard(game: game),
+                          ),
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 16, 10),
-                  child: Text(l.homeGames.toUpperCase(), style: AppText.sectionTitle),
-                ),
-                if (shown.isEmpty)
-                  EmptyState(icon: Icons.groups_outlined, text: l.noGames)
-                else
-                  for (final game in shown)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: GameCard(game: game),
-                    ),
-              ],
-            );
-          },
-        ),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -228,4 +236,97 @@ class _DayItem extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Games or Game Requests, on the Games tab.
+class GamesTabSwitch extends ConsumerWidget {
+  const GamesTabSwitch({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final tab = ref.watch(gamesTabProvider);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: 0, label: Text(l.tabGames, key: const ValueKey('games-tab-games'))),
+            ButtonSegment(value: 1, label: Text(l.gamesTabRequests, key: const ValueKey('games-tab-requests'))),
+          ],
+          selected: {tab},
+          onSelectionChanged: (v) => ref.read(gamesTabProvider.notifier).state = v.first,
+        ),
+      ),
+    );
+  }
+}
+
+/// Open Game Requests in the city, for the sport picked in the filter.
+class _RequestsList extends ConsumerWidget {
+  const _RequestsList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
+    final sportId = ref.watch(gamesSportFilterProvider);
+    final sportName = sports.where((s) => s.id == sportId).firstOrNull?.name.resolve(context.lang);
+
+    return AsyncBody(
+      value: ref.watch(gameRequestsProvider),
+      builder: (requests) {
+        final shown = [
+          for (final r in requests)
+            if (sportId == null || r.sportId == sportId) r,
+        ];
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 96),
+          children: [
+            const AppHeader(),
+            const GamesTabSwitch(),
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  FilterChipButton(
+                    label: sportName ?? l.filterSport,
+                    selected: sportId != null,
+                    dropdown: true,
+                    onTap: () async {
+                      final picked = await showOptionSheet(
+                        context,
+                        title: l.filterSport,
+                        options: {'': l.allSports, for (final s in sports) s.id: s.name.resolve(context.lang)},
+                        current: sportId ?? '',
+                      );
+                      if (picked != null) {
+                        ref.read(gamesSportFilterProvider.notifier).state = picked.isEmpty ? null : picked;
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 16, 10),
+              child: Text(l.homeRequests.toUpperCase(), style: AppText.sectionTitle),
+            ),
+            if (shown.isEmpty)
+              EmptyState(icon: Icons.groups_outlined, text: l.noRequests)
+            else
+              for (final request in shown)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: GameRequestCard(request: request),
+                ),
+          ],
+        );
+      },
+    );
+  }
 }

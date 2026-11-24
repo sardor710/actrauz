@@ -13,6 +13,7 @@ import '../common/app_header.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
 import '../games/game_card.dart';
+import '../games/request_card.dart';
 
 /// City-scoped feed: search, banners, sports, venues, free courts, games.
 class HomeScreen extends ConsumerWidget {
@@ -128,6 +129,45 @@ class HomeScreen extends ConsumerWidget {
                             separatorBuilder: (_, _) => const SizedBox(width: 12),
                             itemBuilder: (context, i) =>
                                 SizedBox(width: 312, child: GameCard(game: games[i], compact: true)),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+
+            // Game Requests: players looking for a game.
+            AsyncBody(
+              value: ref.watch(gameRequestsProvider),
+              builder: (requests) => requests.isEmpty
+                  ? const SizedBox.shrink()
+                  : Column(
+                      key: const ValueKey('home-requests'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 8, 6),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(l.homeRequests.toUpperCase(), style: AppText.sectionTitle)),
+                              TextButton(
+                                onPressed: () {
+                                  ref.read(gamesTabProvider.notifier).state = 1;
+                                  context.go('/games');
+                                },
+                                child: Text(l.seeAll),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 214,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: requests.length,
+                            separatorBuilder: (_, _) => const SizedBox(width: 12),
+                            itemBuilder: (context, i) =>
+                                SizedBox(width: 312, child: GameRequestCard(request: requests[i], compact: true)),
                           ),
                         ),
                       ],

@@ -1466,4 +1466,161 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errUnavailable =>
       'Cannot reach the server. Check your connection.';
+
+  @override
+  String get gamesTabRequests => 'Requests';
+
+  @override
+  String get homeRequests => 'Game Requests';
+
+  @override
+  String interestedOf(int count, int total) {
+    return '$count of $total interested';
+  }
+
+  @override
+  String requestTitle(String host, String sport) {
+    return '$host wants to play $sport';
+  }
+
+  @override
+  String needsPlayers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Needs $count more players',
+      one: 'Needs $count more player',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRequests => 'No Game Requests yet. Post one to find players.';
+
+  @override
+  String get postRequest => 'Post a request';
+
+  @override
+  String get createRequestTitle => 'Game Request';
+
+  @override
+  String get requestPlayersNeeded => 'Players needed';
+
+  @override
+  String get requestWindowLabel => 'When can you play?';
+
+  @override
+  String get requestFrom => 'From';
+
+  @override
+  String get requestTo => 'To';
+
+  @override
+  String get areaLabel => 'Area (optional)';
+
+  @override
+  String get areaHint => 'For example, Yunusobod';
+
+  @override
+  String get venueOptional => 'Venue (optional)';
+
+  @override
+  String get anyVenue => 'Any venue';
+
+  @override
+  String get postRequestCta => 'Post request';
+
+  @override
+  String get imIn => 'I\'m in';
+
+  @override
+  String get leaveRequest => 'Leave';
+
+  @override
+  String get interestedPlayers => 'Interested';
+
+  @override
+  String get noInterestedYet => 'Nobody has said they are in yet';
+
+  @override
+  String get makeItAGame => 'Make it a game';
+
+  @override
+  String get convertHint =>
+      'The players who are in are added in the order they tapped, while spots last.';
+
+  @override
+  String get gameEndTime => 'End';
+
+  @override
+  String get cancelRequestLabel => 'Cancel request';
+
+  @override
+  String get cancelRequestTitle => 'Cancel this request?';
+
+  @override
+  String get cancelRequestMsg =>
+      'The players who said they are in will no longer see it.';
+
+  @override
+  String get keepRequest => 'Keep request';
+
+  @override
+  String get requestCancelledMsg => 'Request cancelled';
+
+  @override
+  String get removeInterestedMsg => 'They will be taken off the list.';
+
+  @override
+  String get requestConvertedBanner => 'This request became a game';
+
+  @override
+  String get openGameCta => 'Open the game';
+
+  @override
+  String get requestClosedBanner => 'This request is closed';
+
+  @override
+  String get findPlayers => 'Find players';
+
+  @override
+  String get searchPlayersHint => 'Search by name';
+
+  @override
+  String get noPlayersFound => 'No players found';
+
+  @override
+  String gamesPlayed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count games played',
+      one: '$count game played',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerProfileTitle => 'Player profile';
+
+  @override
+  String get profileLevels => 'Levels';
+
+  @override
+  String get noLevelsYet => 'No levels set yet';
+
+  @override
+  String get inviteToGame => 'Invite to a game';
+
+  @override
+  String get chooseGameToInvite => 'Choose a game';
+
+  @override
+  String get noGamesToInvite =>
+      'You have no open game with a free spot. Create one first.';
+
+  @override
+  String inviteSent(String name) {
+    return '$name was invited';
+  }
 }

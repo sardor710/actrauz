@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../data/social.dart';
@@ -9,17 +10,57 @@ import '../../state/providers.dart';
 import '../../state/ui_providers.dart';
 import '../common/app_header.dart';
 import '../common/formatters.dart';
+import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 
-/// Teams in the city and players to meet. Joining a team and inviting players
-/// arrive in a later milestone.
-class SocialScreen extends ConsumerWidget {
+/// Teams in the city and players to meet: search by name, sport and level.
+/// Joining a team arrives in a later milestone.
+class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SocialScreen> createState() => _SocialScreenState();
+}
+
+class _SocialScreenState extends ConsumerState<SocialScreen> {
+  final _query = TextEditingController();
+  String? _sportId;
+  RangeValues _levels = const RangeValues(1, 5);
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickSport(List<Sport> sports) async {
+    final l = context.l;
+    final picked = await showOptionSheet(
+      context,
+      title: l.filterSport,
+      options: {'': l.allSports, for (final s in sports) s.id: s.name.resolve(context.lang)},
+      current: _sportId ?? '',
+    );
+    if (picked != null) {
+      setState(() {
+        _sportId = picked.isEmpty ? null : picked;
+        _levels = const RangeValues(1, 5);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l;
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
+    final sportName = sports.where((s) => s.id == _sportId).firstOrNull?.name.resolve(context.lang);
+    final text = _query.text.trim();
+    final search = (
+      sportId: _sportId,
+      minLevel: _levels.start.round(),
+      maxLevel: _levels.end.round(),
+      query: text.isEmpty ? null : text,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -48,19 +89,64 @@ class SocialScreen extends ConsumerWidget {
                       ),
               ),
             ),
-            AsyncBody(
-              value: ref.watch(playersProvider(kAllPlayers)),
-              builder: (players) => SectionCard(
-                title: l.playersNearYou,
-                contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < players.length; i++) ...[
-                      if (i > 0) const Divider(height: 1),
-                      _PlayerRow(player: players[i], sports: sports),
-                    ],
+            SectionCard(
+              title: l.findPlayers,
+              contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    key: const ValueKey('player-search'),
+                    controller: _query,
+                    onChanged: (_) => setState(() {}),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: l.searchPlayersHint,
+                      prefixIcon: const Icon(Icons.search_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 44,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        FilterChipButton(
+                          key: const ValueKey('players-sport'),
+                          label: sportName ?? l.filterSport,
+                          selected: _sportId != null,
+                          dropdown: true,
+                          onTap: () => _pickSport(sports),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_sportId != null) ...[
+                    Text(l.levelRange(_levels.start.round(), _levels.end.round()), style: AppText.bodyStrong),
+                    RangeSlider(
+                      key: const ValueKey('players-level'),
+                      values: _levels,
+                      min: 1,
+                      max: 5,
+                      divisions: 4,
+                      labels: RangeLabels('${_levels.start.round()}', '${_levels.end.round()}'),
+                      onChanged: (v) => setState(() => _levels = v),
+                    ),
                   ],
-                ),
+                  AsyncBody(
+                    value: ref.watch(playersProvider(search)),
+                    builder: (players) => players.isEmpty
+                        ? EmptyState(icon: Icons.person_search_outlined, text: l.noPlayersFound)
+                        : Column(
+                            children: [
+                              for (var i = 0; i < players.length; i++) ...[
+                                if (i > 0) const Divider(height: 1),
+                                _PlayerRow(player: players[i], sports: sports),
+                              ],
+                            ],
+                          ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -155,30 +241,35 @@ class _PlayerRow extends StatelessWidget {
     final l = context.l;
     String sportName(String id) => sports.where((s) => s.id == id).firstOrNull?.name.resolve(context.lang) ?? id;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          InitialAvatar(name: player.name, size: 44),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(player.name, style: manrope(15.5, 700)),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    for (final entry in player.levels.entries)
-                      Pill(text: '${sportName(entry.key)} · ${l.level(entry.value)}'),
-                  ],
-                ),
-              ],
+    return InkWell(
+      onTap: () => context.push('/players/${player.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            InitialAvatar(name: player.name, size: 44),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(player.name, style: manrope(15.5, 700)),
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      ReliabilityPill(reliability: player.reliability),
+                      for (final entry in player.levels.entries)
+                        Pill(text: '${sportName(entry.key)} · ${l.level(entry.value)}'),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+          ],
+        ),
       ),
     );
   }

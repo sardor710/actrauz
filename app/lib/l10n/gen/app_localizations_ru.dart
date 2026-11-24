@@ -1486,4 +1486,165 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errUnavailable => 'Нет связи с сервером. Проверьте подключение.';
+
+  @override
+  String get gamesTabRequests => 'Заявки';
+
+  @override
+  String get homeRequests => 'Заявки на игру';
+
+  @override
+  String interestedOf(int count, int total) {
+    return 'Готовы сыграть: $count из $total';
+  }
+
+  @override
+  String requestTitle(String host, String sport) {
+    return '$host хочет сыграть: $sport';
+  }
+
+  @override
+  String needsPlayers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Нужно ещё $count игрока',
+      many: 'Нужно ещё $count игроков',
+      few: 'Нужно ещё $count игрока',
+      one: 'Нужен ещё $count игрок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRequests =>
+      'Заявок пока нет. Опубликуйте свою, чтобы найти игроков.';
+
+  @override
+  String get postRequest => 'Подать заявку';
+
+  @override
+  String get createRequestTitle => 'Заявка на игру';
+
+  @override
+  String get requestPlayersNeeded => 'Нужно игроков';
+
+  @override
+  String get requestWindowLabel => 'Когда вам удобно играть?';
+
+  @override
+  String get requestFrom => 'С';
+
+  @override
+  String get requestTo => 'До';
+
+  @override
+  String get areaLabel => 'Район (необязательно)';
+
+  @override
+  String get areaHint => 'Например, Юнусабад';
+
+  @override
+  String get venueOptional => 'Площадка (необязательно)';
+
+  @override
+  String get anyVenue => 'Любая площадка';
+
+  @override
+  String get postRequestCta => 'Опубликовать заявку';
+
+  @override
+  String get imIn => 'Я в игре';
+
+  @override
+  String get leaveRequest => 'Выйти';
+
+  @override
+  String get interestedPlayers => 'Готовы сыграть';
+
+  @override
+  String get noInterestedYet => 'Пока никто не откликнулся';
+
+  @override
+  String get makeItAGame => 'Превратить в игру';
+
+  @override
+  String get convertHint =>
+      'Откликнувшиеся игроки добавляются в порядке отклика, пока есть места.';
+
+  @override
+  String get gameEndTime => 'Конец';
+
+  @override
+  String get cancelRequestLabel => 'Отменить заявку';
+
+  @override
+  String get cancelRequestTitle => 'Отменить заявку?';
+
+  @override
+  String get cancelRequestMsg => 'Откликнувшиеся игроки её больше не увидят.';
+
+  @override
+  String get keepRequest => 'Оставить заявку';
+
+  @override
+  String get requestCancelledMsg => 'Заявка отменена';
+
+  @override
+  String get removeInterestedMsg => 'Игрок будет убран из списка.';
+
+  @override
+  String get requestConvertedBanner => 'Заявка стала игрой';
+
+  @override
+  String get openGameCta => 'Открыть игру';
+
+  @override
+  String get requestClosedBanner => 'Заявка закрыта';
+
+  @override
+  String get findPlayers => 'Найти игроков';
+
+  @override
+  String get searchPlayersHint => 'Поиск по имени';
+
+  @override
+  String get noPlayersFound => 'Игроки не найдены';
+
+  @override
+  String gamesPlayed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Сыграно $count игры',
+      many: 'Сыграно $count игр',
+      few: 'Сыграно $count игры',
+      one: 'Сыграна $count игра',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerProfileTitle => 'Профиль игрока';
+
+  @override
+  String get profileLevels => 'Уровни';
+
+  @override
+  String get noLevelsYet => 'Уровни пока не указаны';
+
+  @override
+  String get inviteToGame => 'Пригласить в игру';
+
+  @override
+  String get chooseGameToInvite => 'Выберите игру';
+
+  @override
+  String get noGamesToInvite =>
+      'У вас нет открытой игры со свободным местом. Сначала создайте её.';
+
+  @override
+  String inviteSent(String name) {
+    return 'Приглашение отправлено: $name';
+  }
 }

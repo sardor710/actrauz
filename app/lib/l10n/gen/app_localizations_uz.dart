@@ -1464,4 +1464,159 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get errUnavailable =>
       'Serverga ulanib boʻlmadi. Internetni tekshiring.';
+
+  @override
+  String get gamesTabRequests => 'Eʼlonlar';
+
+  @override
+  String get homeRequests => 'Oʻyin eʼlonlari';
+
+  @override
+  String interestedOf(int count, int total) {
+    return '$total tadan $count tasi tayyor';
+  }
+
+  @override
+  String requestTitle(String host, String sport) {
+    return '$host $sport oʻynamoqchi';
+  }
+
+  @override
+  String needsPlayers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Yana $count ta oʻyinchi kerak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRequests =>
+      'Hozircha eʼlonlar yoʻq. Oʻyinchi topish uchun eʼlon joylang.';
+
+  @override
+  String get postRequest => 'Eʼlon joylash';
+
+  @override
+  String get createRequestTitle => 'Oʻyin eʼloni';
+
+  @override
+  String get requestPlayersNeeded => 'Kerakli oʻyinchilar';
+
+  @override
+  String get requestWindowLabel => 'Qachon oʻynay olasiz?';
+
+  @override
+  String get requestFrom => 'Boshlanishi';
+
+  @override
+  String get requestTo => 'Tugashi';
+
+  @override
+  String get areaLabel => 'Hudud (ixtiyoriy)';
+
+  @override
+  String get areaHint => 'Masalan, Yunusobod';
+
+  @override
+  String get venueOptional => 'Maydon (ixtiyoriy)';
+
+  @override
+  String get anyVenue => 'Istalgan maydon';
+
+  @override
+  String get postRequestCta => 'Eʼlonni joylash';
+
+  @override
+  String get imIn => 'Men bor';
+
+  @override
+  String get leaveRequest => 'Chiqish';
+
+  @override
+  String get interestedPlayers => 'Tayyor oʻyinchilar';
+
+  @override
+  String get noInterestedYet => 'Hali hech kim javob bermadi';
+
+  @override
+  String get makeItAGame => 'Oʻyinga aylantirish';
+
+  @override
+  String get convertHint =>
+      'Tayyor oʻyinchilar bosgan tartibda, joy borida qoʻshiladi.';
+
+  @override
+  String get gameEndTime => 'Tugashi';
+
+  @override
+  String get cancelRequestLabel => 'Eʼlonni bekor qilish';
+
+  @override
+  String get cancelRequestTitle => 'Eʼlon bekor qilinsinmi?';
+
+  @override
+  String get cancelRequestMsg => 'Tayyor oʻyinchilar uni endi koʻrmaydi.';
+
+  @override
+  String get keepRequest => 'Eʼlon qolsin';
+
+  @override
+  String get requestCancelledMsg => 'Eʼlon bekor qilindi';
+
+  @override
+  String get removeInterestedMsg => 'Oʻyinchi roʻyxatdan chiqariladi.';
+
+  @override
+  String get requestConvertedBanner => 'Eʼlon oʻyinga aylandi';
+
+  @override
+  String get openGameCta => 'Oʻyinni ochish';
+
+  @override
+  String get requestClosedBanner => 'Eʼlon yopilgan';
+
+  @override
+  String get findPlayers => 'Oʻyinchi izlash';
+
+  @override
+  String get searchPlayersHint => 'Ism boʻyicha qidirish';
+
+  @override
+  String get noPlayersFound => 'Oʻyinchilar topilmadi';
+
+  @override
+  String gamesPlayed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta oʻyin oʻynagan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerProfileTitle => 'Oʻyinchi profili';
+
+  @override
+  String get profileLevels => 'Darajalar';
+
+  @override
+  String get noLevelsYet => 'Darajalar hali koʻrsatilmagan';
+
+  @override
+  String get inviteToGame => 'Oʻyinga taklif qilish';
+
+  @override
+  String get chooseGameToInvite => 'Oʻyinni tanlang';
+
+  @override
+  String get noGamesToInvite =>
+      'Boʻsh joyli ochiq oʻyiningiz yoʻq. Avval oʻyin yarating.';
+
+  @override
+  String inviteSent(String name) {
+    return '$name taklif qilindi';
+  }
 }

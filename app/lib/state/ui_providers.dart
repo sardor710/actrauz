@@ -26,3 +26,6 @@ final teamsProvider = FutureProvider<List<Team>>(
   (ref) => ref.watch(socialRepositoryProvider).teams(ref.watch(currentCityProvider).id),
 );
 
+
+/// The Games tab list: 0 = games, 1 = Game Requests.
+final gamesTabProvider = StateProvider<int>((ref) => 0);

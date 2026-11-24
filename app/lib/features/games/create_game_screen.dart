@@ -4,17 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/markets.dart';
 import '../../core/theme.dart';
-import '../../domain/booking_engine.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
-import '../../domain/owner.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
+import 'game_pickers.dart';
 import 'host_tools.dart';
-
-/// One of the player's own bookings a game can sit on.
-typedef _Choice = ({Booking booking, Venue venue, Court court, DateTime now});
 
 /// Start a game. The sport comes first: a bookable sport sits on one of the
 /// player's own upcoming bookings, a place-only one on a venue or a meeting
@@ -34,15 +30,11 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
   static const _durations = [30, 60, 90, 120, 180];
 
   final _form = GlobalKey<FormState>();
-  final _meeting = TextEditingController();
-  final _distance = TextEditingController();
-  final _pace = TextEditingController();
+  final _place = PlaceController();
   final _note = TextEditingController();
 
   String? _sportId;
   late String? _bookingId = widget.bookingId;
-  bool _atMeetingPoint = true;
-  String? _venueId;
   int _dayOffset = 1;
   int _startMinute = 18 * 60;
   int _duration = 60;
@@ -54,44 +46,26 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
   @override
   void dispose() {
-    _meeting.dispose();
-    _distance.dispose();
-    _pace.dispose();
+    _place.dispose();
     _note.dispose();
     super.dispose();
   }
 
   void _back() => context.canPop() ? context.pop() : context.go('/games');
 
-  Future<void> _pickVenue(List<Venue> venues) async {
-    final l = context.l;
-    final picked = await showOptionSheet(
-      context,
-      title: l.chooseVenue,
-      options: {for (final v in venues) v.id: v.name.resolve(context.lang)},
-      current: _venueId,
-    );
-    if (picked != null) setState(() => _venueId = picked);
-  }
-
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: _startMinute ~/ 60, minute: _startMinute % 60),
-      builder: (context, child) =>
-          MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!),
-    );
-    if (picked != null) setState(() => _startMinute = picked.hour * 60 + picked.minute);
+    final picked = await pickMinuteOfDay(context, _startMinute);
+    if (picked != null) setState(() => _startMinute = picked);
   }
 
   Future<void> _create({required Sport sport, required String? bookingId, required DateTime today}) async {
     final l = context.l;
     if (!sport.bookable && !_form.currentState!.validate()) return;
-    if (!sport.bookable && !_atMeetingPoint && _venueId == null) {
+    if (!sport.bookable && !_place.atMeetingPoint && _place.venueId == null) {
       setState(() => _error = l.venueRequired);
       return;
     }
-    final distanceText = _distance.text.trim().replaceAll(',', '.');
+    final distanceText = _place.distance.text.trim().replaceAll(',', '.');
     final distance = distanceText.isEmpty ? null : double.tryParse(distanceText);
     if (distanceText.isNotEmpty && (distance == null || distance <= 0)) {
       setState(() => _error = l.errInvalidArgument);
@@ -107,11 +81,11 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       maxLevel: _levels.end.round(),
       visibility: _visibility,
       note: blank(_note.text),
-      pace: sport.bookable ? null : blank(_pace.text),
+      pace: sport.bookable ? null : blank(_place.pace.text),
       distanceKm: sport.bookable ? null : distance,
       bookingId: sport.bookable ? bookingId : null,
-      venueId: !sport.bookable && !_atMeetingPoint ? _venueId : null,
-      meetingPoint: !sport.bookable && _atMeetingPoint ? blank(_meeting.text) : null,
+      venueId: !sport.bookable && !_place.atMeetingPoint ? _place.venueId : null,
+      meetingPoint: !sport.bookable && _place.atMeetingPoint ? blank(_place.meeting.text) : null,
       start: sport.bookable ? null : start,
       end: sport.bookable ? null : start.add(Duration(minutes: _duration)),
     );
@@ -143,24 +117,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
     final today = dateOnly(ref.watch(cityNowProvider)());
 
     // The player's own upcoming confirmed bookings that have no game yet.
-    final bookings = ref.watch(myBookingsProvider).valueOrNull ?? const <Booking>[];
-    final taken = {
-      for (final g in ref.watch(gamesProvider).valueOrNull ?? const <Game>[])
-        if (g.bookingId != null && !g.cancelled) g.bookingId,
-    };
-    final choices = <_Choice>[];
-    var loadingVenues = false;
-    for (final b in bookings) {
-      if (b.source != BookingSource.app || b.status != BookingStatus.confirmed || taken.contains(b.id)) continue;
-      final venue = ref.watch(venueProvider(b.venueId)).valueOrNull;
-      if (venue == null) {
-        loadingVenues = true;
-        continue;
-      }
-      final now = venueNow(cityById(venue.cityId), utcNow: ref.watch(clockProvider)());
-      if (!b.start.isAfter(now)) continue;
-      choices.add((booking: b, venue: venue, court: venue.court(b.courtId), now: now));
-    }
+    final (:choices, loading: loadingVenues) = bookingChoices(ref);
 
     // Coming from a booking chooses its sport too.
     final fromBooking = choices.where((c) => c.booking.id == widget.bookingId).firstOrNull;
@@ -224,7 +181,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                             : Column(
                                 children: [
                                   for (final c in forSport)
-                                    _BookingTile(
+                                    BookingTile(
                                       key: ValueKey('booking-${c.booking.id}'),
                                       choice: c,
                                       selected: c.booking.id == chosen?.booking.id,
@@ -257,23 +214,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                         ],
                       ),
                     ),
-                    SectionCard(
-                      title: l.levelRangeLabel,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(l.levelRange(_levels.start.round(), _levels.end.round()), style: AppText.bodyStrong),
-                          RangeSlider(
-                            values: _levels,
-                            min: 1,
-                            max: 5,
-                            divisions: 4,
-                            labels: RangeLabels('${_levels.start.round()}', '${_levels.end.round()}'),
-                            onChanged: (v) => setState(() => _levels = v),
-                          ),
-                        ],
-                      ),
-                    ),
+                    LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
                     SectionCard(
                       title: l.visibilityLabel,
                       child: SizedBox(
@@ -346,65 +287,13 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
   /// Venue or meeting point, plus distance and pace for running.
   Widget _placeSection(Sport sport, String cityId) {
-    final l = context.l;
-    final venues = [
-      for (final v in ref.watch(venuesProvider).valueOrNull ?? const <Venue>[])
-        if (v.cityId == cityId) v,
-    ];
-    final forSport = venues.where((v) => v.sportIds.contains(sport.id)).toList();
-    final options = forSport.isEmpty ? venues : forSport;
-    final venueName = options.where((v) => v.id == _venueId).firstOrNull?.name.resolve(context.lang);
-
     return SectionCard(
-      title: l.gamePlaceLabel,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SegmentedButton<bool>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(value: true, label: Text(l.placeMeetingPoint)),
-              ButtonSegment(value: false, label: Text(l.placeVenue)),
-            ],
-            selected: {_atMeetingPoint},
-            onSelectionChanged: (v) => setState(() {
-              _atMeetingPoint = v.first;
-              _error = null;
-            }),
-          ),
-          const SizedBox(height: 12),
-          if (_atMeetingPoint)
-            TextFormField(
-              key: const ValueKey('meeting-point'),
-              controller: _meeting,
-              maxLength: 120,
-              decoration: InputDecoration(labelText: l.placeMeetingPoint, hintText: l.meetingPointHint),
-              validator: (v) => (v ?? '').trim().isEmpty ? l.meetingPointRequired : null,
-            )
-          else
-            OutlinedButton.icon(
-              key: const ValueKey('pick-venue'),
-              onPressed: () => _pickVenue(options),
-              icon: const Icon(Icons.place_outlined),
-              label: Text(venueName ?? l.chooseVenue),
-            ),
-          if (sport.id == 'running') ...[
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('distance-km'),
-              controller: _distance,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(labelText: l.distanceLabel),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('pace'),
-              controller: _pace,
-              maxLength: 30,
-              decoration: InputDecoration(labelText: l.paceLabel, hintText: l.paceHint),
-            ),
-          ],
-        ],
+      title: context.l.gamePlaceLabel,
+      child: PlaceFields(
+        sport: sport,
+        cityId: cityId,
+        controller: _place,
+        onModeChanged: () => setState(() => _error = null),
       ),
     );
   }
@@ -420,19 +309,12 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (var i = 0; i <= _days; i++)
-                  FilterChipButton(
-                    label: dayLabel(l, context.lang, today.add(Duration(days: i)), now),
-                    selected: _dayOffset == i,
-                    onTap: () => setState(() => _dayOffset = i),
-                  ),
-              ],
-            ),
+          DayStrip(
+            today: today,
+            now: now,
+            selected: _dayOffset,
+            onSelected: (i) => setState(() => _dayOffset = i),
+            days: _days,
           ),
           const SizedBox(height: 8),
           Row(
@@ -462,57 +344,6 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BookingTile extends StatelessWidget {
-  const _BookingTile({super.key, required this.choice, required this.selected, required this.onTap});
-
-  final _Choice choice;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l;
-    final booking = choice.booking;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? AppColors.primarySoft : AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: selected ? AppColors.primary : AppColors.line, width: selected ? 1.5 : 1),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(choice.venue.name.resolve(context.lang), style: manrope(15.5, 700)),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${choice.court.name.resolve(context.lang)} · '
-                        '${dayLabel(l, context.lang, booking.start, choice.now)}, '
-                        '${timeRange(booking.start, booking.end)}',
-                        style: AppText.muted,
-                      ),
-                    ],
-                  ),
-                ),
-                if (selected) const Icon(Icons.check_circle, color: AppColors.primary),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

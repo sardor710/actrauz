@@ -11,6 +11,8 @@ import 'features/admin/venue_editor_screen.dart';
 import 'features/booking/booking_screen.dart';
 import 'features/bookings/bookings_screen.dart';
 import 'features/games/create_game_screen.dart';
+import 'features/games/create_request_screen.dart';
+import 'features/games/game_request_screen.dart';
 import 'features/games/game_screen.dart';
 import 'features/games/games_screen.dart';
 import 'features/home/home_screen.dart';
@@ -23,6 +25,7 @@ import 'features/owner/owner_venues_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
 import 'features/shell/home_shell.dart';
+import 'features/social/player_profile_screen.dart';
 import 'features/social/social_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
 import 'features/venues/venue_screen.dart';
@@ -51,6 +54,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
       GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const CommunitySettingsScreen()),
+      // A player's public profile, opened from Find players and from a Game Request.
+      GoRoute(
+        path: '/players/:id',
+        builder: (context, state) => PlayerProfileScreen(playerId: state.pathParameters['id']!),
+      ),
       // Venue owners and admins only; the screens show nothing to anyone else.
       GoRoute(
         path: '/owner',
@@ -109,6 +117,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'new',
                     builder: (context, state) => CreateGameScreen(bookingId: state.uri.queryParameters['booking']),
+                  ),
+                  // Game Requests, also before ':id'.
+                  GoRoute(path: 'requests/new', builder: (context, state) => const CreateRequestScreen()),
+                  GoRoute(
+                    path: 'requests/:id',
+                    builder: (context, state) => GameRequestScreen(requestId: state.pathParameters['id']!),
                   ),
                   GoRoute(
                     path: ':id',

@@ -2661,6 +2661,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cannot reach the server. Check your connection.'**
   String get errUnavailable;
+
+  /// No description provided for @gamesTabRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get gamesTabRequests;
+
+  /// No description provided for @homeRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Requests'**
+  String get homeRequests;
+
+  /// No description provided for @interestedOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} interested'**
+  String interestedOf(int count, int total);
+
+  /// No description provided for @requestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} wants to play {sport}'**
+  String requestTitle(String host, String sport);
+
+  /// No description provided for @needsPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Needs {count} more player} other{Needs {count} more players}}'**
+  String needsPlayers(int count);
+
+  /// No description provided for @noRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No Game Requests yet. Post one to find players.'**
+  String get noRequests;
+
+  /// No description provided for @postRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Post a request'**
+  String get postRequest;
+
+  /// No description provided for @createRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Request'**
+  String get createRequestTitle;
+
+  /// No description provided for @requestPlayersNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Players needed'**
+  String get requestPlayersNeeded;
+
+  /// No description provided for @requestWindowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'When can you play?'**
+  String get requestWindowLabel;
+
+  /// No description provided for @requestFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get requestFrom;
+
+  /// No description provided for @requestTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get requestTo;
+
+  /// No description provided for @areaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Area (optional)'**
+  String get areaLabel;
+
+  /// No description provided for @areaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example, Yunusobod'**
+  String get areaHint;
+
+  /// No description provided for @venueOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue (optional)'**
+  String get venueOptional;
+
+  /// No description provided for @anyVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Any venue'**
+  String get anyVenue;
+
+  /// No description provided for @postRequestCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Post request'**
+  String get postRequestCta;
+
+  /// No description provided for @imIn.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m in'**
+  String get imIn;
+
+  /// No description provided for @leaveRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get leaveRequest;
+
+  /// No description provided for @interestedPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Interested'**
+  String get interestedPlayers;
+
+  /// No description provided for @noInterestedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has said they are in yet'**
+  String get noInterestedYet;
+
+  /// No description provided for @makeItAGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Make it a game'**
+  String get makeItAGame;
+
+  /// No description provided for @convertHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The players who are in are added in the order they tapped, while spots last.'**
+  String get convertHint;
+
+  /// No description provided for @gameEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get gameEndTime;
+
+  /// No description provided for @cancelRequestLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel request'**
+  String get cancelRequestLabel;
+
+  /// No description provided for @cancelRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this request?'**
+  String get cancelRequestTitle;
+
+  /// No description provided for @cancelRequestMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'The players who said they are in will no longer see it.'**
+  String get cancelRequestMsg;
+
+  /// No description provided for @keepRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep request'**
+  String get keepRequest;
+
+  /// No description provided for @requestCancelledMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Request cancelled'**
+  String get requestCancelledMsg;
+
+  /// No description provided for @removeInterestedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'They will be taken off the list.'**
+  String get removeInterestedMsg;
+
+  /// No description provided for @requestConvertedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This request became a game'**
+  String get requestConvertedBanner;
+
+  /// No description provided for @openGameCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the game'**
+  String get openGameCta;
+
+  /// No description provided for @requestClosedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This request is closed'**
+  String get requestClosedBanner;
+
+  /// No description provided for @findPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Find players'**
+  String get findPlayers;
+
+  /// No description provided for @searchPlayersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name'**
+  String get searchPlayersHint;
+
+  /// No description provided for @noPlayersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No players found'**
+  String get noPlayersFound;
+
+  /// No description provided for @gamesPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} game played} other{{count} games played}}'**
+  String gamesPlayed(int count);
+
+  /// No description provided for @playerProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Player profile'**
+  String get playerProfileTitle;
+
+  /// No description provided for @profileLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Levels'**
+  String get profileLevels;
+
+  /// No description provided for @noLevelsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No levels set yet'**
+  String get noLevelsYet;
+
+  /// No description provided for @inviteToGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to a game'**
+  String get inviteToGame;
+
+  /// No description provided for @chooseGameToInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a game'**
+  String get chooseGameToInvite;
+
+  /// No description provided for @noGamesToInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no open game with a free spot. Create one first.'**
+  String get noGamesToInvite;
+
+  /// No description provided for @inviteSent.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} was invited'**
+  String inviteSent(String name);
 }
 
 class _AppLocalizationsDelegate
