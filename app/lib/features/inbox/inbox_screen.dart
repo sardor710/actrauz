@@ -1,0 +1,253 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/localized_text.dart';
+import '../../core/theme.dart';
+import '../../data/supabase/supabase_notification_repository.dart';
+import '../../domain/community.dart';
+import '../../l10n/gen/app_localizations.dart';
+import '../../state/providers.dart';
+import '../common/formatters.dart';
+import '../common/widgets.dart';
+
+/// One sentence for [n], in the app language. The database stores none: it is
+/// built from the kind and the payload (plan: Notifications).
+String notificationText(AppLocalizations l, String lang, AppNotification n) {
+  final p = n.payload;
+  String name(String key, String fallback) {
+    final value = p[key];
+    if (value is! Map) return fallback;
+    String? text(String code) => value[code] is String ? value[code] as String : null;
+    final resolved = LocalizedText(uz: text('uz'), ru: text('ru'), en: text('en')).resolve(lang);
+    return resolved.isEmpty ? fallback : resolved;
+  }
+
+  final actorValue = p['actor_name'];
+  final actor = actorValue is String && actorValue.isNotEmpty ? actorValue : l.notifSomeone;
+  final venue = name('venue_name', l.notifVenueFallback);
+  final court = name('court_name', l.notifCourtFallback);
+  return switch (n.kind) {
+    'booking_confirmed' => l.notifBookingConfirmed(venue),
+    'booking_cancelled_by_venue' => l.notifBookingCancelledByVenue(venue),
+    'booking_reminder' => l.notifBookingReminder(venue),
+    'venue_new_booking' => l.notifVenueNewBooking(actor, court),
+    'venue_booking_cancelled' => l.notifVenueBookingCancelled(actor, court),
+    'game_joined' => l.notifGameJoined(actor),
+    'game_left' => l.notifGameLeft(actor),
+    'join_request' => l.notifJoinRequest(actor),
+    'join_approved' => l.notifJoinApproved,
+    'join_declined' => l.notifJoinDeclined,
+    'game_full' => l.notifGameFull,
+    'game_changed' => l.notifGameChanged,
+    'game_cancelled' => l.notifGameCancelled,
+    'game_removed' => l.notifGameRemoved,
+    'game_reminder' => l.notifGameReminder,
+    'game_invite' => l.notifGameInvite(actor),
+    'request_interest' => l.notifRequestInterest(actor),
+    'request_converted' => p['added'] == false ? l.notifRequestConvertedFull : l.notifRequestConvertedIn,
+    'request_expired' => l.notifRequestExpired,
+    _ => l.notifUnknown,
+  };
+}
+
+IconData _categoryIcon(String category) => switch (category) {
+  'bookings' => Icons.event_available_outlined,
+  'venue' => Icons.stadium_outlined,
+  'games' => Icons.sports_tennis_outlined,
+  'requests' => Icons.campaign_outlined,
+  'invites' => Icons.mail_outline_rounded,
+  _ => Icons.notifications_none_rounded,
+};
+
+/// Refreshes the bell and the list after entries are read or arrive.
+void refreshInbox(WidgetRef ref) {
+  ref.invalidate(inboxProvider);
+  ref.invalidate(unreadCountProvider);
+}
+
+/// The player's notifications, newest first. Tapping one marks it read and
+/// opens what it is about.
+class InboxScreen extends ConsumerStatefulWidget {
+  const InboxScreen({super.key});
+
+  @override
+  ConsumerState<InboxScreen> createState() => _InboxScreenState();
+}
+
+class _InboxScreenState extends ConsumerState<InboxScreen> {
+  static const _pageSize = SupabaseNotificationRepository.pageSize;
+
+  /// Older pages loaded with "Load more", below the newest page.
+  final List<AppNotification> _older = [];
+  bool _exhausted = false;
+  bool _loadingMore = false;
+  final Set<String> _readHere = {};
+  bool _allRead = false;
+
+  AppNotification _shown(AppNotification n) => _allRead || _readHere.contains(n.id) ? n.copyWith(read: true) : n;
+
+  Future<void> _open(AppNotification n) async {
+    final route = n.route;
+    if (!n.read) {
+      try {
+        await ref.read(notificationRepositoryProvider).markRead([n.id]);
+        _readHere.add(n.id);
+        refreshInbox(ref);
+      } catch (_) {
+        // Opening what it is about matters more than the dot.
+      }
+    }
+    if (route == null || !mounted) return;
+    // Games live inside the tabs, like everywhere else in the app: go, not
+    // push (pushing a tab route from outside the tabs duplicates its page).
+    route.startsWith('/games') ? context.go(route) : context.push(route);
+  }
+
+  Future<void> _markAll() async {
+    try {
+      await ref.read(notificationRepositoryProvider).markRead();
+      if (mounted) setState(() => _allRead = true);
+      refreshInbox(ref);
+    } catch (_) {
+      if (mounted) showMessage(context, context.l.errGeneric);
+    }
+  }
+
+  Future<void> _loadMore(List<AppNotification> all) async {
+    setState(() => _loadingMore = true);
+    try {
+      final page = await ref.read(notificationRepositoryProvider).inbox(before: all.last.createdAt);
+      if (!mounted) return;
+      setState(() {
+        _older.addAll(page);
+        _exhausted = page.length < _pageSize;
+      });
+    } catch (_) {
+      if (mounted) showMessage(context, context.l.errGeneric);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final inbox = ref.watch(inboxProvider);
+    final newest = inbox.valueOrNull ?? const <AppNotification>[];
+    final all = [
+      for (final n in [...newest, ..._older]) _shown(n),
+    ];
+    final anyUnread = all.any((n) => !n.read);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
+        title: Text(l.notificationsTitle),
+        actions: [
+          TextButton(onPressed: anyUnread ? _markAll : null, child: Text(l.markAllRead)),
+          IconButton(
+            tooltip: l.notificationSettings,
+            onPressed: () => context.push('/settings'),
+            icon: const Icon(Icons.tune_rounded),
+          ),
+        ],
+      ),
+      body: AsyncBody(
+        value: inbox,
+        builder: (_) {
+          if (all.isEmpty) return EmptyState(icon: Icons.notifications_none_rounded, text: l.noNotifications);
+          final canLoadMore = !_exhausted && (_older.isNotEmpty || newest.length >= _pageSize);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            children: [
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (final (i, n) in all.indexed) ...[
+                      if (i > 0) const Divider(indent: 72, height: 1),
+                      _NotificationRow(notification: n, onTap: () => _open(n)),
+                    ],
+                  ],
+                ),
+              ),
+              if (canLoadMore)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: OutlinedButton(
+                      onPressed: _loadingMore ? null : () => _loadMore(all),
+                      child: Text(l.loadMore),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NotificationRow extends ConsumerWidget {
+  const _NotificationRow({required this.notification, required this.onTap});
+
+  final AppNotification notification;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final n = notification;
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const [];
+    final sportId = n.payload['sport_id'];
+    final sportName = sports.where((s) => s.id == sportId).firstOrNull?.name.resolve(context.lang);
+    final start = DateTime.tryParse('${n.payload['starts_local'] ?? ''}');
+    final now = ref.watch(cityNowProvider)();
+    final details = [
+      ?sportName,
+      if (start != null) '${dayLabel(l, context.lang, start, now)}, ${hm(start)}',
+    ].join(' · ');
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: n.read ? AppColors.field : AppColors.primarySoft, shape: BoxShape.circle),
+              child: Icon(
+                _categoryIcon(n.category),
+                size: 22,
+                color: n.read ? AppColors.muted : AppColors.primaryDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(notificationText(l, context.lang, n), style: n.read ? AppText.body : AppText.bodyStrong),
+                  if (details.isNotEmpty) ...[const SizedBox(height: 2), Text(details, style: AppText.muted)],
+                ],
+              ),
+            ),
+            if (!n.read) ...[
+              const SizedBox(width: 10),
+              Container(
+                key: const ValueKey('unread-dot'),
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

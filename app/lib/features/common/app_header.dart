@@ -30,6 +30,7 @@ class AppHeader extends ConsumerWidget {
     final l = context.l;
     final name = ref.watch(sessionProvider.select((s) => s.userName)) ?? '';
     final city = ref.watch(currentCityProvider);
+    final unread = ref.watch(unreadCountProvider).valueOrNull ?? 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
@@ -88,9 +89,12 @@ class AppHeader extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: l.comingSoon,
-            onPressed: () => showMessage(context, l.comingSoon),
-            icon: const Icon(Icons.notifications_none_rounded, size: 26),
+            key: const ValueKey('inbox-bell'),
+            tooltip: l.notificationsTitle,
+            onPressed: () => context.push('/inbox'),
+            icon: unread > 0
+                ? Badge(label: Text('$unread'), child: const Icon(Icons.notifications_none_rounded, size: 26))
+                : const Icon(Icons.notifications_none_rounded, size: 26),
           ),
           IconButton(
             tooltip: l.myBookings,

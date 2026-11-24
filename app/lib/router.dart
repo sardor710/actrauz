@@ -13,12 +13,14 @@ import 'features/bookings/bookings_screen.dart';
 import 'features/games/game_screen.dart';
 import 'features/games/games_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/inbox/inbox_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/owner/owner_calendar_screen.dart';
 import 'features/owner/owner_dashboard_screen.dart';
 import 'features/owner/owner_settings_screen.dart';
 import 'features/owner/owner_venues_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/profile/settings_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'features/social/social_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
@@ -46,6 +48,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Opened on top of the tabs from the header, so "back" returns to them.
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
       GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
+      GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
+      GoRoute(path: '/settings', builder: (context, state) => const CommunitySettingsScreen()),
       // Venue owners and admins only; the screens show nothing to anyone else.
       GoRoute(
         path: '/owner',

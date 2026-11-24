@@ -225,4 +225,7 @@ void refreshBookings(WidgetRef ref) {
   ref.invalidate(availabilityProvider);
   ref.invalidate(myBookingsProvider);
   ref.invalidate(freeTodayProvider);
+  // A booking writes to the inbox (confirmed, cancelled).
+  ref.invalidate(inboxProvider);
+  ref.invalidate(unreadCountProvider);
 }

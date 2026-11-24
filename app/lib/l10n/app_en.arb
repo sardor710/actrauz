@@ -516,5 +516,133 @@
   "entityVenue": "Venue",
   "entityBanner": "Banner",
   "entityBooking": "Booking",
-  "entityOwner": "Venue owner"
+  "entityOwner": "Venue owner",
+  "notificationsTitle": "Notifications",
+  "markAllRead": "Mark all read",
+  "notificationSettings": "Notification settings",
+  "noNotifications": "No notifications yet",
+  "notificationsAndPrivacy": "Notifications and privacy",
+  "notificationsMuteHint": "Choose what you hear about. Switch a group off to stop its notifications.",
+  "notifCategoryBookings": "Bookings",
+  "notifCategoryVenue": "My venues",
+  "notifCategoryGames": "Games",
+  "notifCategoryRequests": "Game Requests",
+  "notifCategoryInvites": "Invitations",
+  "privacyTitle": "Privacy",
+  "hideFromSearch": "Hide me from player search",
+  "hideFromSearchHint": "Other players will not find you when they look for people to invite.",
+  "notifSomeone": "Someone",
+  "notifVenueFallback": "the venue",
+  "notifCourtFallback": "a court",
+  "notifBookingConfirmed": "Your booking at {venue} is confirmed",
+  "@notifBookingConfirmed": {
+    "placeholders": {
+      "venue": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBookingCancelledByVenue": "{venue} cancelled your booking",
+  "@notifBookingCancelledByVenue": {
+    "placeholders": {
+      "venue": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBookingReminder": "Reminder: your booking at {venue} is coming up",
+  "@notifBookingReminder": {
+    "placeholders": {
+      "venue": {
+        "type": "String"
+      }
+    }
+  },
+  "notifVenueNewBooking": "{actor} booked {court}",
+  "@notifVenueNewBooking": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "court": {
+        "type": "String"
+      }
+    }
+  },
+  "notifVenueBookingCancelled": "{actor} cancelled {court}",
+  "@notifVenueBookingCancelled": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "court": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGameJoined": "{actor} joined your game",
+  "@notifGameJoined": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGameLeft": "{actor} left your game",
+  "@notifGameLeft": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifJoinRequest": "{actor} asked to join your game",
+  "@notifJoinRequest": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifJoinApproved": "You are in! The host approved your request",
+  "notifJoinDeclined": "The host declined your request",
+  "notifGameFull": "Your game is full",
+  "notifGameChanged": "The host changed the game details",
+  "notifGameCancelled": "The game was cancelled",
+  "notifGameRemoved": "The host removed you from the game",
+  "notifGameReminder": "Reminder: your game starts soon",
+  "notifGameInvite": "{actor} invited you to a game",
+  "@notifGameInvite": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRequestInterest": "{actor} is in for your Game Request",
+  "@notifRequestInterest": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRequestConvertedIn": "Your Game Request became a game, and you are in",
+  "notifRequestConvertedFull": "Your Game Request became a game, but it filled up before you",
+  "notifRequestExpired": "A Game Request expired",
+  "notifUnknown": "New notification",
+  "reliabilityNew": "New player",
+  "reliabilityReliable": "Reliable",
+  "reliabilityLimited": "Limited",
+  "reliabilityBlocked": "Blocked",
+  "reliabilityScore": "Reliability score {score} of 100",
+  "@reliabilityScore": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "reliabilityLimitedHint": "You can hold one upcoming booking at a time. Show up and play to recover.",
+  "reliabilityBlockedHint": "You cannot book, join or post until older missed games pass 90 days."
 }

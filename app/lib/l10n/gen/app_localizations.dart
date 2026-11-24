@@ -2019,6 +2019,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Venue owner'**
   String get entityOwner;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get markAllRead;
+
+  /// No description provided for @notificationSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification settings'**
+  String get notificationSettings;
+
+  /// No description provided for @noNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get noNotifications;
+
+  /// No description provided for @notificationsAndPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications and privacy'**
+  String get notificationsAndPrivacy;
+
+  /// No description provided for @notificationsMuteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what you hear about. Switch a group off to stop its notifications.'**
+  String get notificationsMuteHint;
+
+  /// No description provided for @notifCategoryBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings'**
+  String get notifCategoryBookings;
+
+  /// No description provided for @notifCategoryVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'My venues'**
+  String get notifCategoryVenue;
+
+  /// No description provided for @notifCategoryGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Games'**
+  String get notifCategoryGames;
+
+  /// No description provided for @notifCategoryRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Requests'**
+  String get notifCategoryRequests;
+
+  /// No description provided for @notifCategoryInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations'**
+  String get notifCategoryInvites;
+
+  /// No description provided for @privacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get privacyTitle;
+
+  /// No description provided for @hideFromSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide me from player search'**
+  String get hideFromSearch;
+
+  /// No description provided for @hideFromSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Other players will not find you when they look for people to invite.'**
+  String get hideFromSearchHint;
+
+  /// No description provided for @notifSomeone.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get notifSomeone;
+
+  /// No description provided for @notifVenueFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'the venue'**
+  String get notifVenueFallback;
+
+  /// No description provided for @notifCourtFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'a court'**
+  String get notifCourtFallback;
+
+  /// No description provided for @notifBookingConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your booking at {venue} is confirmed'**
+  String notifBookingConfirmed(String venue);
+
+  /// No description provided for @notifBookingCancelledByVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'{venue} cancelled your booking'**
+  String notifBookingCancelledByVenue(String venue);
+
+  /// No description provided for @notifBookingReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder: your booking at {venue} is coming up'**
+  String notifBookingReminder(String venue);
+
+  /// No description provided for @notifVenueNewBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} booked {court}'**
+  String notifVenueNewBooking(String actor, String court);
+
+  /// No description provided for @notifVenueBookingCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} cancelled {court}'**
+  String notifVenueBookingCancelled(String actor, String court);
+
+  /// No description provided for @notifGameJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} joined your game'**
+  String notifGameJoined(String actor);
+
+  /// No description provided for @notifGameLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} left your game'**
+  String notifGameLeft(String actor);
+
+  /// No description provided for @notifJoinRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} asked to join your game'**
+  String notifJoinRequest(String actor);
+
+  /// No description provided for @notifJoinApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'You are in! The host approved your request'**
+  String get notifJoinApproved;
+
+  /// No description provided for @notifJoinDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'The host declined your request'**
+  String get notifJoinDeclined;
+
+  /// No description provided for @notifGameFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game is full'**
+  String get notifGameFull;
+
+  /// No description provided for @notifGameChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The host changed the game details'**
+  String get notifGameChanged;
+
+  /// No description provided for @notifGameCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The game was cancelled'**
+  String get notifGameCancelled;
+
+  /// No description provided for @notifGameRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The host removed you from the game'**
+  String get notifGameRemoved;
+
+  /// No description provided for @notifGameReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder: your game starts soon'**
+  String get notifGameReminder;
+
+  /// No description provided for @notifGameInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} invited you to a game'**
+  String notifGameInvite(String actor);
+
+  /// No description provided for @notifRequestInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} is in for your Game Request'**
+  String notifRequestInterest(String actor);
+
+  /// No description provided for @notifRequestConvertedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Game Request became a game, and you are in'**
+  String get notifRequestConvertedIn;
+
+  /// No description provided for @notifRequestConvertedFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Game Request became a game, but it filled up before you'**
+  String get notifRequestConvertedFull;
+
+  /// No description provided for @notifRequestExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'A Game Request expired'**
+  String get notifRequestExpired;
+
+  /// No description provided for @notifUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'New notification'**
+  String get notifUnknown;
+
+  /// No description provided for @reliabilityNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New player'**
+  String get reliabilityNew;
+
+  /// No description provided for @reliabilityReliable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reliable'**
+  String get reliabilityReliable;
+
+  /// No description provided for @reliabilityLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited'**
+  String get reliabilityLimited;
+
+  /// No description provided for @reliabilityBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get reliabilityBlocked;
+
+  /// No description provided for @reliabilityScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Reliability score {score} of 100'**
+  String reliabilityScore(int score);
+
+  /// No description provided for @reliabilityLimitedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can hold one upcoming booking at a time. Show up and play to recover.'**
+  String get reliabilityLimitedHint;
+
+  /// No description provided for @reliabilityBlockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot book, join or post until older missed games pass 90 days.'**
+  String get reliabilityBlockedHint;
 }
 
 class _AppLocalizationsDelegate

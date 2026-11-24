@@ -1102,4 +1102,167 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entityOwner => 'Venue owner';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get markAllRead => 'Mark all read';
+
+  @override
+  String get notificationSettings => 'Notification settings';
+
+  @override
+  String get noNotifications => 'No notifications yet';
+
+  @override
+  String get notificationsAndPrivacy => 'Notifications and privacy';
+
+  @override
+  String get notificationsMuteHint =>
+      'Choose what you hear about. Switch a group off to stop its notifications.';
+
+  @override
+  String get notifCategoryBookings => 'Bookings';
+
+  @override
+  String get notifCategoryVenue => 'My venues';
+
+  @override
+  String get notifCategoryGames => 'Games';
+
+  @override
+  String get notifCategoryRequests => 'Game Requests';
+
+  @override
+  String get notifCategoryInvites => 'Invitations';
+
+  @override
+  String get privacyTitle => 'Privacy';
+
+  @override
+  String get hideFromSearch => 'Hide me from player search';
+
+  @override
+  String get hideFromSearchHint =>
+      'Other players will not find you when they look for people to invite.';
+
+  @override
+  String get notifSomeone => 'Someone';
+
+  @override
+  String get notifVenueFallback => 'the venue';
+
+  @override
+  String get notifCourtFallback => 'a court';
+
+  @override
+  String notifBookingConfirmed(String venue) {
+    return 'Your booking at $venue is confirmed';
+  }
+
+  @override
+  String notifBookingCancelledByVenue(String venue) {
+    return '$venue cancelled your booking';
+  }
+
+  @override
+  String notifBookingReminder(String venue) {
+    return 'Reminder: your booking at $venue is coming up';
+  }
+
+  @override
+  String notifVenueNewBooking(String actor, String court) {
+    return '$actor booked $court';
+  }
+
+  @override
+  String notifVenueBookingCancelled(String actor, String court) {
+    return '$actor cancelled $court';
+  }
+
+  @override
+  String notifGameJoined(String actor) {
+    return '$actor joined your game';
+  }
+
+  @override
+  String notifGameLeft(String actor) {
+    return '$actor left your game';
+  }
+
+  @override
+  String notifJoinRequest(String actor) {
+    return '$actor asked to join your game';
+  }
+
+  @override
+  String get notifJoinApproved => 'You are in! The host approved your request';
+
+  @override
+  String get notifJoinDeclined => 'The host declined your request';
+
+  @override
+  String get notifGameFull => 'Your game is full';
+
+  @override
+  String get notifGameChanged => 'The host changed the game details';
+
+  @override
+  String get notifGameCancelled => 'The game was cancelled';
+
+  @override
+  String get notifGameRemoved => 'The host removed you from the game';
+
+  @override
+  String get notifGameReminder => 'Reminder: your game starts soon';
+
+  @override
+  String notifGameInvite(String actor) {
+    return '$actor invited you to a game';
+  }
+
+  @override
+  String notifRequestInterest(String actor) {
+    return '$actor is in for your Game Request';
+  }
+
+  @override
+  String get notifRequestConvertedIn =>
+      'Your Game Request became a game, and you are in';
+
+  @override
+  String get notifRequestConvertedFull =>
+      'Your Game Request became a game, but it filled up before you';
+
+  @override
+  String get notifRequestExpired => 'A Game Request expired';
+
+  @override
+  String get notifUnknown => 'New notification';
+
+  @override
+  String get reliabilityNew => 'New player';
+
+  @override
+  String get reliabilityReliable => 'Reliable';
+
+  @override
+  String get reliabilityLimited => 'Limited';
+
+  @override
+  String get reliabilityBlocked => 'Blocked';
+
+  @override
+  String reliabilityScore(int score) {
+    return 'Reliability score $score of 100';
+  }
+
+  @override
+  String get reliabilityLimitedHint =>
+      'You can hold one upcoming booking at a time. Show up and play to recover.';
+
+  @override
+  String get reliabilityBlockedHint =>
+      'You cannot book, join or post until older missed games pass 90 days.';
 }

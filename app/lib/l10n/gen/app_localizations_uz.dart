@@ -1098,4 +1098,169 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get entityOwner => 'Maydon egasi';
+
+  @override
+  String get notificationsTitle => 'Bildirishnomalar';
+
+  @override
+  String get markAllRead => 'Hammasini oʻqilgan qilish';
+
+  @override
+  String get notificationSettings => 'Bildirishnoma sozlamalari';
+
+  @override
+  String get noNotifications => 'Hozircha bildirishnomalar yoʻq';
+
+  @override
+  String get notificationsAndPrivacy => 'Bildirishnomalar va maxfiylik';
+
+  @override
+  String get notificationsMuteHint =>
+      'Nima haqida xabar olishni tanlang. Guruhni oʻchirsangiz, uning bildirishnomalari kelmaydi.';
+
+  @override
+  String get notifCategoryBookings => 'Bronlar';
+
+  @override
+  String get notifCategoryVenue => 'Mening maydonlarim';
+
+  @override
+  String get notifCategoryGames => 'Oʻyinlar';
+
+  @override
+  String get notifCategoryRequests => 'Oʻyin eʼlonlari';
+
+  @override
+  String get notifCategoryInvites => 'Takliflar';
+
+  @override
+  String get privacyTitle => 'Maxfiylik';
+
+  @override
+  String get hideFromSearch => 'Meni oʻyinchilar qidiruvidan yashirish';
+
+  @override
+  String get hideFromSearchHint =>
+      'Boshqa oʻyinchilar taklif qilish uchun qidirganda sizni topa olmaydi.';
+
+  @override
+  String get notifSomeone => 'Kimdir';
+
+  @override
+  String get notifVenueFallback => 'maydon';
+
+  @override
+  String get notifCourtFallback => 'kort';
+
+  @override
+  String notifBookingConfirmed(String venue) {
+    return 'Bron tasdiqlandi: $venue';
+  }
+
+  @override
+  String notifBookingCancelledByVenue(String venue) {
+    return 'Maydon bronni bekor qildi: $venue';
+  }
+
+  @override
+  String notifBookingReminder(String venue) {
+    return 'Eslatma: bron yaqinlashmoqda, $venue';
+  }
+
+  @override
+  String notifVenueNewBooking(String actor, String court) {
+    return 'Yangi bron: $court ($actor)';
+  }
+
+  @override
+  String notifVenueBookingCancelled(String actor, String court) {
+    return 'Bron bekor qilindi: $court ($actor)';
+  }
+
+  @override
+  String notifGameJoined(String actor) {
+    return 'Oʻyiningizga yangi oʻyinchi: $actor';
+  }
+
+  @override
+  String notifGameLeft(String actor) {
+    return 'Oʻyindan chiqdi: $actor';
+  }
+
+  @override
+  String notifJoinRequest(String actor) {
+    return 'Qatnashish soʻrovi: $actor';
+  }
+
+  @override
+  String get notifJoinApproved =>
+      'Siz oʻyindasiz! Tashkilotchi soʻrovingizni qabul qildi';
+
+  @override
+  String get notifJoinDeclined => 'Tashkilotchi soʻrovingizni rad etdi';
+
+  @override
+  String get notifGameFull => 'Oʻyin toʻldi';
+
+  @override
+  String get notifGameChanged =>
+      'Tashkilotchi oʻyin tafsilotlarini oʻzgartirdi';
+
+  @override
+  String get notifGameCancelled => 'Oʻyin bekor qilindi';
+
+  @override
+  String get notifGameRemoved => 'Tashkilotchi sizni oʻyindan chiqardi';
+
+  @override
+  String get notifGameReminder => 'Eslatma: oʻyin tez orada boshlanadi';
+
+  @override
+  String notifGameInvite(String actor) {
+    return '$actor sizni oʻyinga taklif qildi';
+  }
+
+  @override
+  String notifRequestInterest(String actor) {
+    return 'Eʻloningizga javob: $actor';
+  }
+
+  @override
+  String get notifRequestConvertedIn =>
+      'Eʻlon oʻyinga aylandi va siz oʻyindasiz';
+
+  @override
+  String get notifRequestConvertedFull =>
+      'Eʻlon oʻyinga aylandi, lekin joylar siz uchun yetmadi';
+
+  @override
+  String get notifRequestExpired => 'Oʻyin eʼlonining muddati tugadi';
+
+  @override
+  String get notifUnknown => 'Yangi bildirishnoma';
+
+  @override
+  String get reliabilityNew => 'Yangi oʻyinchi';
+
+  @override
+  String get reliabilityReliable => 'Ishonchli';
+
+  @override
+  String get reliabilityLimited => 'Cheklangan';
+
+  @override
+  String get reliabilityBlocked => 'Bloklangan';
+
+  @override
+  String reliabilityScore(int score) {
+    return 'Ishonchlilik bahosi: 100 dan $score';
+  }
+
+  @override
+  String get reliabilityLimitedHint =>
+      'Bir vaqtning oʻzida bitta kelgusi bron qilish mumkin. Tiklanish uchun oʻyinlarga keling.';
+
+  @override
+  String get reliabilityBlockedHint =>
+      'Eski oʻtkazib yuborilgan oʻyinlar 90 kundan oshmaguncha bron qilib, oʻyinga qoʻshilib va eʼlon bera olmaysiz.';
 }

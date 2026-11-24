@@ -12,6 +12,7 @@ import '../../state/owner_providers.dart';
 import '../../state/providers.dart';
 import '../common/app_header.dart';
 import '../common/formatters.dart';
+import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import '../onboarding/onboarding_screen.dart';
 
@@ -28,6 +29,7 @@ class ProfileScreen extends ConsumerWidget {
     final name = session.userName ?? '';
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     final me = ref.watch(playerProvider(kMeId)).valueOrNull;
+    final reliability = ref.watch(communitySettingsProvider).valueOrNull?.reliability;
 
     final bookings = ref.watch(myBookingsProvider).valueOrNull ?? const <Booking>[];
     final games = ref.watch(gamesProvider).valueOrNull ?? const <Game>[];
@@ -72,6 +74,22 @@ class ProfileScreen extends ConsumerWidget {
                   Text(name, style: AppText.title),
                   const SizedBox(height: 2),
                   Text(city.name.resolve(context.lang), style: AppText.muted.copyWith(fontSize: 15)),
+                  if (reliability != null) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        ReliabilityPill(reliability: reliability, large: true),
+                        Text(l.reliabilityScore(reliability.score), style: AppText.caption),
+                      ],
+                    ),
+                    if (reliabilityHint(l, reliability.badge) case final hint?) ...[
+                      const SizedBox(height: 8),
+                      Text(hint, style: AppText.muted),
+                    ],
+                  ],
                 ],
               ),
             ),
@@ -142,6 +160,12 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.event_available_outlined,
                   title: l.myBookings,
                   onTap: () => context.push('/bookings'),
+                ),
+                const Divider(indent: 60),
+                _MenuRow(
+                  icon: Icons.notifications_none_rounded,
+                  title: l.notificationsAndPrivacy,
+                  onTap: () => context.push('/settings'),
                 ),
                 const Divider(indent: 60),
                 _MenuRow(

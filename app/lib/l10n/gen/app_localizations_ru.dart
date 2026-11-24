@@ -1126,4 +1126,166 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get entityOwner => 'Владелец площадки';
+
+  @override
+  String get notificationsTitle => 'Уведомления';
+
+  @override
+  String get markAllRead => 'Прочитать все';
+
+  @override
+  String get notificationSettings => 'Настройки уведомлений';
+
+  @override
+  String get noNotifications => 'Пока нет уведомлений';
+
+  @override
+  String get notificationsAndPrivacy => 'Уведомления и приватность';
+
+  @override
+  String get notificationsMuteHint =>
+      'Выберите, о чём вам сообщать. Выключите группу, чтобы не получать её уведомления.';
+
+  @override
+  String get notifCategoryBookings => 'Бронирования';
+
+  @override
+  String get notifCategoryVenue => 'Мои площадки';
+
+  @override
+  String get notifCategoryGames => 'Игры';
+
+  @override
+  String get notifCategoryRequests => 'Запросы на игру';
+
+  @override
+  String get notifCategoryInvites => 'Приглашения';
+
+  @override
+  String get privacyTitle => 'Приватность';
+
+  @override
+  String get hideFromSearch => 'Скрыть меня из поиска игроков';
+
+  @override
+  String get hideFromSearchHint =>
+      'Другие игроки не найдут вас, когда ищут, кого пригласить.';
+
+  @override
+  String get notifSomeone => 'Кто-то';
+
+  @override
+  String get notifVenueFallback => 'площадка';
+
+  @override
+  String get notifCourtFallback => 'корт';
+
+  @override
+  String notifBookingConfirmed(String venue) {
+    return 'Бронь подтверждена: $venue';
+  }
+
+  @override
+  String notifBookingCancelledByVenue(String venue) {
+    return 'Площадка отменила вашу бронь: $venue';
+  }
+
+  @override
+  String notifBookingReminder(String venue) {
+    return 'Напоминание: скоро ваша бронь, $venue';
+  }
+
+  @override
+  String notifVenueNewBooking(String actor, String court) {
+    return 'Новая бронь: $court ($actor)';
+  }
+
+  @override
+  String notifVenueBookingCancelled(String actor, String court) {
+    return 'Бронь отменена: $court ($actor)';
+  }
+
+  @override
+  String notifGameJoined(String actor) {
+    return 'Новый игрок в вашей игре: $actor';
+  }
+
+  @override
+  String notifGameLeft(String actor) {
+    return 'Игрок вышел из вашей игры: $actor';
+  }
+
+  @override
+  String notifJoinRequest(String actor) {
+    return 'Запрос на участие: $actor';
+  }
+
+  @override
+  String get notifJoinApproved => 'Вы в игре! Организатор принял ваш запрос';
+
+  @override
+  String get notifJoinDeclined => 'Организатор отклонил ваш запрос';
+
+  @override
+  String get notifGameFull => 'Игра заполнена';
+
+  @override
+  String get notifGameChanged => 'Организатор изменил детали игры';
+
+  @override
+  String get notifGameCancelled => 'Игра отменена';
+
+  @override
+  String get notifGameRemoved => 'Организатор исключил вас из игры';
+
+  @override
+  String get notifGameReminder => 'Напоминание: скоро ваша игра';
+
+  @override
+  String notifGameInvite(String actor) {
+    return '$actor приглашает вас в игру';
+  }
+
+  @override
+  String notifRequestInterest(String actor) {
+    return 'Отклик на ваш запрос: $actor';
+  }
+
+  @override
+  String get notifRequestConvertedIn => 'Запрос стал игрой, и вы в составе';
+
+  @override
+  String get notifRequestConvertedFull =>
+      'Запрос стал игрой, но места закончились раньше';
+
+  @override
+  String get notifRequestExpired => 'Срок запроса на игру истёк';
+
+  @override
+  String get notifUnknown => 'Новое уведомление';
+
+  @override
+  String get reliabilityNew => 'Новый игрок';
+
+  @override
+  String get reliabilityReliable => 'Надёжный';
+
+  @override
+  String get reliabilityLimited => 'Ограничен';
+
+  @override
+  String get reliabilityBlocked => 'Заблокирован';
+
+  @override
+  String reliabilityScore(int score) {
+    return 'Рейтинг надёжности $score из 100';
+  }
+
+  @override
+  String get reliabilityLimitedHint =>
+      'Одновременно можно иметь одну будущую бронь. Приходите на игры, чтобы восстановить рейтинг.';
+
+  @override
+  String get reliabilityBlockedHint =>
+      'Вы не можете бронировать, вступать в игры и создавать запросы, пока старые пропуски не пройдут 90 дней.';
 }
