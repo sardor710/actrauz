@@ -1,4 +1,4 @@
-// Shared by e2e.mjs and e2e-owner.mjs: calls to the hosted project, and
+// Shared by e2e.mjs, e2e-owner.mjs and e2e-community.mjs: calls to the hosted project, and
 // throw-away accounts signed in the way a phone and Telegram would.
 
 import assert from 'node:assert/strict';
@@ -76,7 +76,9 @@ export async function signIn(label, phone) {
 
 /** Fills in what the app asks for on first sign-in. */
 export async function saveProfile(session, fullName) {
-  const profile = await call(`/rest/v1/profiles?id=eq.${session.userId}`, {
+  // Named columns: players may not read every column of profiles (M4), so
+  // the representation must not ask for `*`.
+  const profile = await call(`/rest/v1/profiles?id=eq.${session.userId}&select=id,full_name,city_id,language`, {
     method: 'PATCH',
     token: session.jwt,
     headers: { Prefer: 'return=representation' },
