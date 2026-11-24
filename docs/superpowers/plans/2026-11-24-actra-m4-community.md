@@ -52,7 +52,8 @@
 | `booking_paid` | +2 | owner marks an app booking paid |
 | `game_completed` | +2 | each participant of a non-cancelled game, once it ends (scheduled job) |
 
-- Score = `clamp(80 + sum(delta of events in the last 90 days), 0, 100)`. Events are unique per `(user_id, kind, ref)`; `ref` is the booking or game id (`game_id:user_id` is unnecessary since user is in the key).
+- Score = `clamp(80 + least(sum of positive deltas, 20) + sum of negative deltas, 0, 100)` over events in the last 90 days (positive credit is capped so it cannot be banked against no-shows).
+- `game_completed` is awarded only for games that end with at least 2 participants, and only to participants who joined before the start. Joining a game that has started is refused (`not_found`). Events are unique per `(user_id, kind, ref)`; `ref` is the booking or game id (`game_id:user_id` is unnecessary since user is in the key).
 - Re-marking a booking replaces its event: `paid` deletes that booking's `no_show` event, `no_show` deletes its `booking_paid` event. Venue cancellations never create events. Walk-ins never create events.
 - Badge: `new` when the player has fewer than 3 events ever and score ≥ 70; else `reliable` when score ≥ 70; else `limited` when 50–69; else `blocked` (< 50).
 - `limited`: at most **1** upcoming app booking (instead of 3). `blocked`: `hold_slots`, `join_game`, `request_to_join`, `create_game`, `create_game_request`, `request_interest` raise `reliability_too_low`. A blocked player recovers as events pass 90 days.
