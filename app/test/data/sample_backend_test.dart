@@ -413,6 +413,10 @@ void main() {
       expect(older.every((n) => n.createdAt.isBefore(all[1].createdAt)), isTrue);
       expect(older.map((n) => n.id), isNot(contains(all[0].id)));
       expect(older.map((n) => n.id), isNot(contains(all[1].id)));
+
+      // With the id as well, the next page starts right after the last entry.
+      final next = await backend.inbox(before: all[1].createdAt, beforeId: all[1].id);
+      expect(next.map((n) => n.id), all.skip(2).map((n) => n.id));
     });
 
     test('players can be found by sport level and name; I am not in the list', () async {

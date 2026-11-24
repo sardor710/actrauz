@@ -16,10 +16,14 @@ class SupabaseNotificationRepository implements NotificationRepository {
   static const pageSize = 50;
 
   @override
-  Future<List<AppNotification>> inbox({DateTime? before}) async {
+  Future<List<AppNotification>> inbox({DateTime? before, String? beforeId}) async {
     final rows = await _client.rpc(
       'my_notifications',
-      params: {'p_limit': pageSize, 'p_before': before?.toUtc().toIso8601String()},
+      params: {
+        'p_limit': pageSize,
+        'p_before': before?.toUtc().toIso8601String(),
+        'p_before_id': before == null ? null : beforeId,
+      },
     );
     return [for (final row in rows as List) notificationFromJson(Map<String, dynamic>.from(row as Map))];
   }

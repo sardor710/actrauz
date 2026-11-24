@@ -85,8 +85,10 @@ abstract class GameRepository {
 
 /// The player's inbox and community settings.
 abstract class NotificationRepository {
-  /// Newest first; [before] pages back from the `createdAt` of the last one.
-  Future<List<AppNotification>> inbox({DateTime? before});
+  /// Newest first. The next page: [before] and [beforeId] are the `createdAt`
+  /// and `id` of the last entry shown (several entries can share a
+  /// `createdAt`, so the id breaks the tie).
+  Future<List<AppNotification>> inbox({DateTime? before, String? beforeId});
   Future<int> unreadCount();
 
   /// Marks the given entries read, or all of them when [ids] is null.

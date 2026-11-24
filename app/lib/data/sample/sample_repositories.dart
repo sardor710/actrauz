@@ -1008,11 +1008,22 @@ class SampleBackend
   // ---- NotificationRepository ----
 
   @override
-  Future<List<AppNotification>> inbox({DateTime? before}) async {
+  Future<List<AppNotification>> inbox({DateTime? before, String? beforeId}) async {
+    // Newest first, ties by id, as the database pages: (createdAt, id) < (before, beforeId).
+    int newestFirst(AppNotification a, AppNotification b) {
+      final byDate = b.createdAt.compareTo(a.createdAt);
+      return byDate != 0 ? byDate : b.id.compareTo(a.id);
+    }
+
+    bool older(AppNotification n) =>
+        before == null ||
+        n.createdAt.isBefore(before) ||
+        (beforeId != null && n.createdAt.isAtSameMomentAs(before) && n.id.compareTo(beforeId) < 0);
+
     final entries = [
       for (final n in _inbox)
-        if (before == null || n.createdAt.isBefore(before)) n,
-    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        if (older(n)) n,
+    ]..sort(newestFirst);
     return entries.take(50).toList();
   }
 

@@ -82,10 +82,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   final List<AppNotification> _older = [];
   bool _exhausted = false;
   bool _loadingMore = false;
+  /// Entries marked read on this screen, until the list reloads with it. By
+  /// id, so "Mark all read" never covers a notification that arrives later.
   final Set<String> _readHere = {};
-  bool _allRead = false;
 
-  AppNotification _shown(AppNotification n) => _allRead || _readHere.contains(n.id) ? n.copyWith(read: true) : n;
+  AppNotification _shown(AppNotification n) => _readHere.contains(n.id) ? n.copyWith(read: true) : n;
 
   Future<void> _open(AppNotification n) async {
     final route = n.route;
@@ -104,10 +105,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     route.startsWith('/games') ? context.go(route) : context.push(route);
   }
 
-  Future<void> _markAll() async {
+  Future<void> _markAll(List<AppNotification> shown) async {
     try {
       await ref.read(notificationRepositoryProvider).markRead();
-      if (mounted) setState(() => _allRead = true);
+      if (mounted) setState(() => _readHere.addAll(shown.map((n) => n.id)));
       refreshInbox(ref);
     } catch (_) {
       if (mounted) showMessage(context, context.l.errGeneric);
@@ -117,7 +118,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   Future<void> _loadMore(List<AppNotification> all) async {
     setState(() => _loadingMore = true);
     try {
-      final page = await ref.read(notificationRepositoryProvider).inbox(before: all.last.createdAt);
+      final last = all.last;
+      final page = await ref.read(notificationRepositoryProvider).inbox(before: last.createdAt, beforeId: last.id);
       if (!mounted) return;
       setState(() {
         _older.addAll(page);
@@ -145,7 +147,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
         title: Text(l.notificationsTitle),
         actions: [
-          TextButton(onPressed: anyUnread ? _markAll : null, child: Text(l.markAllRead)),
+          TextButton(onPressed: anyUnread ? () => _markAll(all) : null, child: Text(l.markAllRead)),
           IconButton(
             tooltip: l.notificationSettings,
             onPressed: () => context.push('/settings'),

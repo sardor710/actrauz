@@ -102,6 +102,23 @@ void main() {
     expect(await containerOf(tester).read(unreadCountProvider.future), 0);
   });
 
+  testWidgets('a notification that arrives after Mark all read shows as unread', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final gameId = await aziJoinsMyGame(tester);
+    await tap(tester, bell());
+    await tap(tester, find.text('Mark all read'));
+    expect(find.byKey(const ValueKey('unread-dot')), findsNothing);
+
+    // Another sample player (p2) joins while the inbox is open.
+    final c = containerOf(tester);
+    await c.read(sampleBackendProvider).joinAs('p2', gameId);
+    c.invalidate(inboxProvider);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('unread-dot')), findsOneWidget);
+    expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Mark all read')).onPressed, isNotNull);
+  });
+
   testWidgets('muting Games and saving persists the setting', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await tap(tester, bell());

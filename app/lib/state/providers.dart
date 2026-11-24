@@ -167,7 +167,7 @@ final playerProfileProvider = FutureProvider.family<PlayerProfile, String>(
 );
 
 /// The newest page of the inbox. Older pages are loaded with
-/// `NotificationRepository.inbox(before: …)` by the screen.
+/// `NotificationRepository.inbox(before: …, beforeId: …)` by the screen.
 final inboxProvider = FutureProvider<List<AppNotification>>(
   (ref) => ref.watch(notificationRepositoryProvider).inbox(),
 );
