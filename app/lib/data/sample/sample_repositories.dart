@@ -408,6 +408,10 @@ class SampleBackend
   _JoinAsk? _pendingAsk(String gameId, String userId) =>
       (_joinAsks[gameId] ?? const []).where((a) => a.userId == userId && a.status == _AskStatus.pending).firstOrNull;
 
+  /// The host removed [userId] from the game and has not invited them since.
+  bool _removed(String gameId, String userId) =>
+      (_joinAsks[gameId] ?? const []).any((a) => a.userId == userId && a.status == _AskStatus.removed);
+
   bool _canSee(String viewer, Game g) =>
       g.visibility == GameVisibility.public ||
       g.hostId == viewer ||
@@ -477,6 +481,7 @@ class SampleBackend
     _requireReliable(userId);
     final g = _live(id);
     final invited = _isInvited(id, userId);
+    if (_removed(id, userId)) throw const JoinException(JoinError.notFound);
     final joined = _save(joinGame(g, _playerOf(userId), invited: invited));
     _closePending(id, userId);
     _notify(g.hostId, 'game_joined', 'games', {..._gameNote(g), 'actor_name': _nameOf(userId)});
@@ -500,6 +505,7 @@ class SampleBackend
   Future<Game> requestToJoinAs(String userId, String id) async {
     _requireReliable(userId);
     final g = _live(id, viewer: userId);
+    if (_removed(id, userId)) throw const JoinException(JoinError.notFound);
     if (g.participantIds.contains(userId)) throw const JoinException(JoinError.alreadyJoined);
     if (_pendingAsk(id, userId) != null) throw const JoinException(JoinError.alreadyRequested);
     if (g.isFull) throw const JoinException(JoinError.full);
@@ -513,6 +519,8 @@ class SampleBackend
     final g = _hosted(id, userId);
     if (!_exists(inviteeId)) throw const JoinException(JoinError.notFound);
     if (g.participantIds.contains(inviteeId)) throw const JoinException(JoinError.alreadyJoined);
+    // Inviting a player the host removed earlier lets them back in.
+    _joinAsks[id]?.removeWhere((a) => a.userId == inviteeId && a.status == _AskStatus.removed);
     final previous = _inviteOf(id, inviteeId);
     (_invites[id] ??= {})[inviteeId] = _Invite.pending;
     if (previous != _Invite.pending) {
@@ -655,7 +663,11 @@ class SampleBackend
     bool listed(Game g) {
       if (g.cancelled || _started(g)) return false;
       final mine = g.hostId == kMeId || g.participantIds.contains(kMeId) || _isInvited(g.id, kMeId);
-      final inCity = g.cityId == cityId && _canSee(kMeId, g) && (!g.isFull || g.participantIds.contains(kMeId));
+      // Invite-only games come in only as `mine`, never through the city.
+      final inCity =
+          g.cityId == cityId &&
+          g.visibility == GameVisibility.public &&
+          (!g.isFull || g.participantIds.contains(kMeId));
       return inCity || mine;
     }
 
@@ -736,6 +748,11 @@ class SampleBackend
     if (userId == kMeId) throw const JoinException(JoinError.hostCannotLeave);
     if (!g.participantIds.contains(userId)) throw const JoinException(JoinError.notParticipant);
     final removed = _save(leaveGame(g, userId));
+    if (!_removed(gameId, userId)) {
+      (_joinAsks[gameId] ??= []).add(
+        _JoinAsk(id: 'jr${_nextId++}', gameId: gameId, userId: userId, createdAt: utcNow())..status = _AskStatus.removed,
+      );
+    }
     _notify(userId, 'game_removed', 'games', _gameNote(g));
     return _view(removed, kMeId);
   }
@@ -949,7 +966,8 @@ class SampleBackend
     var current = _games[game.id]!;
     for (final member in r.interested) {
       var added = false;
-      if (!current.isFull && !current.participantIds.contains(member.id)) {
+      // A player blocked since tapping is told, but not added.
+      if (!current.isFull && !_reliability(member.id).isBlocked && !current.participantIds.contains(member.id)) {
         current = _save(current.copyWith(participantIds: [...current.participantIds, member.id]));
         added = true;
       }
@@ -1437,7 +1455,12 @@ class _SampleAdminRepository implements AdminRepository {
   @override
   Future<void> deleteVenue(String venueId) async {
     final venue = _b._venues[venueId] ?? _notFound();
-    if (_b._engine.hasBookings(venueId: venueId)) throw const BookingException(BookingError.hasBookings);
+    // Games and Game Requests hold on to their venue too.
+    if (_b._engine.hasBookings(venueId: venueId) ||
+        _b._games.values.any((g) => g.venueId == venueId) ||
+        _b._requests.values.any((r) => r.venueId == venueId)) {
+      throw const BookingException(BookingError.hasBookings);
+    }
     final before = venueDraftJson(VenueDraft.from(_adminVenue(venue)));
     _b._venues.remove(venueId);
     _b._inactiveVenues.remove(venueId);
@@ -1687,9 +1710,11 @@ class _SampleAdminRepository implements AdminRepository {
 
 enum _Invite { pending, accepted, declined }
 
-enum _AskStatus { pending, approved, declined, withdrawn }
+/// `removed`: the host took the player out; it bars them from joining or
+/// asking again until the host invites them (as the database does).
+enum _AskStatus { pending, approved, declined, withdrawn, removed }
 
-/// A request to join a game, waiting for the host.
+/// A request to join a game, waiting for the host, or a host's removal.
 class _JoinAsk {
   _JoinAsk({required this.id, required this.gameId, required this.userId, required this.createdAt});
 

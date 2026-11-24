@@ -5,6 +5,8 @@ import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/admin.dart';
 import 'package:actra/domain/booking_engine.dart';
+import 'package:actra/domain/community.dart';
+import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/owner.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -133,6 +135,21 @@ void main() {
       expect((await admin.venues()).map((v) => v.venue.id), isNot(contains(id)));
       expect((await owner.myVenues()).map((v) => v.id), isNot(contains(id)));
       expect(await errorOf(() => admin.deleteVenue(id)), BookingError.notFound);
+    });
+
+    test('a venue that a game or a Game Request uses cannot be deleted', () async {
+      final start = DateTime.utc(2026, 11, 23, 7);
+      final end = DateTime.utc(2026, 11, 23, 8);
+      final withGame = await admin.saveVenue(newVenue());
+      await backend.create(GameDraft(sportId: 'gym', spots: 2, venueId: withGame, start: start, end: end));
+      expect(await errorOf(() => admin.deleteVenue(withGame)), BookingError.hasBookings);
+
+      final withRequest = await admin.saveVenue(newVenue());
+      await backend.createRequest(
+        GameRequestDraft(sportId: 'gym', playersNeeded: 1, venueId: withRequest, start: start, end: end),
+      );
+      expect(await errorOf(() => admin.deleteVenue(withRequest)), BookingError.hasBookings);
+      expect((await admin.venues()).map((v) => v.venue.id), containsAll([withGame, withRequest]));
     });
   });
 

@@ -211,6 +211,24 @@ void main() {
 
       await backend.declineInvite(theirs.id);
       await expectLater(backend.join(theirs.id), joinError(JoinError.notFound));
+      // The city list shows public games only; the game still opens.
+      expect((await backend.games('tashkent')).map((g) => g.id), isNot(contains(theirs.id)));
+      expect((await backend.game(theirs.id)).id, theirs.id);
+    });
+
+    test('a removed player cannot join or ask again until the host invites them', () async {
+      final game = await runningGame();
+      await backend.joinAs('p1', game.id);
+      await backend.removeParticipant(game.id, 'p1');
+      await expectLater(backend.joinAs('p1', game.id), joinError(JoinError.notFound));
+      await expectLater(backend.requestToJoinAs('p1', game.id), joinError(JoinError.notFound));
+      expect((await backend.game(game.id)).joinRequests, isEmpty);
+
+      await backend.invite(game.id, 'p1');
+      expect((await backend.joinAs('p1', game.id)).participantIds, [kMeId, 'p1']);
+      // Leaving of their own accord later does not bar them again.
+      await backend.leaveAs('p1', game.id);
+      expect((await backend.joinAs('p1', game.id)).participantIds, [kMeId, 'p1']);
     });
 
     test('host tools: remove a player, edit, cancel', () async {
@@ -320,6 +338,21 @@ void main() {
       );
       expect(game.spots, 3);
       expect(game.participantIds, [kMeId, 'p1', 'p2']);
+    });
+
+    test('converting skips an interested player who has been blocked since', () async {
+      final request = await backend.createRequest(
+        GameRequestDraft(sportId: 'running', playersNeeded: 1, start: tomorrowEarly, end: tomorrowEnd),
+      );
+      await backend.interestAs('p1', request.id);
+      await backend.interestAs('p2', request.id);
+      backend.recordReliability('p1', ReliabilityKind.noShow, 'x-1');
+      backend.recordReliability('p1', ReliabilityKind.noShow, 'x-2');
+      final game = await backend.convertRequest(
+        request.id,
+        const PlacePick(meetingPoint: 'x', meetingLat: 1, meetingLng: 1, spots: 2),
+      );
+      expect(game.participantIds, [kMeId, 'p2']);
     });
 
     test('other people\'s requests: I am in, then out; only the poster converts or cancels', () async {
