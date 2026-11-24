@@ -174,7 +174,7 @@ declare
 begin
   v_payload := app.booking_note(p_booking) - 'venue_name' || jsonb_build_object(
     'venue_id', p_booking.venue_id,
-    'court_name', (select coalesce(c.name_en, c.name_ru, c.name_uz) from public.courts c where c.id = p_booking.court_id),
+    'court_name', (select jsonb_build_object('uz', c.name_uz, 'ru', c.name_ru, 'en', c.name_en) from public.courts c where c.id = p_booking.court_id),
     'actor_name', (select p.full_name from public.profiles p where p.id = p_booking.user_id));
   for v_owner in select o.user_id from public.venue_owners o where o.venue_id = p_booking.venue_id loop
     perform app.notify(v_owner, p_kind, 'venue', v_payload, p_now);
@@ -546,7 +546,8 @@ begin
     raise exception 'invalid_argument';
   end if;
   update public.profiles p
-  set muted_categories = coalesce((select array_agg(distinct m order by m) from unnest(p_muted) m), p.muted_categories),
+  set muted_categories = case when p_muted is null then p.muted_categories
+        else coalesce((select array_agg(distinct m order by m) from unnest(p_muted) m), '{}') end,
       hidden_from_search = coalesce(p_hidden, p.hidden_from_search)
   where p.id = v_user;
 end $$;

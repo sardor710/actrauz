@@ -260,7 +260,7 @@ test('confirming notifies the player and every owner', async () => {
     assert.equal(note.payload.venue_id, venueId);
     assert.equal(note.payload.booking_id, id);
     assert.equal(note.payload.actor_name, 'Ali');
-    assert.equal(note.payload.court_name, 'Court');
+    assert.deepEqual(note.payload.court_name, { uz: null, ru: null, en: 'Court' });
   }
 });
 
@@ -297,6 +297,14 @@ test('set_settings validates categories and my_settings reads them back', async 
   assert.deepEqual(row.r.reliability, { score: 80, badge: 'new' });
   const [rel] = await asUser(pool, ali, (c) => rpc(c, 'my_reliability'));
   assert.deepEqual(rel.r, { score: 80, badge: 'new' });
+});
+
+test('set_settings with an empty list unmutes everything; null leaves it', async () => {
+  await asUser(pool, ali, (c) => rpc(c, 'set_settings', [['games'], null]));
+  await asUser(pool, ali, (c) => rpc(c, 'set_settings', [null, null]));
+  assert.deepEqual((await asUser(pool, ali, (c) => rpc(c, 'my_settings')))[0].r.muted_categories, ['games']);
+  await asUser(pool, ali, (c) => rpc(c, 'set_settings', [[], null]));
+  assert.deepEqual((await asUser(pool, ali, (c) => rpc(c, 'my_settings')))[0].r.muted_categories, []);
 });
 
 test('anon cannot execute the public functions; a player cannot call the app ones', async () => {
