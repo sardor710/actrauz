@@ -49,7 +49,7 @@ Without `--dart-define-from-file` the app runs on built-in sample data with the 
 | `node scripts/deploy.mjs seed` | Reload sample content; re-dates the sample games and tournaments from today. |
 | `node scripts/e2e.mjs` | Sign in two throw-away accounts through the real functions, book a slot, check the row in the database, check the second account is blocked, clean up. |
 | `node scripts/e2e-owner.mjs` | The same for venue owners and admins: a throw-away admin creates a venue and court and assigns an owner; the owner adds a walk-in and a block, changes prices and reads the dashboard; a plain player is refused throughout; everything made is deleted again. |
-| `node scripts/e2e-community.mjs` | The same for games and the community: a throw-away host books a seeded court and makes a game on it, a second account asks to join and is approved, the inbox is read, paged and marked read, an invite-only run stays invisible to a third account until it is invited, a Game Request gets an "I'm in" and is converted, finding players returns no phone numbers and respects "hidden", reliability reads back; everything made is deleted again and existing accounts are never changed. |
+| `node scripts/e2e-community.mjs` | The same for games and the community: a throw-away admin creates a throw-away venue and court, a throw-away host books it and makes a game on it, a second account asks to join and is approved, the inbox is read, paged and marked read, an invite-only run stays invisible to a third account until it is invited, a Game Request gets an "I'm in" and is converted, finding players returns no phone numbers and respects "hidden", reliability reads back; everything made is deleted again and existing accounts are never changed. |
 | `node scripts/dev-login.mjs <token-or-bot-link> <phone>` | Test helper: plays Telegram's part for one sign-in attempt, so the app can be signed in where there is no Telegram (browser build, emulator). Needs the webhook secret from `.env`. Use made-up numbers only and delete the account afterwards. |
 
 ## How booking is kept correct
@@ -92,7 +92,7 @@ The rules live in `migrations/20261124100000_community_core.sql` (notifications,
 
 | Area | Public functions |
 |---|---|
-| Inbox and settings | `my_notifications(p_limit, p_before, p_before_id)` (newest first; the next page passes the last entry's `created_at` and `id`), `unread_notification_count`, `mark_notifications_read(p_ids)` (null: all), `my_reliability`, `my_settings`, `set_settings(p_muted, p_hidden)` |
+| Inbox and settings | `my_notifications(p_limit, p_before, p_before_id)` (newest first, `created_at` at millisecond precision; the next page passes the last entry's `created_at` and `id`), `unread_notification_count`, `mark_notifications_read(p_ids)` (null: all), `my_reliability`, `my_settings`, `set_settings(p_muted, p_hidden)` |
 | Games | `list_games(p_city_id)`, `get_game`, `create_game(p_game)`, `join_game`, `leave_game`, `request_to_join`, `withdraw_join_request`, `decide_join_request`, `invite_to_game`, `decline_invite`, `host_remove_participant`, `host_update_game`, `host_cancel_game` |
 | Game Requests | `create_game_request`, `get_game_request`, `list_game_requests`, `request_interest`, `withdraw_interest`, `remove_interested`, `cancel_game_request`, `convert_game_request(p_request_id, p_place)` |
 | Players | `list_players(p_city_id, p_sport_id, p_min_level, p_max_level, p_query, p_limit)`, `player_profile(p_user_id)` |

@@ -496,9 +496,11 @@ on conflict (id) do nothing;
 
 -- Newest first. The next page starts after the last entry shown: pass its
 -- created_at and id (several entries can share a created_at, e.g. game_full
--- to every participant). Ordered and compared at millisecond precision,
--- because a web client's DateTime keeps no microseconds; without
--- p_before_id, everything strictly older than p_before.
+-- to every participant). Keyed at millisecond precision: created_at is
+-- returned truncated to milliseconds and ordered and compared that way, so
+-- the cursor a client echoes back is exactly the key, however precisely its
+-- clock type keeps time (a Dart DateTime on the web may not keep
+-- microseconds). Without p_before_id, everything strictly older than p_before.
 create function public.my_notifications(
   p_limit integer default 50, p_before timestamptz default null, p_before_id uuid default null)
 returns setof jsonb
@@ -507,7 +509,7 @@ set search_path = ''
 as $$
   select jsonb_build_object(
     'id', n.id, 'kind', n.kind, 'category', n.category, 'payload', n.payload,
-    'created_at', n.created_at, 'read', n.read_at is not null)
+    'created_at', date_trunc('milliseconds', n.created_at), 'read', n.read_at is not null)
   from public.notifications n
   where n.user_id = (select auth.uid())
     and (p_before is null

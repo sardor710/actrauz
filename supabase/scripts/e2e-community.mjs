@@ -1,9 +1,11 @@
 // End-to-end check of the community functions (Milestone 4) against the
 // hosted project, with real sessions:
 //
-//   1. Three throw-away accounts sign in: a host, a joiner and a guest.
-//   2. The host books a seeded padel court and puts a game on the booking;
-//      the joiner asks to join and the host approves.
+//   1. Four throw-away accounts sign in: an admin, a host, a joiner and a
+//      guest. The admin (a row in app_admins) creates a throw-away venue
+//      with one padel court, so no real venue owner is ever notified.
+//   2. The host books that court and puts a game on the booking; the
+//      joiner asks to join and the host approves.
 //   3. The inbox: the host reads the join request, pages, marks it read; the
 //      joiner has the approval.
 //   4. An invite-only run is invisible to the guest until the host invites
@@ -13,8 +15,9 @@
 //   6. Finding players lists the three accounts with no phone number; a
 //      hidden player drops out of the list. Settings and reliability read
 //      back, and the private profile columns cannot be read directly.
-//   7. The host cancels the game and the booking; everything made here is
-//      deleted. Existing accounts are only ever read, never changed.
+//   7. The host cancels the game and the booking; everything made here
+//      (venue, games, requests, bookings, accounts) is deleted. Existing
+//      accounts are only ever read, never changed or notified.
 //
 //   node scripts/e2e-community.mjs
 //
@@ -22,7 +25,7 @@
 
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
-import { call, createdUsersSql, env, removeAccounts, rpc, sampleId, saveProfile, signIn } from './e2e-lib.mjs';
+import { call, createdUsersSql, env, removeAccounts, rpc, saveProfile, signIn } from './e2e-lib.mjs';
 import { sql, step } from './env.mjs';
 
 /** A call that must be refused with the given error name. */
@@ -53,15 +56,18 @@ function assertNoPhone(value, what) {
 
 const kinds = async (session) => (await ok(session, 'my_notifications', { p_limit: 50 })).map((n) => n.kind);
 
+let venueId = null;
 let failed = false;
 try {
-  step('Signing in a host, a joiner and a guest');
+  step('Signing in an admin, a host, a joiner and a guest');
   const suffix = String(randomInt(10_000_000)).padStart(7, '0');
+  const admin = await signIn('admin', `+99808${suffix}`);
   const host = await signIn('host', `+99805${suffix}`);
   const joiner = await signIn('joiner', `+99806${suffix}`);
   const guest = await signIn('guest', `+99807${suffix}`);
   // Letters only: the player search matches names.
   const tag = [...suffix].map((d) => 'abcdefghij'[d]).join('');
+  await saveProfile(admin, `E2E Admin ${tag}`);
   await saveProfile(host, `E2E Host ${tag}`);
   await saveProfile(joiner, `E2E Joiner ${tag}`);
   await saveProfile(guest, `E2E Guest ${tag}`);
@@ -72,14 +78,23 @@ try {
     assert.deepEqual(await ok(s, 'my_reliability'), { score: 80, badge: 'new' });
   }
 
-  step('The host books a seeded padel court and makes a public game on it');
-  const court = sampleId('v1c2');
+  step('The admin creates a throw-away venue with one padel court');
+  await sql(env, `insert into public.app_admins (user_id) values ('${admin.userId}')`, { write: true });
+  venueId = await ok(admin, 'admin_save_venue', {
+    p_venue: { city_id: 'tashkent', name_en: `E2E test venue ${tag}`, address_en: 'Nowhere 1', district_en: 'Test', phone: '+998710000000' },
+  });
+  const court = await ok(admin, 'admin_save_court', {
+    p_court: { venue_id: venueId, sport_id: 'padel', name_en: 'Court 1', slot_minutes: 60, base_price: 100000, indoor: true },
+  });
+  console.log(`  venue ${venueId}, court ${court}`);
+
+  step('The host books that court and makes a public game on it');
   let slot = null;
   for (let ahead = 3; ahead <= 10 && !slot; ahead++) {
     const day = await ok(host, 'court_availability', { p_court_id: court, p_date: addDays(today, ahead) });
     slot = day.find((s) => s.state === 'free') ?? null;
   }
-  assert.ok(slot, 'no free slot found on the seeded court');
+  assert.ok(slot, 'no free slot found on the throw-away court');
   const held = await ok(host, 'hold_slots', { p_court_id: court, p_starts: [slot.starts_local] });
   const booking = await ok(host, 'confirm_booking', { p_booking_id: held.id, p_players: 4, p_note: 'e2e community' });
   assert.equal(booking.status, 'confirmed');
@@ -171,7 +186,7 @@ try {
 
   step('Finding players: no phone numbers; hidden players drop out of the list');
   const found = await ok(joiner, 'list_players', { p_city_id: 'tashkent', p_query: tag });
-  assert.deepEqual(found.map((p) => p.id).sort(), [host.userId, guest.userId].sort(), 'the others, not the caller');
+  assert.deepEqual(found.map((p) => p.id).sort(), [admin.userId, host.userId, guest.userId].sort(), 'the others, not the caller');
   assertNoPhone(found, 'list_players');
   const profile = await ok(joiner, 'player_profile', { p_user_id: host.userId });
   assert.equal(profile.name, `E2E Host ${tag}`);
@@ -182,7 +197,7 @@ try {
   assert.deepEqual(settings.muted_categories, ['invites']);
   assert.equal(settings.hidden_from_search, true);
   const again = await ok(joiner, 'list_players', { p_city_id: 'tashkent', p_query: tag });
-  assert.deepEqual(again.map((p) => p.id), [host.userId]);
+  assert.deepEqual(again.map((p) => p.id).sort(), [admin.userId, host.userId].sort());
   assert.equal((await ok(joiner, 'player_profile', { p_user_id: guest.userId })).id, guest.userId, 'the profile still opens');
   for (const column of ['muted_categories', 'hidden_from_search']) {
     const direct = await call(`/rest/v1/profiles?select=${column}&id=eq.${guest.userId}`, { method: 'GET', token: joiner.jwt });
@@ -190,7 +205,7 @@ try {
   }
   const names = await call(`/rest/v1/profiles?select=full_name&id=eq.${guest.userId}`, { method: 'GET', token: joiner.jwt });
   assert.deepEqual(names.data, [{ full_name: `E2E Guest ${tag}` }]);
-  console.log('  two found, no phones; hidden after set_settings; private columns refused, names readable');
+  console.log('  three found, no phones; hidden after set_settings; private columns refused, names readable');
 
   step('The host cancels the game and the booking; the joiner is told');
   const cancelled = await ok(host, 'host_cancel_game', { p_game_id: game.id, p_cancel_booking: true });
@@ -204,28 +219,31 @@ try {
   failed = true;
   console.error(`\nCOMMUNITY END TO END: FAILED\n${e.stack ?? e}`);
 } finally {
-  step('Cleaning up the throw-away games, requests and accounts');
+  step('Cleaning up the throw-away venue, games, requests and accounts');
   const users = createdUsersSql();
   await removeAccounts({
-    before: users
-      ? [
-          // The venue owners' notifications about these bookings.
-          `delete from public.notifications where payload->>'booking_id' in
-             (select id::text from public.bookings where user_id in (${users}))`,
-          // Neither reference cascades from the accounts or their bookings.
-          `delete from public.game_requests where host_id in (${users})`,
-          `delete from public.games where host_id in (${users})`,
-        ]
-      : [],
+    before: [
+      // Neither reference cascades from the accounts or their bookings.
+      ...(users
+        ? [`delete from public.game_requests where host_id in (${users})`, `delete from public.games where host_id in (${users})`]
+        : []),
+      ...(venueId
+        ? [`delete from public.bookings where venue_id = '${venueId}'`, `delete from public.venues where id = '${venueId}'`]
+        : []),
+      ...(users ? [`delete from public.audit_log where actor_id in (${users})`] : []),
+    ],
   });
   if (users) {
     const left = await sql(
       env,
       `select (select count(*) from public.games where host_id in (${users})) as games,
               (select count(*) from public.game_requests where host_id in (${users})) as requests,
-              (select count(*) from public.profiles where id in (${users})) as profiles`,
+              (select count(*) from public.profiles where id in (${users})) as profiles,
+              (select count(*) from public.venues where name_en like 'E2E test venue%') as venues`,
     );
-    console.log(`  left behind: ${left[0].games} games, ${left[0].requests} requests, ${left[0].profiles} profiles`);
+    console.log(
+      `  left behind: ${left[0].games} games, ${left[0].requests} requests, ${left[0].profiles} profiles, ${left[0].venues} test venues`,
+    );
   }
 }
 process.exit(failed ? 1 : 0);

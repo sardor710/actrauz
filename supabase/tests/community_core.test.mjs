@@ -149,6 +149,7 @@ test('my_notifications pages through entries that share a created_at with the id
   const first = await page([2, null, null]);
   assert.equal(first.length, 2);
   const last = first[1];
+  assert.match(last.created_at, /\.123[+-]/,'created_at comes back at millisecond precision');
   const second = await page([2, last.created_at, last.id]);
   assert.equal(second.length, 2);
   const third = await page([2, second[1].created_at, second[1].id]);
