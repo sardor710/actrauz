@@ -234,19 +234,28 @@ void main() {
       await backend.cancelGame(game.id, cancelBooking: true);
       expect((await backend.myBookings()).single.status, BookingStatus.cancelledByPlayer);
 
-      final late = await backend
-          .create(
-            GameDraft(
-              sportId: 'running',
-              spots: 2,
-              meetingPoint: 'x',
-              start: DateTime.utc(2026, 11, 22, 9),
-              end: DateTime.utc(2026, 11, 22, 9, 30),
-            ),
-          )
-          .then<Object>((g) => g, onError: (e) => e);
-      expect(late, isA<JoinException>(), reason: 'a game in the past cannot be created');
-      expect((late as JoinException).error, JoinError.inPast);
+      await expectLater(
+        backend.create(
+          GameDraft(
+            sportId: 'running',
+            spots: 2,
+            meetingPoint: 'x',
+            start: DateTime.utc(2026, 11, 22, 9),
+            end: DateTime.utc(2026, 11, 22, 9, 30),
+          ),
+        ),
+        joinError(JoinError.inPast),
+      );
+    });
+
+    test('once a game has started it can no longer be cancelled', () async {
+      var clock = utcNow;
+      final timed = SampleBackend(utcNow: () => clock);
+      final game = await timed.create(runningDraft());
+      // The game starts at 07:00 in Tashkent, which is 02:00 UTC.
+      clock = DateTime.utc(2026, 11, 23, 3);
+      await expectLater(timed.cancelGame(game.id, cancelBooking: false), joinError(JoinError.notCancellable));
+      expect((await timed.game(game.id)).cancelled, isFalse);
     });
 
     test('someone else cannot run my game', () async {
@@ -423,6 +432,31 @@ void main() {
       final booking = await backend.confirm(held.id, players: 4);
       await backend.cancel(booking.id);
       expect((await backend.settings()).reliability.score, 81);
+    });
+
+    test('a cancellation more than six hours before the start is free', () async {
+      // It is 10:00; this slot starts at 17:30.
+      final slot = SlotTime(DateTime.utc(2026, 11, 22, 17, 30), DateTime.utc(2026, 11, 22, 19));
+      final held = await backend.hold('v1', 'v1c1', [slot]);
+      final booking = await backend.confirm(held.id, players: 4);
+      expect((await backend.cancel(booking.id)).lateCancellation, isFalse);
+      expect((await backend.settings()).reliability.score, 86);
+    });
+
+    test('owners are told about bookings with the court named in three languages', () async {
+      final held = await backend.hold('v1', 'v1c1', [bookingSlot]);
+      final booking = await backend.confirm(held.id, players: 4);
+      final inbox = await backend.inbox();
+      final forPlayer = inbox.firstWhere((n) => n.kind == 'booking_confirmed');
+      expect(forPlayer.payload['booking_id'], booking.id);
+      expect((forPlayer.payload['venue_name'] as Map)['en'], 'Lochin Padel Club');
+      expect(forPlayer.payload['sport_id'], 'padel');
+      expect(forPlayer.route, '/bookings');
+      final forOwner = inbox.firstWhere((n) => n.kind == 'venue_new_booking' && n.payload['booking_id'] == booking.id);
+      expect(forOwner.payload.containsKey('venue_name'), isFalse);
+      expect(forOwner.payload['venue_id'], 'v1');
+      expect((forOwner.payload['court_name'] as Map).keys, containsAll(['uz', 'ru', 'en']));
+      expect(forOwner.route, '/owner/v1');
     });
   });
 }

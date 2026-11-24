@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/community.dart';
 import '../repositories.dart';
+import 'errors.dart';
 import 'mappers.dart';
 
 /// The inbox and community settings through the database functions. The
@@ -38,10 +39,10 @@ class SupabaseNotificationRepository implements NotificationRepository {
   }
 
   @override
-  Future<void> saveSettings(CommunitySettings settings) async {
+  Future<void> saveSettings(CommunitySettings settings) => guardJoin(() async {
     await _client.rpc(
       'set_settings',
       params: {'p_muted': settings.mutedCategories.toList()..sort(), 'p_hidden': settings.hiddenFromSearch},
     );
-  }
+  });
 }

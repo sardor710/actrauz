@@ -275,9 +275,9 @@ class JoinException implements Exception {
 /// ([invited]) opens an invite-only game and skips the level check; everyone
 /// else outside the range sends a join request instead.
 Game joinGame(Game game, Player player, {bool invited = false}) {
-  if (game.visibility == GameVisibility.inviteOnly && !invited && !game.participantIds.contains(player.id)) {
-    throw const JoinException(JoinError.notFound);
-  }
+  // As in the database: without an open invite an invite-only game does not exist for the player, even for a
+  // player already in it.
+  if (game.visibility == GameVisibility.inviteOnly && !invited) throw const JoinException(JoinError.notFound);
   if (game.participantIds.contains(player.id)) throw const JoinException(JoinError.alreadyJoined);
   if (game.isFull) throw const JoinException(JoinError.full);
   if (!invited) {

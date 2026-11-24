@@ -259,14 +259,7 @@ class SampleBackend
     if (booking == null) throw const BookingException(BookingError.notFound);
     final confirmed = _engine.confirm(bookingId, now: _nowAt(_venue(booking.venueId)), players: players, note: note);
     _notify(kMeId, 'booking_confirmed', 'bookings', _bookingNote(confirmed));
-    if (_manages(confirmed.venueId)) {
-      _notify(kMeId, 'venue_new_booking', 'venue', {
-        ..._bookingNote(confirmed),
-        'venue_id': confirmed.venueId,
-        'court_name': _venue(confirmed.venueId).court(confirmed.courtId).name.en,
-        'actor_name': meName,
-      });
-    }
+    if (_manages(confirmed.venueId)) _notify(kMeId, 'venue_new_booking', 'venue', _ownerNote(confirmed));
     return confirmed;
   }
 
@@ -280,12 +273,7 @@ class SampleBackend
     final cancelled = _engine.cancel(bookingId, now: _nowAt(_venue(booking.venueId)));
     if (cancelled.lateCancellation) recordReliability(kMeId, ReliabilityKind.lateCancel, bookingId);
     if (_manages(cancelled.venueId)) {
-      _notify(kMeId, 'venue_booking_cancelled', 'venue', {
-        ..._bookingNote(cancelled),
-        'venue_id': cancelled.venueId,
-        'court_name': _venue(cancelled.venueId).court(cancelled.courtId).name.en,
-        'actor_name': meName,
-      });
+      _notify(kMeId, 'venue_booking_cancelled', 'venue', _ownerNote(cancelled));
     }
     _cancelGamesOn(bookingId, kMeId);
     return cancelled;
@@ -354,6 +342,19 @@ class SampleBackend
       'sport_id': venue.court(b.courtId).sportId,
       'starts_local': isoLocal(b.start),
       'venue_name': {'uz': venue.name.uz, 'ru': venue.name.ru, 'en': venue.name.en},
+    };
+  }
+
+  /// What the owners of the venue are told about a booking: the booking's
+  /// keys without the venue name, plus the venue, the court (in three
+  /// languages) and the player who booked.
+  Map<String, Object?> _ownerNote(Booking b) {
+    final court = _venue(b.venueId).court(b.courtId).name;
+    return {
+      ..._bookingNote(b)..remove('venue_name'),
+      'venue_id': b.venueId,
+      'court_name': {'uz': court.uz, 'ru': court.ru, 'en': court.en},
+      'actor_name': _nameOf(b.userId),
     };
   }
 
