@@ -171,6 +171,13 @@ test('spots and levels are checked', async () => {
   );
 });
 
+test('a distance that rounds past the column limit is invalid, not an overflow', async () => {
+  const p = await player('Ultra');
+  const run = { sport_id: 'running', meeting_point: 'Park', spots: 4, starts_local: '2026-11-23T07:00:00', ends_local: '2026-11-23T08:00:00' };
+  assert.equal(await errorOf(create(p, { ...run, distance_km: 9999.95 })), 'invalid_argument');
+  assert.equal((await create(p, { ...run, distance_km: 9999.94 })).distance_km, 9999.9);
+});
+
 test('running from a meeting point is a map_point game with no price; gym at a venue is a place game', async () => {
   const runner = await player('Runner');
   const run = await create(runner, {
@@ -278,6 +285,30 @@ test('only the host invites; a player already in cannot be invited; an invite ca
   assert.equal(await errorOf(pool.query(`select app.decline_invite($1, $2)`, [p, id])), 'not_found');
 });
 
+test('a stranger cannot ask to join an invite-only game', async () => {
+  const { id } = await liveGame({ visibility: 'invite_only' });
+  const stranger = await player('Stranger');
+  assert.equal(await errorOf(requestToJoin(stranger, id, new Date().toISOString())), 'not_found');
+});
+
+test('a pending invite does not get past a full game', async () => {
+  const { host, id } = await bookedGame({ spots: 2 });
+  const invited = await player('Invited');
+  await invite(host, id, invited);
+  await join(await player('Faster'), id);
+  assert.equal(await errorOf(join(invited, id)), 'full');
+});
+
+test('a game that has started takes nobody new, invited or not', async () => {
+  const { host, id } = await bookedGame();
+  const invited = await player('Invited late');
+  await invite(host, id, invited);
+  const started = tashkent('2026-11-23', 10, 15);
+  assert.equal(await errorOf(join(await player('Walk-up'), id, started)), 'not_found');
+  assert.equal(await errorOf(join(invited, id, started)), 'not_found');
+  assert.equal(await count(id), 1);
+});
+
 // --- requests to join -------------------------------------------------------
 
 test('a player outside the level range asks to join; only the host decides', async () => {
@@ -316,6 +347,15 @@ test('a player outside the level range asks to join; only the host decides', asy
   assert.equal((await notesOf(low, 'join_approved')).length, 1);
   assert.equal(await errorOf(decide(host, request.id, true)), 'not_found');
   assert.equal(await errorOf(requestToJoin(low, id)), 'already_joined');
+});
+
+test('approving a requester who has been blocked since asking is refused', async () => {
+  const { host, id } = await bookedGame();
+  const p = await player('Soon blocked');
+  const request = await requestToJoin(p, id);
+  await block(p);
+  assert.equal(await errorOf(decide(host, request.id, true)), 'reliability_too_low');
+  assert.equal(await count(id), 1);
 });
 
 test('a declined or withdrawn request', async () => {
@@ -446,6 +486,27 @@ test('the host cancels the game and the booking: participants hear, the host doe
   assert.equal((await notesOf(host, 'game_cancelled')).length, 0);
 });
 
+test('the host cancelling with the booking inside six hours is a late cancellation for the host', async () => {
+  const { host, bookingId, id } = await bookedGame();
+  await pool.query(`select app.host_cancel_game($1, $2, true, $3)`, [host, id, tashkent('2026-11-23', 6)]);
+  assert.equal((await one(`select status from bookings where id = $1`, [bookingId])).status, 'cancelled_by_player');
+  assert.deepEqual(await eventsOf(host), [{ kind: 'late_cancel', ref: bookingId }]);
+});
+
+test('host tools stop once the game has started', async () => {
+  const { host, id } = await bookedGame();
+  const p = await player('Stays');
+  await join(p, id);
+  const started = tashkent('2026-11-23', 10, 15);
+  assert.equal(
+    await errorOf(pool.query(`select app.host_remove_participant($1, $2, $3, $4)`, [host, id, p, started])),
+    'not_found',
+  );
+  assert.equal(await errorOf(pool.query(`select app.host_cancel_game($1, $2, false, $3)`, [host, id, started])), 'not_cancellable');
+  assert.equal(await count(id), 2);
+  assert.equal((await one(`select status from games where id = $1`, [id])).status, 'open');
+});
+
 test('the host cancels the game but keeps the booking', async () => {
   const { host, bookingId, id } = await bookedGame();
   await pool.query(`select app.host_cancel_game($1, $2, false, $3)`, [host, id, now]);
@@ -502,6 +563,21 @@ test('complete_games gives each participant one game_completed, once', async () 
   assert.deepEqual(await eventsOf(host), [{ kind: 'game_completed', ref: id }]);
   assert.deepEqual(await eventsOf(p), [{ kind: 'game_completed', ref: id }]);
   assert.ok((await one(`select completed_at from games where id = $1`, [id])).completed_at);
+});
+
+test('a solo game and a player who joined after the start earn no game_completed', async () => {
+  const solo = await bookedGame();
+  const { host, id } = await bookedGame();
+  const early = await player('Early');
+  await join(early, id);
+  // Only a direct write can add someone after the start; the rule still holds.
+  const late = await player('Late');
+  await pool.query(`insert into game_participants (game_id, user_id, joined_at) values ($1, $2, $3)`, [id, late, tashkent('2026-11-23', 10, 30)]);
+  await pool.query(`select app.complete_games($1)`, [tashkent('2026-11-23', 12)]);
+  assert.deepEqual(await eventsOf(solo.host), []);
+  assert.deepEqual(await eventsOf(host), [{ kind: 'game_completed', ref: id }]);
+  assert.deepEqual(await eventsOf(early), [{ kind: 'game_completed', ref: id }]);
+  assert.deepEqual(await eventsOf(late), []);
 });
 
 test('a cancelled game is not completed', async () => {

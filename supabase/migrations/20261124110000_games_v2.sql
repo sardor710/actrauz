@@ -282,6 +282,8 @@ begin
   v_visibility := coalesce(p_game->>'visibility', 'public');
   v_note := nullif(btrim(p_game->>'note'), '');
   v_pace := nullif(btrim(p_game->>'pace'), '');
+  -- Checked as stored (numeric(5,1)), so 9999.95 is refused here, not by the column.
+  v_distance := round(v_distance, 1);
 
   if v_spots is null or v_spots not between 2 and 30
      or v_min not between 1 and 5 or v_max not between 1 and 5 or v_min > v_max
@@ -386,7 +388,8 @@ begin
   -- The row lock makes simultaneous joins and approvals take turns, so the
   -- last spot goes to exactly one player.
   select g.* into v_game from public.games g where g.id = p_game_id and g.status = 'open' for update;
-  if not found then raise exception 'not_found'; end if;
+  -- A game that has started takes nobody new, invited or not.
+  if not found or lower(v_game.during) <= p_now then raise exception 'not_found'; end if;
 
   v_invited := exists (select 1 from public.game_invites i
                        where i.game_id = p_game_id and i.user_id = p_user and i.status = 'pending');
@@ -541,6 +544,8 @@ begin
     if (select count(*) from public.game_participants p where p.game_id = v_game.id) >= v_game.spots then
       raise exception 'full';
     end if;
+    -- The requester may have been blocked since asking.
+    perform app.require_reliable(v_request.user_id, p_now);
 
     insert into public.game_participants (game_id, user_id, joined_at) values (v_game.id, v_request.user_id, p_now);
     perform app.close_pending_for(v_game.id, v_request.user_id, p_now);
@@ -618,7 +623,9 @@ declare
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
   select g.* into v_game from public.games g where g.id = p_game_id for update;
-  if not found or v_game.host_id <> p_user then raise exception 'not_found'; end if;
+  if not found or v_game.host_id <> p_user or v_game.status <> 'open' or lower(v_game.during) <= p_now then
+    raise exception 'not_found';
+  end if;
   if p_member = p_user then raise exception 'host_cannot_leave'; end if;
 
   delete from public.game_participants p where p.game_id = p_game_id and p.user_id = p_member;
@@ -689,6 +696,8 @@ begin
   end if;
   select g.* into v_game from public.games g where g.id = p_game_id for update;
   if v_game.status <> 'open' or v_game.completed_at is not null then raise exception 'not_found'; end if;
+  -- Once it has started the game is happening (or was a no-show): too late.
+  if lower(v_game.during) <= p_now then raise exception 'not_cancellable'; end if;
 
   update public.games g set status = 'cancelled' where g.id = p_game_id returning * into v_game;
   perform app.notify_game(v_game, 'game_cancelled', p_user, p_now);
@@ -820,6 +829,38 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Reliability, redefined from Task 1: positive credit in the window counts
+-- for at most +20, so it cannot be banked against no-shows. Badges unchanged.
+-- ---------------------------------------------------------------------------
+
+create or replace function app.reliability(p_user uuid, p_now timestamptz) returns jsonb
+language plpgsql stable
+set search_path = ''
+as $$
+declare
+  c_max_credit constant integer := 20;
+  v_positive integer;
+  v_negative integer;
+  v_ever integer;
+  v_score integer;
+begin
+  select coalesce(sum(e.delta) filter (where e.created_at > p_now - interval '90 days' and e.delta > 0), 0),
+         coalesce(sum(e.delta) filter (where e.created_at > p_now - interval '90 days' and e.delta < 0), 0),
+         count(*)
+    into v_positive, v_negative, v_ever
+  from public.reliability_events e where e.user_id = p_user;
+  v_score := greatest(0, least(100, 80 + least(v_positive, c_max_credit) + v_negative));
+  return jsonb_build_object(
+    'score', v_score,
+    'badge', case
+      when v_score >= 70 and v_ever < 3 then 'new'
+      when v_score >= 70 then 'reliable'
+      when v_score >= 50 then 'limited'
+      else 'blocked'
+    end);
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Scheduled work
 -- ---------------------------------------------------------------------------
 
@@ -858,8 +899,10 @@ begin
   return v_count;
 end $$;
 
--- Open games that have ended: marked completed, and every participant gets
--- one game_completed reliability event. Returns how many games.
+-- Open games that have ended: marked completed. A game that ended with at
+-- least two players gives one game_completed event to each participant who
+-- joined before it started (no credit for solo games or late joiners).
+-- Returns how many games were completed.
 create function app.complete_games(p_now timestamptz) returns integer
 language plpgsql
 set search_path = ''
@@ -874,9 +917,14 @@ begin
     where g.status = 'open' and g.completed_at is null and upper(g.during) <= p_now
     returning g.*
   loop
-    for v_user in select p.user_id from public.game_participants p where p.game_id = v_game.id loop
-      perform app.reliability_event(v_user, 'game_completed', v_game.id::text, p_now);
-    end loop;
+    if (select count(*) from public.game_participants p where p.game_id = v_game.id) >= 2 then
+      for v_user in
+        select p.user_id from public.game_participants p
+        where p.game_id = v_game.id and p.joined_at < lower(v_game.during)
+      loop
+        perform app.reliability_event(v_user, 'game_completed', v_game.id::text, p_now);
+      end loop;
+    end if;
     v_count := v_count + 1;
   end loop;
   return v_count;

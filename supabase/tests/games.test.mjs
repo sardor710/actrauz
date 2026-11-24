@@ -155,6 +155,8 @@ test('games that have started are not listed', async () => {
 
 test('through the API: players join as themselves, visitors cannot, tables are read-only', async () => {
   const id = await game();
+  // public.join_game uses the real clock, and a started game takes nobody new.
+  await pool.query(`update games set during = tstzrange(now() + interval '1 day', now() + interval '1 day 90 minutes') where id = $1`, [id]);
   const p = await player('Api');
   const joined = await asUser(pool, p, async (c) => (await c.query('select public.join_game($1) as g', [id])).rows[0].g);
   assert.deepEqual(joined.participant_ids, [host, p]);

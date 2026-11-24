@@ -148,6 +148,13 @@ test('three paid events make a player reliable at 86', async () => {
   assert.deepEqual(await reliability(ali), { score: 86, badge: 'reliable' });
 });
 
+test('positive credit counts for at most +20: fifteen paid then one no-show is 80', async () => {
+  for (let i = 0; i < 15; i++) await event(ali, 'booking_paid');
+  assert.deepEqual(await reliability(ali), { score: 100, badge: 'reliable' });
+  await event(ali, 'no_show');
+  assert.deepEqual(await reliability(ali), { score: 80, badge: 'reliable' });
+});
+
 test('one no-show is limited at 60, two are blocked at 40', async () => {
   await event(ali, 'no_show');
   assert.deepEqual(await reliability(ali), { score: 60, badge: 'limited' });
