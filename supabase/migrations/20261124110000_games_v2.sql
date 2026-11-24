@@ -186,6 +186,10 @@ as $$
       when exists (select 1 from public.game_join_requests r
                    where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') then 'requested'
     end,
+    -- What a requester needs to withdraw: their own pending request.
+    'my_request_id', case when p_user is null then null else
+      (select r.id from public.game_join_requests r
+       where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') end,
     'participant_ids', coalesce(
       (select jsonb_agg(p.user_id order by (p.user_id = g.host_id) desc, p.joined_at, p.user_id)
        from public.game_participants p where p.game_id = g.id),

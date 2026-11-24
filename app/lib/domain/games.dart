@@ -71,6 +71,7 @@ class Game {
     this.distanceKm,
     this.pace,
     this.myStatus,
+    this.myRequestId,
     this.participants = const [],
     this.joinRequests = const [],
     this.cancelled = false,
@@ -105,6 +106,9 @@ class Game {
   /// The signed-in player's part in it.
   final MyGameStatus? myStatus;
 
+  /// The id of the player's pending request to join, to withdraw it.
+  final String? myRequestId;
+
   /// Name, level and reliability of each participant, the host first. Empty
   /// when only [participantIds] are known.
   final List<GameMember> participants;
@@ -124,6 +128,8 @@ class Game {
     int? pricePerPlayer,
     MyGameStatus? myStatus,
     bool clearMyStatus = false,
+    String? myRequestId,
+    bool clearMyRequestId = false,
     List<GameMember>? participants,
     List<JoinRequest>? joinRequests,
     bool? cancelled,
@@ -150,6 +156,7 @@ class Game {
     distanceKm: distanceKm,
     pace: pace,
     myStatus: clearMyStatus ? null : (myStatus ?? this.myStatus),
+    myRequestId: clearMyRequestId ? null : (myRequestId ?? this.myRequestId),
     participants: participants ?? this.participants,
     joinRequests: joinRequests ?? this.joinRequests,
     cancelled: cancelled ?? this.cancelled,

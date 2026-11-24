@@ -476,8 +476,8 @@ end $$;
 -- ---------------------------------------------------------------------------
 
 insert into public.sports (id, name_uz, name_ru, name_en, icon_key, bookable, default_players, sort_order) values
-  ('running', 'Yugurish', 'Бег', 'Running', 'running', false, 4, 90),
-  ('gym', 'Sport zali', 'Тренажёрный зал', 'Gym', 'gym', false, 2, 91)
+  ('running', 'Yugurish', 'Бег', 'Running', 'running', false, 4, 5),
+  ('gym', 'Sport zali', 'Тренажёрный зал', 'Gym', 'gym', false, 2, 6)
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------

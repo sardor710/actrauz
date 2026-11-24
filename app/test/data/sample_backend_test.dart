@@ -165,6 +165,7 @@ void main() {
 
       final asRequester = await backend.requestToJoinAs('p1', game.id);
       expect(asRequester.myStatus, MyGameStatus.requested);
+      expect(asRequester.myRequestId, isNotNull);
       var seen = await backend.game(game.id);
       expect(seen.joinRequests.single.member.id, 'p1');
       expect(seen.joinRequests.single.member.name, 'Aziz');

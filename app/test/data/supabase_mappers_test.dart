@@ -468,7 +468,10 @@ void main() {
         'participant_ids': [other],
       };
       expect(gameFromJson({...base, 'my_status': 'invited'}, myUserId: me).myStatus, MyGameStatus.invited);
-      expect(gameFromJson({...base, 'my_status': 'requested'}, myUserId: me).myStatus, MyGameStatus.requested);
+      final asked = gameFromJson({...base, 'my_status': 'requested', 'my_request_id': 'req-9'}, myUserId: me);
+      expect(asked.myStatus, MyGameStatus.requested);
+      expect(asked.myRequestId, 'req-9');
+      expect(gameFromJson(base, myUserId: me).myRequestId, isNull);
       expect(gameFromJson({...base, 'my_status': 'participant'}, myUserId: me).myStatus, MyGameStatus.participant);
       final plain = gameFromJson(base, myUserId: me);
       expect(plain.myStatus, isNull);

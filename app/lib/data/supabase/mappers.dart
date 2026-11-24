@@ -486,6 +486,7 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
   distanceKm: _double(json['distance_km']),
   pace: json['pace'] as String?,
   myStatus: _myGameStatus(json['my_status']),
+  myRequestId: json['my_request_id'] as String?,
   participants: [for (final m in _rows(json['participants'])) gameMemberFromJson(m, myUserId: myUserId)],
   joinRequests: [
     for (final r in _rows(json['join_requests']))

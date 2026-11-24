@@ -631,10 +631,15 @@ test('through the API: request, approve, update, remove and cancel as the signed
 
   const requested = await rpc(p, 'select public.request_to_join($1) as g', [id]);
   assert.equal(requested.my_status, 'requested');
+  const mine = await one(`select id from game_join_requests where game_id = $1 and user_id = $2`, [id, p]);
+  assert.equal(requested.my_request_id, mine.id);
+  assert.equal((await rpc(p, 'select public.get_game($1) as g', [id])).my_request_id, mine.id);
   const hostView = await rpc(host, 'select public.get_game($1) as g', [id]);
   const requestId = hostView.join_requests[0].id;
   const approved = await rpc(host, 'select public.decide_join_request($1, true) as g', [requestId]);
   assert.deepEqual(approved.participant_ids, [host, p]);
+  assert.equal((await rpc(p, 'select public.get_game($1) as g', [id])).my_request_id, null);
+  assert.equal(hostView.my_request_id, null);
   assert.deepEqual(
     approved.participants.map((x) => x.id),
     [host, p],
@@ -653,6 +658,8 @@ test('through the API: request, approve, update, remove and cancel as the signed
   const { id: pending } = await one(`select id from game_join_requests where game_id = $1 and user_id = $2`, [other.id, p]);
   const withdrawn = await rpc(p, 'select public.withdraw_join_request($1) as g', [pending]);
   assert.equal(withdrawn.my_status, null);
+  assert.equal(withdrawn.my_request_id, null);
+  assert.equal(again.my_request_id, pending);
 
   await rpc(other.host, 'select public.invite_to_game($1, $2) as g', [other.id, p]);
   const declined = await rpc(p, 'select public.decline_invite($1) as g', [other.id]);

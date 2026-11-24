@@ -457,6 +457,8 @@ class SampleBackend
           : const [],
       myStatus: status,
       clearMyStatus: status == null,
+      myRequestId: _pendingAsk(g.id, viewer)?.id,
+      clearMyRequestId: _pendingAsk(g.id, viewer) == null,
     );
   }
 

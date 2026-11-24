@@ -41,8 +41,7 @@ abstract class GameRepository {
   /// [MyGameStatus.requested].
   Future<Game> requestToJoin(String gameId);
 
-  /// Takes back a pending request. Only the host receives request ids (in
-  /// [Game.joinRequests]); see the report for how a requester finds theirs.
+  /// Takes back the player's pending request; the id is [Game.myRequestId].
   Future<Game> withdrawRequest(String requestId);
 
   /// Host only.
