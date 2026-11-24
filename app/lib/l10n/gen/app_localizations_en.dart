@@ -1265,4 +1265,205 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reliabilityBlockedHint =>
       'You cannot book, join or post until older missed games pass 90 days.';
+
+  @override
+  String get gameSportLabel => 'Sport';
+
+  @override
+  String get pickSportHint => 'Choose a sport to set up your game';
+
+  @override
+  String get gameBookingLabel => 'Your court booking';
+
+  @override
+  String get noBookingForSport =>
+      'You have no upcoming confirmed booking for this sport. Book a court first, then create a game on it.';
+
+  @override
+  String get bookACourt => 'Book a court';
+
+  @override
+  String get gamePlaceLabel => 'Where';
+
+  @override
+  String get placeVenue => 'Venue';
+
+  @override
+  String get placeMeetingPoint => 'Meeting point';
+
+  @override
+  String get chooseVenue => 'Choose a venue';
+
+  @override
+  String get meetingPointHint => 'For example: main gate of the park';
+
+  @override
+  String get meetingPointRequired => 'Enter a meeting point';
+
+  @override
+  String get venueRequired => 'Choose a venue';
+
+  @override
+  String get gameWhenLabel => 'When';
+
+  @override
+  String get gameStartTime => 'Start';
+
+  @override
+  String get gameDuration => 'Duration';
+
+  @override
+  String minutesShort(int count) {
+    return '$count min';
+  }
+
+  @override
+  String get distanceLabel => 'Distance, km (optional)';
+
+  @override
+  String get paceLabel => 'Pace (optional)';
+
+  @override
+  String get paceHint => 'For example 6:00 min/km';
+
+  @override
+  String distanceValue(String km) {
+    return '$km km';
+  }
+
+  @override
+  String paceValue(String pace) {
+    return 'Pace $pace';
+  }
+
+  @override
+  String get spotsLabel => 'Spots, host included';
+
+  @override
+  String get fewerSpots => 'Fewer spots';
+
+  @override
+  String get moreSpots => 'More spots';
+
+  @override
+  String get levelRangeLabel => 'Level range';
+
+  @override
+  String get visibilityLabel => 'Who can see it';
+
+  @override
+  String get visibilityPublic => 'Public';
+
+  @override
+  String get visibilityInviteOnly => 'Invite only';
+
+  @override
+  String get askToJoin => 'Ask to join';
+
+  @override
+  String get requested => 'Requested';
+
+  @override
+  String get withdrawRequest => 'Withdraw request';
+
+  @override
+  String get invitedToGame => 'You are invited to this game';
+
+  @override
+  String get invitedPill => 'Invited';
+
+  @override
+  String get acceptInvite => 'Accept';
+
+  @override
+  String get declineLabel => 'Decline';
+
+  @override
+  String get approveLabel => 'Approve';
+
+  @override
+  String get requestsTitle => 'Requests';
+
+  @override
+  String get hostTools => 'Host tools';
+
+  @override
+  String get editGame => 'Edit game';
+
+  @override
+  String get cancelGame => 'Cancel game';
+
+  @override
+  String get cancelGameTitle => 'Cancel this game?';
+
+  @override
+  String get cancelGameMsg => 'The players will be told.';
+
+  @override
+  String get alsoCancelBooking => 'Also cancel my court booking';
+
+  @override
+  String get alsoCancelBookingHint =>
+      'Frees the court for others. Late cancellation rules still apply.';
+
+  @override
+  String get keepGame => 'Keep game';
+
+  @override
+  String get gameCancelled => 'Game cancelled';
+
+  @override
+  String get gameCancelledBanner => 'This game was cancelled';
+
+  @override
+  String get removePlayer => 'Remove player';
+
+  @override
+  String removePlayerTitle(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get removePlayerMsg => 'They will be told they were removed.';
+
+  @override
+  String get removeLabel => 'Remove';
+
+  @override
+  String get createGameFromBooking => 'Create a game from this booking';
+
+  @override
+  String get errSpotsBelowPlayers =>
+      'Spots cannot be fewer than the players already in the game';
+
+  @override
+  String get errAlreadyJoined => 'You are already in this game';
+
+  @override
+  String get errNotParticipant => 'You are not in this game';
+
+  @override
+  String get errHostCannotLeave =>
+      'The host cannot leave. Cancel the game instead.';
+
+  @override
+  String get errAlreadyRequested => 'You have already asked to join this game';
+
+  @override
+  String get errBookingNotUsable =>
+      'Choose your own confirmed booking for this sport that has not started yet';
+
+  @override
+  String get errGameExists => 'This booking already has a game';
+
+  @override
+  String get errForbidden => 'You cannot do this in this game';
+
+  @override
+  String get errNotCancellable =>
+      'The game has already started, so it cannot be cancelled';
+
+  @override
+  String get errUnavailable =>
+      'Cannot reach the server. Check your connection.';
 }

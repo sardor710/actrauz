@@ -63,7 +63,7 @@ class _GamesScreenState extends ConsumerState<GamesScreen> {
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showMessage(context, l.comingSoon),
+        onPressed: () => context.push('/games/new'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 3,

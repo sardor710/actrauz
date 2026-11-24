@@ -1263,4 +1263,205 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get reliabilityBlockedHint =>
       'Eski oʻtkazib yuborilgan oʻyinlar 90 kundan oshmaguncha bron qilib, oʻyinga qoʻshilib va eʼlon bera olmaysiz.';
+
+  @override
+  String get gameSportLabel => 'Sport turi';
+
+  @override
+  String get pickSportHint => 'Oʻyin yaratish uchun sport turini tanlang';
+
+  @override
+  String get gameBookingLabel => 'Kort broningiz';
+
+  @override
+  String get noBookingForSport =>
+      'Bu sport turi uchun sizda kelgusi tasdiqlangan bron yoʻq. Avval kortni bron qiling, soʻng oʻyin yarating.';
+
+  @override
+  String get bookACourt => 'Kortni bron qilish';
+
+  @override
+  String get gamePlaceLabel => 'Qayerda';
+
+  @override
+  String get placeVenue => 'Maydon';
+
+  @override
+  String get placeMeetingPoint => 'Uchrashuv joyi';
+
+  @override
+  String get chooseVenue => 'Maydonni tanlang';
+
+  @override
+  String get meetingPointHint => 'Masalan: bogʻning asosiy darvozasi';
+
+  @override
+  String get meetingPointRequired => 'Uchrashuv joyini kiriting';
+
+  @override
+  String get venueRequired => 'Maydonni tanlang';
+
+  @override
+  String get gameWhenLabel => 'Qachon';
+
+  @override
+  String get gameStartTime => 'Boshlanishi';
+
+  @override
+  String get gameDuration => 'Davomiyligi';
+
+  @override
+  String minutesShort(int count) {
+    return '$count daq';
+  }
+
+  @override
+  String get distanceLabel => 'Masofa, km (ixtiyoriy)';
+
+  @override
+  String get paceLabel => 'Temp (ixtiyoriy)';
+
+  @override
+  String get paceHint => 'Masalan 6:00 daq/km';
+
+  @override
+  String distanceValue(String km) {
+    return '$km km';
+  }
+
+  @override
+  String paceValue(String pace) {
+    return 'Temp $pace';
+  }
+
+  @override
+  String get spotsLabel => 'Joylar, oʻzingiz bilan';
+
+  @override
+  String get fewerSpots => 'Kamroq joy';
+
+  @override
+  String get moreSpots => 'Koʻproq joy';
+
+  @override
+  String get levelRangeLabel => 'Daraja oraligʻi';
+
+  @override
+  String get visibilityLabel => 'Oʻyinni kim koʻradi';
+
+  @override
+  String get visibilityPublic => 'Hammaga ochiq';
+
+  @override
+  String get visibilityInviteOnly => 'Faqat taklif bilan';
+
+  @override
+  String get askToJoin => 'Qoʻshilishni soʻrash';
+
+  @override
+  String get requested => 'Soʻrov yuborildi';
+
+  @override
+  String get withdrawRequest => 'Soʻrovni qaytarib olish';
+
+  @override
+  String get invitedToGame => 'Sizni bu oʻyinga taklif qilishdi';
+
+  @override
+  String get invitedPill => 'Taklif';
+
+  @override
+  String get acceptInvite => 'Qabul qilish';
+
+  @override
+  String get declineLabel => 'Rad etish';
+
+  @override
+  String get approveLabel => 'Tasdiqlash';
+
+  @override
+  String get requestsTitle => 'Soʻrovlar';
+
+  @override
+  String get hostTools => 'Oʻyinni boshqarish';
+
+  @override
+  String get editGame => 'Oʻyinni tahrirlash';
+
+  @override
+  String get cancelGame => 'Oʻyinni bekor qilish';
+
+  @override
+  String get cancelGameTitle => 'Bu oʻyin bekor qilinsinmi?';
+
+  @override
+  String get cancelGameMsg => 'Oʻyinchilarga xabar beriladi.';
+
+  @override
+  String get alsoCancelBooking => 'Kort bronini ham bekor qilish';
+
+  @override
+  String get alsoCancelBookingHint =>
+      'Kortni boshqalar uchun boʻshatadi. Kech bekor qilish qoidalari amal qiladi.';
+
+  @override
+  String get keepGame => 'Oʻyinni qoldirish';
+
+  @override
+  String get gameCancelled => 'Oʻyin bekor qilindi';
+
+  @override
+  String get gameCancelledBanner => 'Bu oʻyin bekor qilingan';
+
+  @override
+  String get removePlayer => 'Oʻyinchini chiqarish';
+
+  @override
+  String removePlayerTitle(String name) {
+    return '$name oʻyindan chiqarilsinmi?';
+  }
+
+  @override
+  String get removePlayerMsg => 'Oʻyinchiga xabar beriladi.';
+
+  @override
+  String get removeLabel => 'Chiqarish';
+
+  @override
+  String get createGameFromBooking => 'Shu bron boʻyicha oʻyin yaratish';
+
+  @override
+  String get errSpotsBelowPlayers =>
+      'Joylar oʻyindagi oʻyinchilardan kam boʻlishi mumkin emas';
+
+  @override
+  String get errAlreadyJoined => 'Siz allaqachon bu oʻyindasiz';
+
+  @override
+  String get errNotParticipant => 'Siz bu oʻyinda emassiz';
+
+  @override
+  String get errHostCannotLeave =>
+      'Tashkilotchi oʻyindan chiqa olmaydi. Oʻyinni bekor qiling.';
+
+  @override
+  String get errAlreadyRequested =>
+      'Siz bu oʻyinga allaqachon soʻrov yuborgansiz';
+
+  @override
+  String get errBookingNotUsable =>
+      'Shu sport turi uchun oʻzingizning, hali boshlanmagan tasdiqlangan broningizni tanlang';
+
+  @override
+  String get errGameExists => 'Bu bronda allaqachon oʻyin bor';
+
+  @override
+  String get errForbidden => 'Siz bu oʻyinda buni qila olmaysiz';
+
+  @override
+  String get errNotCancellable => 'Oʻyin boshlangan, uni bekor qilib boʻlmaydi';
+
+  @override
+  String get errUnavailable =>
+      'Serverga ulanib boʻlmadi. Internetni tekshiring.';
 }

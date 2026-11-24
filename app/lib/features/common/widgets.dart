@@ -162,12 +162,16 @@ class SportBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Image.asset(
-    sportIconAsset(sportId),
-    width: size,
-    height: size,
-    errorBuilder: (context, error, stack) => Icon(sportIcon(sportId), size: size * 0.8, color: AppColors.primaryDark),
-  );
+  Widget build(BuildContext context) {
+    Widget icon() => Icon(sportIcon(sportId), size: size * 0.8, color: AppColors.primaryDark);
+    if (!hasSportArt(sportId)) return SizedBox(width: size, height: size, child: icon());
+    return Image.asset(
+      sportIconAsset(sportId),
+      width: size,
+      height: size,
+      errorBuilder: (context, error, stack) => icon(),
+    );
+  }
 }
 
 /// Small rounded label: a status, a level range, a time.

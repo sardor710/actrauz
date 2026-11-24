@@ -126,7 +126,8 @@ class HomeScreen extends ConsumerWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: games.length,
                             separatorBuilder: (_, _) => const SizedBox(width: 12),
-                            itemBuilder: (context, i) => SizedBox(width: 312, child: GameCard(game: games[i])),
+                            itemBuilder: (context, i) =>
+                                SizedBox(width: 312, child: GameCard(game: games[i], compact: true)),
                           ),
                         ),
                       ],

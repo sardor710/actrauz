@@ -10,6 +10,7 @@ import 'features/admin/admin_venues_screen.dart';
 import 'features/admin/venue_editor_screen.dart';
 import 'features/booking/booking_screen.dart';
 import 'features/bookings/bookings_screen.dart';
+import 'features/games/create_game_screen.dart';
 import 'features/games/game_screen.dart';
 import 'features/games/games_screen.dart';
 import 'features/home/home_screen.dart';
@@ -104,6 +105,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/games',
                 builder: (context, state) => const GamesScreen(),
                 routes: [
+                  // Before ':id', which would take 'new' for a game id.
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => CreateGameScreen(bookingId: state.uri.queryParameters['booking']),
+                  ),
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => GameScreen(gameId: state.pathParameters['id']!),

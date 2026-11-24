@@ -1288,4 +1288,202 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get reliabilityBlockedHint =>
       'Вы не можете бронировать, вступать в игры и создавать запросы, пока старые пропуски не пройдут 90 дней.';
+
+  @override
+  String get gameSportLabel => 'Спорт';
+
+  @override
+  String get pickSportHint => 'Выберите спорт, чтобы создать игру';
+
+  @override
+  String get gameBookingLabel => 'Ваша бронь корта';
+
+  @override
+  String get noBookingForSport =>
+      'У вас нет предстоящей подтверждённой брони для этого спорта. Сначала забронируйте корт, затем создайте игру.';
+
+  @override
+  String get bookACourt => 'Забронировать корт';
+
+  @override
+  String get gamePlaceLabel => 'Где';
+
+  @override
+  String get placeVenue => 'Площадка';
+
+  @override
+  String get placeMeetingPoint => 'Место встречи';
+
+  @override
+  String get chooseVenue => 'Выберите площадку';
+
+  @override
+  String get meetingPointHint => 'Например: главный вход в парк';
+
+  @override
+  String get meetingPointRequired => 'Укажите место встречи';
+
+  @override
+  String get venueRequired => 'Выберите площадку';
+
+  @override
+  String get gameWhenLabel => 'Когда';
+
+  @override
+  String get gameStartTime => 'Начало';
+
+  @override
+  String get gameDuration => 'Длительность';
+
+  @override
+  String minutesShort(int count) {
+    return '$count мин';
+  }
+
+  @override
+  String get distanceLabel => 'Дистанция, км (необязательно)';
+
+  @override
+  String get paceLabel => 'Темп (необязательно)';
+
+  @override
+  String get paceHint => 'Например 6:00 мин/км';
+
+  @override
+  String distanceValue(String km) {
+    return '$km км';
+  }
+
+  @override
+  String paceValue(String pace) {
+    return 'Темп $pace';
+  }
+
+  @override
+  String get spotsLabel => 'Места, включая вас';
+
+  @override
+  String get fewerSpots => 'Меньше мест';
+
+  @override
+  String get moreSpots => 'Больше мест';
+
+  @override
+  String get levelRangeLabel => 'Диапазон уровней';
+
+  @override
+  String get visibilityLabel => 'Кто видит игру';
+
+  @override
+  String get visibilityPublic => 'Все';
+
+  @override
+  String get visibilityInviteOnly => 'Только по приглашению';
+
+  @override
+  String get askToJoin => 'Подать заявку';
+
+  @override
+  String get requested => 'Заявка отправлена';
+
+  @override
+  String get withdrawRequest => 'Отозвать заявку';
+
+  @override
+  String get invitedToGame => 'Вас пригласили в эту игру';
+
+  @override
+  String get invitedPill => 'Приглашение';
+
+  @override
+  String get acceptInvite => 'Принять';
+
+  @override
+  String get declineLabel => 'Отклонить';
+
+  @override
+  String get approveLabel => 'Одобрить';
+
+  @override
+  String get requestsTitle => 'Заявки';
+
+  @override
+  String get hostTools => 'Управление игрой';
+
+  @override
+  String get editGame => 'Изменить игру';
+
+  @override
+  String get cancelGame => 'Отменить игру';
+
+  @override
+  String get cancelGameTitle => 'Отменить эту игру?';
+
+  @override
+  String get cancelGameMsg => 'Игроки получат уведомление.';
+
+  @override
+  String get alsoCancelBooking => 'Также отменить мою бронь корта';
+
+  @override
+  String get alsoCancelBookingHint =>
+      'Освобождает корт для других. Правила поздней отмены сохраняются.';
+
+  @override
+  String get keepGame => 'Оставить игру';
+
+  @override
+  String get gameCancelled => 'Игра отменена';
+
+  @override
+  String get gameCancelledBanner => 'Эта игра отменена';
+
+  @override
+  String get removePlayer => 'Убрать игрока';
+
+  @override
+  String removePlayerTitle(String name) {
+    return 'Убрать игрока $name?';
+  }
+
+  @override
+  String get removePlayerMsg => 'Игрок получит уведомление.';
+
+  @override
+  String get removeLabel => 'Убрать';
+
+  @override
+  String get createGameFromBooking => 'Создать игру по этой брони';
+
+  @override
+  String get errSpotsBelowPlayers =>
+      'Мест не может быть меньше, чем игроков в игре';
+
+  @override
+  String get errAlreadyJoined => 'Вы уже в этой игре';
+
+  @override
+  String get errNotParticipant => 'Вас нет в этой игре';
+
+  @override
+  String get errHostCannotLeave => 'Организатор не может выйти. Отмените игру.';
+
+  @override
+  String get errAlreadyRequested => 'Вы уже отправили заявку на эту игру';
+
+  @override
+  String get errBookingNotUsable =>
+      'Выберите свою подтверждённую бронь на этот спорт, которая ещё не началась';
+
+  @override
+  String get errGameExists => 'На эту бронь уже создана игра';
+
+  @override
+  String get errForbidden => 'Вы не можете сделать это в этой игре';
+
+  @override
+  String get errNotCancellable => 'Игра уже началась, её нельзя отменить';
+
+  @override
+  String get errUnavailable => 'Нет связи с сервером. Проверьте подключение.';
 }

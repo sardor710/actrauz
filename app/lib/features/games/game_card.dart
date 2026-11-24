@@ -12,9 +12,12 @@ import '../common/widgets.dart';
 
 /// One joinable game: time, who is going, title, venue and level.
 class GameCard extends ConsumerWidget {
-  const GameCard({super.key, required this.game});
+  const GameCard({super.key, required this.game, this.compact = false});
 
   final Game game;
+
+  /// Leaves out the status row, for the fixed-height strip on the home tab.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -98,7 +101,7 @@ class GameCard extends ConsumerWidget {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      venue?.name.resolve(context.lang) ?? '',
+                      venue?.name.resolve(context.lang) ?? game.meetingPoint ?? '',
                       style: AppText.muted,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -113,6 +116,22 @@ class GameCard extends ConsumerWidget {
                   ),
                 ],
               ),
+              if (!compact && (game.visibility == GameVisibility.inviteOnly || game.myStatus != null)) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (game.visibility == GameVisibility.inviteOnly)
+                      Pill(text: l.visibilityInviteOnly, icon: Icons.lock_outline_rounded),
+                    if (game.myStatus == MyGameStatus.host)
+                      Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
+                    if (game.myStatus == MyGameStatus.invited)
+                      Pill(text: l.invitedPill, color: AppColors.amber, onColor: AppColors.ink),
+                    if (game.myStatus == MyGameStatus.requested) Pill(text: l.requested, color: AppColors.amberSoft),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

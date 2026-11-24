@@ -644,5 +644,95 @@
     }
   },
   "reliabilityLimitedHint": "You can hold one upcoming booking at a time. Show up and play to recover.",
-  "reliabilityBlockedHint": "You cannot book, join or post until older missed games pass 90 days."
+  "reliabilityBlockedHint": "You cannot book, join or post until older missed games pass 90 days.",
+  "gameSportLabel": "Sport",
+  "pickSportHint": "Choose a sport to set up your game",
+  "gameBookingLabel": "Your court booking",
+  "noBookingForSport": "You have no upcoming confirmed booking for this sport. Book a court first, then create a game on it.",
+  "bookACourt": "Book a court",
+  "gamePlaceLabel": "Where",
+  "placeVenue": "Venue",
+  "placeMeetingPoint": "Meeting point",
+  "chooseVenue": "Choose a venue",
+  "meetingPointHint": "For example: main gate of the park",
+  "meetingPointRequired": "Enter a meeting point",
+  "venueRequired": "Choose a venue",
+  "gameWhenLabel": "When",
+  "gameStartTime": "Start",
+  "gameDuration": "Duration",
+  "minutesShort": "{count} min",
+  "@minutesShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "distanceLabel": "Distance, km (optional)",
+  "paceLabel": "Pace (optional)",
+  "paceHint": "For example 6:00 min/km",
+  "distanceValue": "{km} km",
+  "@distanceValue": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "paceValue": "Pace {pace}",
+  "@paceValue": {
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
+  "spotsLabel": "Spots, host included",
+  "fewerSpots": "Fewer spots",
+  "moreSpots": "More spots",
+  "levelRangeLabel": "Level range",
+  "visibilityLabel": "Who can see it",
+  "visibilityPublic": "Public",
+  "visibilityInviteOnly": "Invite only",
+  "askToJoin": "Ask to join",
+  "requested": "Requested",
+  "withdrawRequest": "Withdraw request",
+  "invitedToGame": "You are invited to this game",
+  "invitedPill": "Invited",
+  "acceptInvite": "Accept",
+  "declineLabel": "Decline",
+  "approveLabel": "Approve",
+  "requestsTitle": "Requests",
+  "hostTools": "Host tools",
+  "editGame": "Edit game",
+  "cancelGame": "Cancel game",
+  "cancelGameTitle": "Cancel this game?",
+  "cancelGameMsg": "The players will be told.",
+  "alsoCancelBooking": "Also cancel my court booking",
+  "alsoCancelBookingHint": "Frees the court for others. Late cancellation rules still apply.",
+  "keepGame": "Keep game",
+  "gameCancelled": "Game cancelled",
+  "gameCancelledBanner": "This game was cancelled",
+  "removePlayer": "Remove player",
+  "removePlayerTitle": "Remove {name}?",
+  "@removePlayerTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removePlayerMsg": "They will be told they were removed.",
+  "removeLabel": "Remove",
+  "createGameFromBooking": "Create a game from this booking",
+  "errSpotsBelowPlayers": "Spots cannot be fewer than the players already in the game",
+  "errAlreadyJoined": "You are already in this game",
+  "errNotParticipant": "You are not in this game",
+  "errHostCannotLeave": "The host cannot leave. Cancel the game instead.",
+  "errAlreadyRequested": "You have already asked to join this game",
+  "errBookingNotUsable": "Choose your own confirmed booking for this sport that has not started yet",
+  "errGameExists": "This booking already has a game",
+  "errForbidden": "You cannot do this in this game",
+  "errNotCancellable": "The game has already started, so it cannot be cancelled",
+  "errUnavailable": "Cannot reach the server. Check your connection."
 }

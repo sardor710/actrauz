@@ -2289,6 +2289,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You cannot book, join or post until older missed games pass 90 days.'**
   String get reliabilityBlockedHint;
+
+  /// No description provided for @gameSportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport'**
+  String get gameSportLabel;
+
+  /// No description provided for @pickSportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a sport to set up your game'**
+  String get pickSportHint;
+
+  /// No description provided for @gameBookingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your court booking'**
+  String get gameBookingLabel;
+
+  /// No description provided for @noBookingForSport.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no upcoming confirmed booking for this sport. Book a court first, then create a game on it.'**
+  String get noBookingForSport;
+
+  /// No description provided for @bookACourt.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a court'**
+  String get bookACourt;
+
+  /// No description provided for @gamePlaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Where'**
+  String get gamePlaceLabel;
+
+  /// No description provided for @placeVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue'**
+  String get placeVenue;
+
+  /// No description provided for @placeMeetingPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting point'**
+  String get placeMeetingPoint;
+
+  /// No description provided for @chooseVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a venue'**
+  String get chooseVenue;
+
+  /// No description provided for @meetingPointHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: main gate of the park'**
+  String get meetingPointHint;
+
+  /// No description provided for @meetingPointRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a meeting point'**
+  String get meetingPointRequired;
+
+  /// No description provided for @venueRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a venue'**
+  String get venueRequired;
+
+  /// No description provided for @gameWhenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get gameWhenLabel;
+
+  /// No description provided for @gameStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get gameStartTime;
+
+  /// No description provided for @gameDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get gameDuration;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String minutesShort(int count);
+
+  /// No description provided for @distanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance, km (optional)'**
+  String get distanceLabel;
+
+  /// No description provided for @paceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace (optional)'**
+  String get paceLabel;
+
+  /// No description provided for @paceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example 6:00 min/km'**
+  String get paceHint;
+
+  /// No description provided for @distanceValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km'**
+  String distanceValue(String km);
+
+  /// No description provided for @paceValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace {pace}'**
+  String paceValue(String pace);
+
+  /// No description provided for @spotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Spots, host included'**
+  String get spotsLabel;
+
+  /// No description provided for @fewerSpots.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer spots'**
+  String get fewerSpots;
+
+  /// No description provided for @moreSpots.
+  ///
+  /// In en, this message translates to:
+  /// **'More spots'**
+  String get moreSpots;
+
+  /// No description provided for @levelRangeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level range'**
+  String get levelRangeLabel;
+
+  /// No description provided for @visibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see it'**
+  String get visibilityLabel;
+
+  /// No description provided for @visibilityPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get visibilityPublic;
+
+  /// No description provided for @visibilityInviteOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite only'**
+  String get visibilityInviteOnly;
+
+  /// No description provided for @askToJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask to join'**
+  String get askToJoin;
+
+  /// No description provided for @requested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get requested;
+
+  /// No description provided for @withdrawRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw request'**
+  String get withdrawRequest;
+
+  /// No description provided for @invitedToGame.
+  ///
+  /// In en, this message translates to:
+  /// **'You are invited to this game'**
+  String get invitedToGame;
+
+  /// No description provided for @invitedPill.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get invitedPill;
+
+  /// No description provided for @acceptInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get acceptInvite;
+
+  /// No description provided for @declineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get declineLabel;
+
+  /// No description provided for @approveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get approveLabel;
+
+  /// No description provided for @requestsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get requestsTitle;
+
+  /// No description provided for @hostTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Host tools'**
+  String get hostTools;
+
+  /// No description provided for @editGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit game'**
+  String get editGame;
+
+  /// No description provided for @cancelGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel game'**
+  String get cancelGame;
+
+  /// No description provided for @cancelGameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this game?'**
+  String get cancelGameTitle;
+
+  /// No description provided for @cancelGameMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'The players will be told.'**
+  String get cancelGameMsg;
+
+  /// No description provided for @alsoCancelBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Also cancel my court booking'**
+  String get alsoCancelBooking;
+
+  /// No description provided for @alsoCancelBookingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Frees the court for others. Late cancellation rules still apply.'**
+  String get alsoCancelBookingHint;
+
+  /// No description provided for @keepGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep game'**
+  String get keepGame;
+
+  /// No description provided for @gameCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Game cancelled'**
+  String get gameCancelled;
+
+  /// No description provided for @gameCancelledBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This game was cancelled'**
+  String get gameCancelledBanner;
+
+  /// No description provided for @removePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove player'**
+  String get removePlayer;
+
+  /// No description provided for @removePlayerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String removePlayerTitle(String name);
+
+  /// No description provided for @removePlayerMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'They will be told they were removed.'**
+  String get removePlayerMsg;
+
+  /// No description provided for @removeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeLabel;
+
+  /// No description provided for @createGameFromBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a game from this booking'**
+  String get createGameFromBooking;
+
+  /// No description provided for @errSpotsBelowPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Spots cannot be fewer than the players already in the game'**
+  String get errSpotsBelowPlayers;
+
+  /// No description provided for @errAlreadyJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in this game'**
+  String get errAlreadyJoined;
+
+  /// No description provided for @errNotParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not in this game'**
+  String get errNotParticipant;
+
+  /// No description provided for @errHostCannotLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'The host cannot leave. Cancel the game instead.'**
+  String get errHostCannotLeave;
+
+  /// No description provided for @errAlreadyRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already asked to join this game'**
+  String get errAlreadyRequested;
+
+  /// No description provided for @errBookingNotUsable.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your own confirmed booking for this sport that has not started yet'**
+  String get errBookingNotUsable;
+
+  /// No description provided for @errGameExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking already has a game'**
+  String get errGameExists;
+
+  /// No description provided for @errForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot do this in this game'**
+  String get errForbidden;
+
+  /// No description provided for @errNotCancellable.
+  ///
+  /// In en, this message translates to:
+  /// **'The game has already started, so it cannot be cancelled'**
+  String get errNotCancellable;
+
+  /// No description provided for @errUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the server. Check your connection.'**
+  String get errUnavailable;
 }
 
 class _AppLocalizationsDelegate

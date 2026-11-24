@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/markets.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/owner.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
@@ -123,6 +124,15 @@ class _BookingCard extends ConsumerWidget {
                 if (booking.lateCancellation) Pill(text: l.lateCancellation, icon: Icons.warning_amber_outlined),
               ],
             ),
+            if (canCancel && booking.source == BookingSource.app) ...[
+              const SizedBox(height: 8),
+              // Outside the tab shell: go, not push, to a Games route.
+              TextButton.icon(
+                onPressed: () => context.go('/games/new?booking=${booking.id}'),
+                icon: const Icon(Icons.groups_outlined),
+                label: Text(l.createGameFromBooking),
+              ),
+            ],
             if (canCancel) ...[
               const SizedBox(height: 12),
               OutlinedButton(

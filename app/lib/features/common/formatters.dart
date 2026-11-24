@@ -90,7 +90,20 @@ String joinErrorText(AppLocalizations l, Object error) {
   if (error is! JoinException) return l.errGeneric;
   return switch (error.error) {
     JoinError.full => l.errGameFull,
+    JoinError.alreadyJoined => l.errAlreadyJoined,
     JoinError.levelOutOfRange => l.errLevel,
-    _ => l.errGeneric,
+    JoinError.notParticipant => l.errNotParticipant,
+    JoinError.hostCannotLeave => l.errHostCannotLeave,
+    JoinError.notFound => l.errNotFound,
+    JoinError.alreadyRequested => l.errAlreadyRequested,
+    JoinError.reliabilityTooLow => l.reliabilityBlockedHint,
+    JoinError.bookingNotUsable => l.errBookingNotUsable,
+    JoinError.gameExists => l.errGameExists,
+    JoinError.invalidArgument => l.errInvalidArgument,
+    JoinError.inPast => l.errInPast,
+    JoinError.tooFarAhead => l.errTooFarAhead(BookingEngine.maxDaysAhead),
+    JoinError.forbidden => l.errForbidden,
+    JoinError.notCancellable => l.errNotCancellable,
+    JoinError.unavailable => l.errUnavailable,
   };
 }

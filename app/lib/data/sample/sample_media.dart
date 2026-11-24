@@ -15,6 +15,12 @@ String tournamentPhoto(String tournamentId) => 'assets/photos/tournament_${sampl
 
 String sportIconAsset(String sportId) => 'assets/icons/$sportId.png';
 
+/// Sports that have 3D artwork. The others (running, gym, anything an admin
+/// adds) show a line icon without trying to load a file that is not there.
+const kSportArt = {'football', 'padel', 'tennis', 'basketball', 'volleyball'};
+
+bool hasSportArt(String sportId) => kSportArt.contains(sportId);
+
 const kWaveIcon = 'assets/icons/wave.png';
 const kTrophyIcon = 'assets/icons/trophy.png';
 
