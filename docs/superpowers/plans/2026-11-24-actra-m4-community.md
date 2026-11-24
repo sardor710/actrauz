@@ -16,11 +16,16 @@
 
 | Part | State | Evidence |
 |---|---|---|
-| M4a notifications, reliability, booking hooks | not started | |
-| M4b games for all sport types, requests to join, invites, host tools | not started | |
-| M4c Game Requests | not started | |
-| M4d find players, player profile, settings | not started | |
+| M4a notifications, reliability, booking hooks | built and verified on sample data and local Postgres | backend `npm test` 258 pass; inbox, settings and badge screens |
+| M4b games for all sport types, requests to join, invites, host tools | built and verified | concurrency test (join vs approve, 10 rounds); `games_host_flow_test.dart` |
+| M4c Game Requests | built and verified | `game_requests.test.mjs`; `requests_players_flow_test.dart` |
+| M4d find players, player profile, settings | built and verified | app `flutter analyze` clean, `flutter test` 322 pass |
+| Reviews | every task reviewed; final whole-branch review found 6 Important items, all fixed and re-reviewed (approved) | |
+| Browser check | sample data, phone width, English: inbox, Requests + "I'm in", Find players, player profile, create running game | no runtime errors |
+| Deployment | **not deployed**: waiting for the user's go-ahead (`node scripts/deploy.mjs migrations`, then `node scripts/e2e-community.mjs`) | |
 | Push delivery | **waiting on the user**: needs a Firebase project (roadmap §5) | |
+
+Known limits after M4: player names are still readable through `profiles` by a crafted client (the hidden-from-search flag and mute list are not); `scripts/e2e.mjs` books a seeded court and now notifies that venue's real owners, so move it to a throw-away venue before running it again; Russian and Uzbek copy not checked by a native speaker; reliability constants (−20/−5/+2, +20 cap, 90 days) are first guesses.
 
 ## Scope decisions (spec proposals taken as written unless stated)
 
