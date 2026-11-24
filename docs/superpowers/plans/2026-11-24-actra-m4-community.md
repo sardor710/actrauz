@@ -22,7 +22,7 @@
 | M4d find players, player profile, settings | built and verified | app `flutter analyze` clean, `flutter test` 322 pass |
 | Reviews | every task reviewed; final whole-branch review found 6 Important items, all fixed and re-reviewed (approved) | |
 | Browser check | sample data, phone width. English: inbox, Requests + "I'm in", Find players, player profile. Russian: inbox, create-game form, a running game created end to end with host tools | no runtime errors |
-| Deployment | **not deployed**: waiting for the user's go-ahead (`node scripts/deploy.mjs migrations`, then `node scripts/e2e-community.mjs`) | |
+| Deployment | **deployed 2026-11-24** at the user's request: `deploy.mjs migrations` applied the three M4 migrations | `e2e-community.mjs` PASSED and left nothing behind; cron `actra-send-reminders` runs send_reminders, complete_games, expire_game_requests; backfill marked 4 ended sample games completed with 0 reliability events |
 | Push delivery | **waiting on the user**: needs a Firebase project (roadmap §5) | |
 
 Known limits after M4: player names are still readable through `profiles` by a crafted client (the hidden-from-search flag and mute list are not); `scripts/e2e.mjs` books a seeded court and now notifies that venue's real owners, so move it to a throw-away venue before running it again; Russian and Uzbek copy not checked by a native speaker; reliability constants (−20/−5/+2, +20 cap, 90 days) are first guesses.
