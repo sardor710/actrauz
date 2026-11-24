@@ -60,11 +60,12 @@ if (wants('db') || only.includes('migrations')) {
       continue;
     }
     const body = readFileSync(path.join(dir, file), 'utf8');
-    // The migration and its history row go in one call: both or neither.
+    // The migration and its history row go in one explicit transaction: both
+    // or neither, so a migration that fails half way leaves nothing behind.
     await sql(
       env,
-      `${body}\n;\ninsert into supabase_migrations.schema_migrations (version, name, statements)
-       values (${literal(version)}, ${literal(name)}, array[${literal(body)}]);`,
+      `begin;\n${body}\n;\ninsert into supabase_migrations.schema_migrations (version, name, statements)
+       values (${literal(version)}, ${literal(name)}, array[${literal(body)}]);\ncommit;`,
       { write: true },
     );
     console.log(`  applied          ${file}`);

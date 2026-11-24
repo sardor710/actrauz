@@ -21,7 +21,7 @@
 | M4c Game Requests | built and verified | `game_requests.test.mjs`; `requests_players_flow_test.dart` |
 | M4d find players, player profile, settings | built and verified | app `flutter analyze` clean, `flutter test` 322 pass |
 | Reviews | every task reviewed; final whole-branch review found 6 Important items, all fixed and re-reviewed (approved) | |
-| Browser check | sample data, phone width, English: inbox, Requests + "I'm in", Find players, player profile, create running game | no runtime errors |
+| Browser check | sample data, phone width. English: inbox, Requests + "I'm in", Find players, player profile. Russian: inbox, create-game form, a running game created end to end with host tools | no runtime errors |
 | Deployment | **not deployed**: waiting for the user's go-ahead (`node scripts/deploy.mjs migrations`, then `node scripts/e2e-community.mjs`) | |
 | Push delivery | **waiting on the user**: needs a Firebase project (roadmap §5) | |
 
@@ -294,3 +294,9 @@ Behaviour: request screen shows window, area, interested players with level and 
 - [ ] **Step 3:** Independent security review of the three migrations against Review Focus; fix should-fix items.
 - [ ] **Step 4:** Ask the user before `node scripts/deploy.mjs migrations` and before running `e2e-community.mjs` on the hosted project, and before any push or merge.
 - [ ] **Step 5:** Update Status; commit.
+
+## Deferred after M4 (from the reviews; none blocks deployment)
+
+- Backend: `withdraw_join_request` stamps `now()` instead of a clock argument; a place game can name a venue that does not offer the sport; `hold_slots` computes reliability twice; `app.notify` raises 23514 (not `invalid_argument`) on an unknown category; JSON `null` in `convert_game_request`'s `p_place` is not treated as missing; cancelling a Game Request notifies nobody; no race test for "I'm in" vs convert; a booked game's host gets both `booking_reminder` and `game_reminder`; `game_completed` ignores a venue no-show on the host's booking; `game_json.status` does not distinguish completed games; "Mark all read" marks read on the server notifications that arrived after the last load.
+- App: running/gym have no sport art and running games show a stock basketball photo; game title reads "<Sport> with player <name>" awkwardly in Russian; the "You" avatar letter comes from the word "You"; game routes use `go`, so Back from a game opened from the inbox returns to the tabs; bell count has no 99+ cap; inbox "Load more" does not de-duplicate after a refresh; the create screen spinner hangs if a venue fails to load; "Create a game from this booking" shows on bookings that already have a game; Find players search has no debounce; notification rows show no time; Russian/Uzbek copy needs a native-speaker pass.
+- Sample backend: `players()` ignores the city; meeting-point games and requests always land in Tashkent; `gamesPlayed` counts differently from SQL.
