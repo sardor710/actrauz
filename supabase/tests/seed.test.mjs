@@ -21,9 +21,9 @@ before(async () => {
 });
 after(() => db.end());
 
-test('three cities, five sports, six venues (3 / 2 / 1), fourteen courts', async () => {
+test('three cities, five sports plus running and gym, six venues (3 / 2 / 1), fourteen courts', async () => {
   assert.equal(await count('cities'), 3);
-  assert.equal(await count('sports'), 5);
+  assert.equal(await count('sports'), 7);
   assert.equal(await count('courts'), 14);
   const { rows } = await pool.query(`select city_id, count(*)::int as n from venues group by city_id order by city_id`);
   assert.deepEqual(rows, [
