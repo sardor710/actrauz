@@ -168,3 +168,71 @@ test('the last spot of a game: a join and an approval racing, exactly one gets i
     assert.equal(rows[0].n, 2);
   }
 });
+
+// Integrity rule 2: a tournament category never counts more than its cap.
+
+async function tournamentCategory(kind, cap) {
+  const { rows } = await pool.query(
+    `insert into tournaments (city_id, sport_id, venue_id, title_en, starts_on, ends_on)
+     values ('tashkent', 'padel', $1, 'Race Cup', '2026-12-10', '2026-12-10') returning id`,
+    [venueId],
+  );
+  const cat = await pool.query(
+    `insert into tournament_categories (tournament_id, name_en, kind, cap, fee) values ($1, 'Open', $2, $3, 0) returning id`,
+    [rows[0].id, kind, cap],
+  );
+  return { tournamentId: rows[0].id, categoryId: cat.rows[0].id };
+}
+
+const counted = async (categoryId) =>
+  (
+    await pool.query(
+      `select count(*)::int as n from tournament_registrations where category_id = $1 and status in ('registered', 'offered')`,
+      [categoryId],
+    )
+  ).rows[0].n;
+
+test('the last spot of a singles category: two registrations racing, exactly one gets in', async () => {
+  // 10 rounds on 10 categories, each with one spot left, all fired together.
+  const rounds = [];
+  for (let i = 0; i < 10; i++) {
+    const { tournamentId, categoryId } = await tournamentCategory('singles', 2);
+    const first = await createUser(pool, `First ${i}`);
+    await pool.query(`select app.register($1, $2, null, $3)`, [first, categoryId, now]);
+    rounds.push({ tournamentId, categoryId, x: await createUser(pool, `SX ${i}`), y: await createUser(pool, `SY ${i}`) });
+  }
+
+  const register = (user, categoryId) => errorOf(pool.query(`select app.register($1, $2, null, $3)`, [user, categoryId, now]));
+  const results = await Promise.all(rounds.flatMap(({ categoryId, x, y }) => [register(x, categoryId), register(y, categoryId)]));
+
+  for (let i = 0; i < rounds.length; i++) {
+    const pair = [results[2 * i], results[2 * i + 1]].sort();
+    assert.deepEqual(pair, [null, 'full'].sort(), `category ${i}: ${JSON.stringify(pair)}`);
+    assert.equal(await counted(rounds[i].categoryId), 2);
+    const { rows } = await pool.query(`select slots_filled from tournaments where id = $1`, [rounds[i].tournamentId]);
+    assert.equal(rows[0].slots_filled, 2);
+  }
+});
+
+test('the last spot of a pairs category: two partners accepting at once, exactly one pair gets in', async () => {
+  const rounds = [];
+  for (let i = 0; i < 10; i++) {
+    const { categoryId } = await tournamentCategory('pairs', 2);
+    const users = [];
+    for (const n of ['A', 'AP', 'B', 'BP', 'C', 'CP']) users.push(await createUser(pool, `${n} ${i}`));
+    const [a, ap, b, bp, c, cp] = users;
+    const reg = async (user, partner) =>
+      (await pool.query(`select (app.register($1, $2, $3, $4)).id`, [user, categoryId, partner, now])).rows[0].id;
+    await pool.query(`select app.respond_partner($1, $2, true, $3)`, [ap, await reg(a, ap), now]);
+    rounds.push({ categoryId, b: [bp, await reg(b, bp)], c: [cp, await reg(c, cp)] });
+  }
+
+  const accept = ([partner, id]) => errorOf(pool.query(`select app.respond_partner($1, $2, true, $3)`, [partner, id, now]));
+  const results = await Promise.all(rounds.flatMap(({ b, c }) => [accept(b), accept(c)]));
+
+  for (let i = 0; i < rounds.length; i++) {
+    const pair = [results[2 * i], results[2 * i + 1]].sort();
+    assert.deepEqual(pair, [null, 'full'].sort(), `category ${i}: ${JSON.stringify(pair)}`);
+    assert.equal(await counted(rounds[i].categoryId), 2);
+  }
+});
