@@ -2931,6 +2931,444 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} was invited'**
   String inviteSent(String name);
+
+  /// No description provided for @tournamentsMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My tournaments'**
+  String get tournamentsMine;
+
+  /// No description provided for @tournamentFilterDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get tournamentFilterDate;
+
+  /// No description provided for @tournamentFilterFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From {date}'**
+  String tournamentFilterFrom(String date);
+
+  /// No description provided for @tournamentSortAz.
+  ///
+  /// In en, this message translates to:
+  /// **'A–Z'**
+  String get tournamentSortAz;
+
+  /// No description provided for @registrationClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration closed'**
+  String get registrationClosed;
+
+  /// No description provided for @tournamentFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get tournamentFree;
+
+  /// No description provided for @tournamentCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get tournamentCategories;
+
+  /// No description provided for @tournamentDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration closes {when}'**
+  String tournamentDeadline(String when);
+
+  /// No description provided for @tournamentClosedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration is closed'**
+  String get tournamentClosedBanner;
+
+  /// No description provided for @kindSingles.
+  ///
+  /// In en, this message translates to:
+  /// **'Singles'**
+  String get kindSingles;
+
+  /// No description provided for @kindPairs.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairs'**
+  String get kindPairs;
+
+  /// No description provided for @genderMen.
+  ///
+  /// In en, this message translates to:
+  /// **'Men'**
+  String get genderMen;
+
+  /// No description provided for @genderWomen.
+  ///
+  /// In en, this message translates to:
+  /// **'Women'**
+  String get genderWomen;
+
+  /// No description provided for @genderMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get genderMixed;
+
+  /// No description provided for @genderOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get genderOpen;
+
+  /// No description provided for @waitlistCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting'**
+  String waitlistCount(int count);
+
+  /// No description provided for @joinWaitlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Join waitlist'**
+  String get joinWaitlist;
+
+  /// No description provided for @registerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get registerLabel;
+
+  /// No description provided for @confirmRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm registration'**
+  String get confirmRegistration;
+
+  /// No description provided for @registerSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register: {category}'**
+  String registerSheetTitle(String category);
+
+  /// No description provided for @waitlistSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waitlist: {category}'**
+  String waitlistSheetTitle(String category);
+
+  /// No description provided for @registrationFeeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry fee {fee}, paid to the organiser.'**
+  String registrationFeeNote(String fee);
+
+  /// No description provided for @waitlistSheetNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The category is full. If a spot frees up, you get 24 hours to claim it.'**
+  String get waitlistSheetNote;
+
+  /// No description provided for @partnerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a partner'**
+  String get partnerTitle;
+
+  /// No description provided for @partnerTabPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Players'**
+  String get partnerTabPlayers;
+
+  /// No description provided for @partnerTabPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get partnerTabPhone;
+
+  /// No description provided for @partnerPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'+998 90 123 45 67'**
+  String get partnerPhoneHint;
+
+  /// No description provided for @partnerFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get partnerFind;
+
+  /// No description provided for @partnerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No player has this number'**
+  String get partnerNotFound;
+
+  /// No description provided for @partnerPickFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a partner first'**
+  String get partnerPickFirst;
+
+  /// No description provided for @sendInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invite'**
+  String get sendInvite;
+
+  /// No description provided for @inviteNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your partner has 48 hours to accept, or until registration closes if that is sooner. The pair takes a spot once they accept.'**
+  String get inviteNote;
+
+  /// No description provided for @statusRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get statusRegistered;
+
+  /// No description provided for @statusPendingPartner.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for partner'**
+  String get statusPendingPartner;
+
+  /// No description provided for @statusInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation'**
+  String get statusInvited;
+
+  /// No description provided for @statusWaitlisted.
+  ///
+  /// In en, this message translates to:
+  /// **'On the waitlist'**
+  String get statusWaitlisted;
+
+  /// No description provided for @statusOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'Spot offered'**
+  String get statusOffered;
+
+  /// No description provided for @statusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get statusDeclined;
+
+  /// No description provided for @statusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get statusExpired;
+
+  /// No description provided for @statusRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get statusRemoved;
+
+  /// No description provided for @statusLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer lapsed'**
+  String get statusLapsed;
+
+  /// No description provided for @waitlistPlaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Place {place} in line'**
+  String waitlistPlaceLabel(int place);
+
+  /// No description provided for @pairedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'With {name}'**
+  String pairedWith(String name);
+
+  /// No description provided for @partnerInvitedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} invited you as a partner'**
+  String partnerInvitedYou(String name);
+
+  /// No description provided for @acceptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get acceptLabel;
+
+  /// No description provided for @claimLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get claimLabel;
+
+  /// No description provided for @offerHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'Held for you · {left} left'**
+  String offerHeld(String left);
+
+  /// No description provided for @durationHm.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String durationHm(int hours, int minutes);
+
+  /// No description provided for @durationMin.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String durationMin(int minutes);
+
+  /// No description provided for @cancelRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel registration'**
+  String get cancelRegistration;
+
+  /// No description provided for @cancelRegistrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel registration?'**
+  String get cancelRegistrationTitle;
+
+  /// No description provided for @cancelRegistrationMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Your spot goes to the next player in line. You can register again before the deadline if there is room.'**
+  String get cancelRegistrationMsg;
+
+  /// No description provided for @keepRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep registration'**
+  String get keepRegistration;
+
+  /// No description provided for @myTournamentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no tournament entries yet'**
+  String get myTournamentsEmpty;
+
+  /// No description provided for @errTournamentFull.
+  ///
+  /// In en, this message translates to:
+  /// **'This category just filled up'**
+  String get errTournamentFull;
+
+  /// No description provided for @errDeadlinePassed.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration has closed'**
+  String get errDeadlinePassed;
+
+  /// No description provided for @errTournamentLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level, or that of your partner, is outside the range for this category'**
+  String get errTournamentLevel;
+
+  /// No description provided for @errAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in this category'**
+  String get errAlreadyRegistered;
+
+  /// No description provided for @errPartnerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This partner is already in the category'**
+  String get errPartnerUnavailable;
+
+  /// No description provided for @errNotFull.
+  ///
+  /// In en, this message translates to:
+  /// **'There is room again. Register instead'**
+  String get errNotFull;
+
+  /// No description provided for @errWaitlistClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This category has no waitlist'**
+  String get errWaitlistClosed;
+
+  /// No description provided for @errRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many phone lookups. Try again in an hour'**
+  String get errRateLimited;
+
+  /// No description provided for @notifTournamentFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'the tournament'**
+  String get notifTournamentFallback;
+
+  /// No description provided for @notifTournamentRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'You are registered for {title}'**
+  String notifTournamentRegistered(String title);
+
+  /// No description provided for @notifTournamentPartnerInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} invited you to be their partner in {title}'**
+  String notifTournamentPartnerInvite(String actor, String title);
+
+  /// No description provided for @notifTournamentPartnerAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} accepted your invitation for {title}'**
+  String notifTournamentPartnerAccepted(String actor, String title);
+
+  /// No description provided for @notifTournamentPartnerDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} declined your invitation for {title}'**
+  String notifTournamentPartnerDeclined(String actor, String title);
+
+  /// No description provided for @notifTournamentPartnerExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your partner did not answer in time for {title}'**
+  String notifTournamentPartnerExpired(String title);
+
+  /// No description provided for @notifTournamentSpotOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'A spot opened for you in {title}. Claim it before it goes'**
+  String notifTournamentSpotOffered(String title);
+
+  /// No description provided for @notifTournamentDeadlineReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration for {title} closes soon and your partner has not answered'**
+  String notifTournamentDeadlineReminder(String title);
+
+  /// No description provided for @notifTournamentRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'You were removed from {title}'**
+  String notifTournamentRemoved(String title);
+
+  /// No description provided for @notifTournamentMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'You were moved to another category in {title}'**
+  String notifTournamentMoved(String title);
+
+  /// No description provided for @notifTournamentMovedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'You were moved to {category} in {title}'**
+  String notifTournamentMovedTo(String category, String title);
 }
 
 class _AppLocalizationsDelegate

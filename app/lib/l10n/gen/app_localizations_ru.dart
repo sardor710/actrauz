@@ -1650,4 +1650,272 @@ class AppLocalizationsRu extends AppLocalizations {
   String inviteSent(String name) {
     return 'Приглашение отправлено: $name';
   }
+
+  @override
+  String get tournamentsMine => 'Мои турниры';
+
+  @override
+  String get tournamentFilterDate => 'Дата';
+
+  @override
+  String tournamentFilterFrom(String date) {
+    return 'С $date';
+  }
+
+  @override
+  String get tournamentSortAz => 'А–Я';
+
+  @override
+  String get registrationClosed => 'Регистрация закрыта';
+
+  @override
+  String get tournamentFree => 'Бесплатно';
+
+  @override
+  String get tournamentCategories => 'Категории';
+
+  @override
+  String tournamentDeadline(String when) {
+    return 'Регистрация до $when';
+  }
+
+  @override
+  String get tournamentClosedBanner => 'Регистрация завершена';
+
+  @override
+  String get kindSingles => 'Одиночный';
+
+  @override
+  String get kindPairs => 'Пары';
+
+  @override
+  String get genderMen => 'Мужчины';
+
+  @override
+  String get genderWomen => 'Женщины';
+
+  @override
+  String get genderMixed => 'Смешанная';
+
+  @override
+  String get genderOpen => 'Открытая';
+
+  @override
+  String waitlistCount(int count) {
+    return 'Ожидают: $count';
+  }
+
+  @override
+  String get joinWaitlist => 'В лист ожидания';
+
+  @override
+  String get registerLabel => 'Зарегистрироваться';
+
+  @override
+  String get confirmRegistration => 'Подтвердить регистрацию';
+
+  @override
+  String registerSheetTitle(String category) {
+    return 'Регистрация: $category';
+  }
+
+  @override
+  String waitlistSheetTitle(String category) {
+    return 'Лист ожидания: $category';
+  }
+
+  @override
+  String registrationFeeNote(String fee) {
+    return 'Взнос $fee оплачивается организатору.';
+  }
+
+  @override
+  String get waitlistSheetNote =>
+      'Категория заполнена. Если место освободится, у вас будет 24 часа, чтобы его занять.';
+
+  @override
+  String get partnerTitle => 'Выберите партнёра';
+
+  @override
+  String get partnerTabPlayers => 'Игроки';
+
+  @override
+  String get partnerTabPhone => 'Номер телефона';
+
+  @override
+  String get partnerPhoneHint => '+998 90 123 45 67';
+
+  @override
+  String get partnerFind => 'Найти';
+
+  @override
+  String get partnerNotFound => 'Игрока с таким номером нет';
+
+  @override
+  String get partnerPickFirst => 'Сначала выберите партнёра';
+
+  @override
+  String get sendInvite => 'Отправить приглашение';
+
+  @override
+  String get inviteNote =>
+      'У партнёра 48 часов, чтобы принять приглашение, или до конца регистрации, если она закончится раньше. Пара займёт место после его согласия.';
+
+  @override
+  String get statusRegistered => 'Зарегистрировано';
+
+  @override
+  String get statusPendingPartner => 'Ждём партнёра';
+
+  @override
+  String get statusInvited => 'Приглашение';
+
+  @override
+  String get statusWaitlisted => 'В листе ожидания';
+
+  @override
+  String get statusOffered => 'Место предложено';
+
+  @override
+  String get statusDeclined => 'Отклонено';
+
+  @override
+  String get statusExpired => 'Истекло';
+
+  @override
+  String get statusRemoved => 'Исключено';
+
+  @override
+  String get statusLapsed => 'Предложение истекло';
+
+  @override
+  String waitlistPlaceLabel(int place) {
+    return 'Место в очереди: $place';
+  }
+
+  @override
+  String pairedWith(String name) {
+    return 'В паре с $name';
+  }
+
+  @override
+  String partnerInvitedYou(String name) {
+    return '$name приглашает вас в пару';
+  }
+
+  @override
+  String get acceptLabel => 'Принять';
+
+  @override
+  String get claimLabel => 'Занять место';
+
+  @override
+  String offerHeld(String left) {
+    return 'Место за вами · осталось $left';
+  }
+
+  @override
+  String durationHm(int hours, int minutes) {
+    return '$hours ч $minutes мин';
+  }
+
+  @override
+  String durationMin(int minutes) {
+    return '$minutes мин';
+  }
+
+  @override
+  String get cancelRegistration => 'Отменить регистрацию';
+
+  @override
+  String get cancelRegistrationTitle => 'Отменить регистрацию?';
+
+  @override
+  String get cancelRegistrationMsg =>
+      'Место перейдёт следующему в очереди. Зарегистрироваться снова можно до конца регистрации, если останутся места.';
+
+  @override
+  String get keepRegistration => 'Оставить';
+
+  @override
+  String get myTournamentsEmpty => 'У вас пока нет заявок на турниры';
+
+  @override
+  String get errTournamentFull => 'Эта категория только что заполнилась';
+
+  @override
+  String get errDeadlinePassed => 'Регистрация уже закрыта';
+
+  @override
+  String get errTournamentLevel =>
+      'Ваш уровень или уровень партнёра не подходит для этой категории';
+
+  @override
+  String get errAlreadyRegistered => 'Вы уже участвуете в этой категории';
+
+  @override
+  String get errPartnerUnavailable => 'Этот партнёр уже участвует в категории';
+
+  @override
+  String get errNotFull => 'Снова есть места, зарегистрируйтесь';
+
+  @override
+  String get errWaitlistClosed => 'В этой категории нет листа ожидания';
+
+  @override
+  String get errRateLimited =>
+      'Слишком много поисков по номеру. Попробуйте через час';
+
+  @override
+  String get notifTournamentFallback => 'турнир';
+
+  @override
+  String notifTournamentRegistered(String title) {
+    return 'Вы зарегистрированы: $title';
+  }
+
+  @override
+  String notifTournamentPartnerInvite(String actor, String title) {
+    return '$actor приглашает вас в пару: $title';
+  }
+
+  @override
+  String notifTournamentPartnerAccepted(String actor, String title) {
+    return '$actor принимает ваше приглашение: $title';
+  }
+
+  @override
+  String notifTournamentPartnerDeclined(String actor, String title) {
+    return '$actor отклоняет ваше приглашение: $title';
+  }
+
+  @override
+  String notifTournamentPartnerExpired(String title) {
+    return 'Партнёр не ответил вовремя: $title';
+  }
+
+  @override
+  String notifTournamentSpotOffered(String title) {
+    return 'Для вас освободилось место: $title. Займите его, пока оно не ушло';
+  }
+
+  @override
+  String notifTournamentDeadlineReminder(String title) {
+    return 'Скоро конец регистрации, а партнёр не ответил: $title';
+  }
+
+  @override
+  String notifTournamentRemoved(String title) {
+    return 'Вас исключили из турнира: $title';
+  }
+
+  @override
+  String notifTournamentMoved(String title) {
+    return 'Вас перевели в другую категорию: $title';
+  }
+
+  @override
+  String notifTournamentMovedTo(String category, String title) {
+    return 'Вас перевели в категорию $category: $title';
+  }
 }

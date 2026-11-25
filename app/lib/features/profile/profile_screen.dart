@@ -163,6 +163,12 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const Divider(indent: 60),
                 _MenuRow(
+                  icon: Icons.emoji_events_outlined,
+                  title: l.tournamentsMine,
+                  onTap: () => context.push('/my-tournaments'),
+                ),
+                const Divider(indent: 60),
+                _MenuRow(
                   icon: Icons.notifications_none_rounded,
                   title: l.notificationsAndPrivacy,
                   onTap: () => context.push('/settings'),

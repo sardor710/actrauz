@@ -1,72 +1,179 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/money.dart';
+import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_media.dart';
 import '../../domain/models.dart';
+import '../../domain/tournaments.dart';
 import '../../state/providers.dart';
 import '../common/app_header.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
+import 'tournament_tools.dart';
 
-/// Upcoming tournaments in the selected city. Registration arrives in a later
-/// milestone, so the cards open a "coming soon" message for now.
-class TournamentsScreen extends ConsumerWidget {
+/// Upcoming tournaments in the selected city: filter by date and sport, sort
+/// by date or A–Z, and open one to register.
+class TournamentsScreen extends ConsumerStatefulWidget {
   const TournamentsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TournamentsScreen> createState() => _TournamentsScreenState();
+}
+
+class _TournamentsScreenState extends ConsumerState<TournamentsScreen> {
+  String? _sportId;
+
+  /// Hides tournaments that end before this day. Part of the query, so it is
+  /// a date and never "now".
+  DateTime? _from;
+  bool _az = false;
+
+  Future<void> _pickSport(List<Sport> sports) async {
     final l = context.l;
+    final picked = await showOptionSheet(
+      context,
+      title: l.filterSport,
+      options: {'': l.allSports, for (final s in sports) s.id: s.name.resolve(context.lang)},
+      current: _sportId ?? '',
+    );
+    if (picked != null) setState(() => _sportId = picked.isEmpty ? null : picked);
+  }
+
+  Future<void> _pickDate() async {
+    final today = dateOnly(ref.read(cityNowProvider)());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _from ?? today,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _from = dateOnly(picked));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final city = ref.watch(currentCityProvider);
+    final now = ref.watch(cityNowProvider)();
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
+    final sportName = sports.where((s) => s.id == _sportId).firstOrNull?.name.resolve(context.lang);
+    final query = (sportId: _sportId, from: _from, sort: _az ? TournamentSort.az : TournamentSort.date);
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: AsyncBody(
-          value: ref.watch(tournamentsProvider(kAllTournaments)),
-          builder: (items) => ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              const AppHeader(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l.tournamentsPromoTitle, style: manrope(19, 800, color: Colors.white, height: 1.2)),
-                            const SizedBox(height: 4),
-                            Text(l.tournamentsPromoText, style: manrope(13.5, 600, color: AppColors.lime, height: 1.3)),
-                          ],
-                        ),
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            const AppHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l.tournamentsPromoTitle, style: manrope(19, 800, color: Colors.white, height: 1.2)),
+                          const SizedBox(height: 4),
+                          Text(l.tournamentsPromoText, style: manrope(13.5, 600, color: AppColors.lime, height: 1.3)),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Image.asset(kTrophyIcon, width: 76, height: 76, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Image.asset(kTrophyIcon, width: 76, height: 76, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 16, 10),
-                child: Text('${l.homeTournaments} (${items.length})'.toUpperCase(), style: AppText.sectionTitle),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    FilterChipButton(
+                      key: const ValueKey('tournaments-sport'),
+                      label: sportName ?? l.filterSport,
+                      selected: _sportId != null,
+                      dropdown: true,
+                      onTap: () => _pickSport(sports),
+                    ),
+                    FilterChipButton(
+                      key: const ValueKey('tournaments-date'),
+                      icon: Icons.event_outlined,
+                      label: _from == null
+                          ? l.tournamentFilterDate
+                          : l.tournamentFilterFrom(dayLabel(l, context.lang, _from!, now)),
+                      selected: _from != null,
+                      onTap: _pickDate,
+                    ),
+                    if (_from != null)
+                      FilterChipButton(
+                        key: const ValueKey('tournaments-date-clear'),
+                        icon: Icons.close_rounded,
+                        onTap: () => setState(() => _from = null),
+                      ),
+                    FilterChipButton(
+                      key: const ValueKey('tournaments-city'),
+                      icon: Icons.place_outlined,
+                      label: city.name.resolve(context.lang),
+                      dropdown: true,
+                      onTap: () => showCityPicker(context, ref),
+                    ),
+                    FilterChipButton(
+                      key: const ValueKey('tournaments-sort-az'),
+                      icon: Icons.sort_by_alpha_rounded,
+                      label: l.tournamentSortAz,
+                      selected: _az,
+                      onTap: () => setState(() => _az = !_az),
+                    ),
+                  ],
+                ),
               ),
-              if (items.isEmpty)
-                EmptyState(icon: Icons.emoji_events_outlined, text: l.noTournaments)
-              else
-                for (final item in items)
+            ),
+            AsyncBody(
+              value: ref.watch(tournamentsProvider(query)),
+              builder: (items) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: TournamentCard(item: item),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 8, 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text('${l.homeTournaments} (${items.length})'.toUpperCase(), style: AppText.sectionTitle),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('my-tournaments'),
+                          onPressed: () => context.push('/my-tournaments'),
+                          icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                          label: Text(l.tournamentsMine),
+                        ),
+                      ],
+                    ),
                   ),
-            ],
-          ),
+                  if (items.isEmpty)
+                    EmptyState(icon: Icons.emoji_events_outlined, text: l.noTournaments)
+                  else
+                    for (final item in items)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: TournamentCard(item: item),
+                      ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -76,24 +183,27 @@ class TournamentsScreen extends ConsumerWidget {
 class TournamentCard extends ConsumerWidget {
   const TournamentCard({super.key, required this.item});
 
-  final TournamentItem item;
+  final Tournament item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
-    final city = ref.watch(currentCityProvider);
-    final now = ref.watch(cityNowProvider)();
-    final full = item.slotsFilled >= item.slotsTotal;
-    final fee = item.minFee == item.maxFee
-        ? money(l, item.minFee, city.currency)
-        : '${groupThousands(item.minFee)} – ${money(l, item.maxFee, city.currency)}';
-    final dates = item.start == item.end
-        ? dayLabel(l, context.lang, item.start, now)
-        : '${dayLabel(l, context.lang, item.start, now)} – ${dayLabel(l, context.lang, item.end, now)}';
+    final now = tournamentNow(ref, item.cityId);
+    final sport = ref.watch(sportsProvider).valueOrNull?.where((s) => s.id == item.sportId).firstOrNull;
+    final full = item.full;
+    final (pill, pillColor, pillOn) = !item.registrationOpen
+        ? (l.registrationClosed, AppColors.field, AppColors.muted)
+        : full
+        ? (l.tournamentFull, AppColors.errorSoft, AppColors.error)
+        : (l.registrationOpen, AppColors.primarySoft, AppColors.primaryDark);
+    final place = [
+      ?sport?.name.resolve(context.lang),
+      cityById(item.cityId).name.resolve(context.lang),
+    ].join(' · ');
 
     return Card(
       child: InkWell(
-        onTap: () => showMessage(context, l.comingSoon),
+        onTap: () => context.go('/tournaments/${item.id}'),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -102,7 +212,14 @@ class TournamentCard extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  PhotoBox(asset: tournamentPhoto(item.id), width: 104, height: 104, radius: 14),
+                  TournamentCover(
+                    id: item.id,
+                    sportId: item.sportId,
+                    coverUrl: item.coverUrl,
+                    colorSeed: item.colorSeed,
+                    width: 104,
+                    height: 104,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -113,11 +230,7 @@ class TournamentCard extends ConsumerWidget {
                             SportBadge(sportId: item.sportId, size: 22),
                             const SizedBox(width: 6),
                             Flexible(
-                              child: Pill(
-                                text: full ? l.tournamentFull : l.registrationOpen,
-                                color: full ? AppColors.errorSoft : AppColors.primarySoft,
-                                onColor: full ? AppColors.error : AppColors.primaryDark,
-                              ),
+                              child: Pill(text: pill, color: pillColor, onColor: pillOn),
                             ),
                           ],
                         ),
@@ -129,13 +242,13 @@ class TournamentCard extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
+                        Text(place, style: AppText.muted, maxLines: 1, overflow: TextOverflow.ellipsis),
                         Text(
-                          item.venueName.resolve(context.lang),
+                          tournamentDates(l, context.lang, item, now),
                           style: AppText.muted,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(dates, style: AppText.muted, maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -148,7 +261,7 @@ class TournamentCard extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      fee,
+                      feeRangeText(l, item.minFee, item.maxFee, item.currency),
                       style: manrope(14.5, 800),
                       textAlign: TextAlign.end,
                       maxLines: 1,
@@ -159,7 +272,7 @@ class TournamentCard extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               LinearProgressIndicator(
-                value: item.slotsFilled / item.slotsTotal,
+                value: item.slotsTotal == 0 ? 0 : item.slotsFilled / item.slotsTotal,
                 borderRadius: BorderRadius.circular(8),
                 minHeight: 7,
                 color: full ? AppColors.error : AppColors.primary,

@@ -27,6 +27,8 @@ import 'features/profile/settings_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'features/social/player_profile_screen.dart';
 import 'features/social/social_screen.dart';
+import 'features/tournaments/my_tournaments_screen.dart';
+import 'features/tournaments/tournament_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
 import 'features/venues/venue_screen.dart';
 import 'features/venues/venues_screen.dart';
@@ -53,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
       GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
       GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
+      GoRoute(path: '/my-tournaments', builder: (context, state) => const MyTournamentsScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const CommunitySettingsScreen()),
       // A player's public profile, opened from Find players and from a Game Request.
       GoRoute(
@@ -156,7 +159,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/tournaments', builder: (context, state) => const TournamentsScreen())],
+            routes: [
+              GoRoute(
+                path: '/tournaments',
+                builder: (context, state) => const TournamentsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => TournamentScreen(tournamentId: state.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/social', builder: (context, state) => const SocialScreen())],

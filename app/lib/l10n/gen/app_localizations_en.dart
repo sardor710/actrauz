@@ -1626,4 +1626,271 @@ class AppLocalizationsEn extends AppLocalizations {
   String inviteSent(String name) {
     return '$name was invited';
   }
+
+  @override
+  String get tournamentsMine => 'My tournaments';
+
+  @override
+  String get tournamentFilterDate => 'Date';
+
+  @override
+  String tournamentFilterFrom(String date) {
+    return 'From $date';
+  }
+
+  @override
+  String get tournamentSortAz => 'A–Z';
+
+  @override
+  String get registrationClosed => 'Registration closed';
+
+  @override
+  String get tournamentFree => 'Free';
+
+  @override
+  String get tournamentCategories => 'Categories';
+
+  @override
+  String tournamentDeadline(String when) {
+    return 'Registration closes $when';
+  }
+
+  @override
+  String get tournamentClosedBanner => 'Registration is closed';
+
+  @override
+  String get kindSingles => 'Singles';
+
+  @override
+  String get kindPairs => 'Pairs';
+
+  @override
+  String get genderMen => 'Men';
+
+  @override
+  String get genderWomen => 'Women';
+
+  @override
+  String get genderMixed => 'Mixed';
+
+  @override
+  String get genderOpen => 'Open';
+
+  @override
+  String waitlistCount(int count) {
+    return '$count waiting';
+  }
+
+  @override
+  String get joinWaitlist => 'Join waitlist';
+
+  @override
+  String get registerLabel => 'Register';
+
+  @override
+  String get confirmRegistration => 'Confirm registration';
+
+  @override
+  String registerSheetTitle(String category) {
+    return 'Register: $category';
+  }
+
+  @override
+  String waitlistSheetTitle(String category) {
+    return 'Waitlist: $category';
+  }
+
+  @override
+  String registrationFeeNote(String fee) {
+    return 'Entry fee $fee, paid to the organiser.';
+  }
+
+  @override
+  String get waitlistSheetNote =>
+      'The category is full. If a spot frees up, you get 24 hours to claim it.';
+
+  @override
+  String get partnerTitle => 'Choose a partner';
+
+  @override
+  String get partnerTabPlayers => 'Players';
+
+  @override
+  String get partnerTabPhone => 'Phone number';
+
+  @override
+  String get partnerPhoneHint => '+998 90 123 45 67';
+
+  @override
+  String get partnerFind => 'Find';
+
+  @override
+  String get partnerNotFound => 'No player has this number';
+
+  @override
+  String get partnerPickFirst => 'Choose a partner first';
+
+  @override
+  String get sendInvite => 'Send invite';
+
+  @override
+  String get inviteNote =>
+      'Your partner has 48 hours to accept, or until registration closes if that is sooner. The pair takes a spot once they accept.';
+
+  @override
+  String get statusRegistered => 'Registered';
+
+  @override
+  String get statusPendingPartner => 'Waiting for partner';
+
+  @override
+  String get statusInvited => 'Invitation';
+
+  @override
+  String get statusWaitlisted => 'On the waitlist';
+
+  @override
+  String get statusOffered => 'Spot offered';
+
+  @override
+  String get statusDeclined => 'Declined';
+
+  @override
+  String get statusExpired => 'Expired';
+
+  @override
+  String get statusRemoved => 'Removed';
+
+  @override
+  String get statusLapsed => 'Offer lapsed';
+
+  @override
+  String waitlistPlaceLabel(int place) {
+    return 'Place $place in line';
+  }
+
+  @override
+  String pairedWith(String name) {
+    return 'With $name';
+  }
+
+  @override
+  String partnerInvitedYou(String name) {
+    return '$name invited you as a partner';
+  }
+
+  @override
+  String get acceptLabel => 'Accept';
+
+  @override
+  String get claimLabel => 'Claim';
+
+  @override
+  String offerHeld(String left) {
+    return 'Held for you · $left left';
+  }
+
+  @override
+  String durationHm(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String durationMin(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get cancelRegistration => 'Cancel registration';
+
+  @override
+  String get cancelRegistrationTitle => 'Cancel registration?';
+
+  @override
+  String get cancelRegistrationMsg =>
+      'Your spot goes to the next player in line. You can register again before the deadline if there is room.';
+
+  @override
+  String get keepRegistration => 'Keep registration';
+
+  @override
+  String get myTournamentsEmpty => 'You have no tournament entries yet';
+
+  @override
+  String get errTournamentFull => 'This category just filled up';
+
+  @override
+  String get errDeadlinePassed => 'Registration has closed';
+
+  @override
+  String get errTournamentLevel =>
+      'Your level, or that of your partner, is outside the range for this category';
+
+  @override
+  String get errAlreadyRegistered => 'You are already in this category';
+
+  @override
+  String get errPartnerUnavailable => 'This partner is already in the category';
+
+  @override
+  String get errNotFull => 'There is room again. Register instead';
+
+  @override
+  String get errWaitlistClosed => 'This category has no waitlist';
+
+  @override
+  String get errRateLimited => 'Too many phone lookups. Try again in an hour';
+
+  @override
+  String get notifTournamentFallback => 'the tournament';
+
+  @override
+  String notifTournamentRegistered(String title) {
+    return 'You are registered for $title';
+  }
+
+  @override
+  String notifTournamentPartnerInvite(String actor, String title) {
+    return '$actor invited you to be their partner in $title';
+  }
+
+  @override
+  String notifTournamentPartnerAccepted(String actor, String title) {
+    return '$actor accepted your invitation for $title';
+  }
+
+  @override
+  String notifTournamentPartnerDeclined(String actor, String title) {
+    return '$actor declined your invitation for $title';
+  }
+
+  @override
+  String notifTournamentPartnerExpired(String title) {
+    return 'Your partner did not answer in time for $title';
+  }
+
+  @override
+  String notifTournamentSpotOffered(String title) {
+    return 'A spot opened for you in $title. Claim it before it goes';
+  }
+
+  @override
+  String notifTournamentDeadlineReminder(String title) {
+    return 'Registration for $title closes soon and your partner has not answered';
+  }
+
+  @override
+  String notifTournamentRemoved(String title) {
+    return 'You were removed from $title';
+  }
+
+  @override
+  String notifTournamentMoved(String title) {
+    return 'You were moved to another category in $title';
+  }
+
+  @override
+  String notifTournamentMovedTo(String category, String title) {
+    return 'You were moved to $category in $title';
+  }
 }

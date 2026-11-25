@@ -1622,4 +1622,272 @@ class AppLocalizationsUz extends AppLocalizations {
   String inviteSent(String name) {
     return '$name taklif qilindi';
   }
+
+  @override
+  String get tournamentsMine => 'Mening turnirlarim';
+
+  @override
+  String get tournamentFilterDate => 'Sana';
+
+  @override
+  String tournamentFilterFrom(String date) {
+    return '$date dan';
+  }
+
+  @override
+  String get tournamentSortAz => 'A–Z';
+
+  @override
+  String get registrationClosed => 'Roʻyxatdan oʻtish yopilgan';
+
+  @override
+  String get tournamentFree => 'Bepul';
+
+  @override
+  String get tournamentCategories => 'Toifalar';
+
+  @override
+  String tournamentDeadline(String when) {
+    return 'Roʻyxatdan oʻtish $when gacha';
+  }
+
+  @override
+  String get tournamentClosedBanner => 'Roʻyxatdan oʻtish yakunlandi';
+
+  @override
+  String get kindSingles => 'Yakkalik';
+
+  @override
+  String get kindPairs => 'Juftliklar';
+
+  @override
+  String get genderMen => 'Erkaklar';
+
+  @override
+  String get genderWomen => 'Ayollar';
+
+  @override
+  String get genderMixed => 'Aralash';
+
+  @override
+  String get genderOpen => 'Ochiq';
+
+  @override
+  String waitlistCount(int count) {
+    return 'Kutayotganlar: $count';
+  }
+
+  @override
+  String get joinWaitlist => 'Kutish roʻyxatiga yozilish';
+
+  @override
+  String get registerLabel => 'Roʻyxatdan oʻtish';
+
+  @override
+  String get confirmRegistration => 'Roʻyxatdan oʻtishni tasdiqlash';
+
+  @override
+  String registerSheetTitle(String category) {
+    return 'Roʻyxatdan oʻtish: $category';
+  }
+
+  @override
+  String waitlistSheetTitle(String category) {
+    return 'Kutish roʻyxati: $category';
+  }
+
+  @override
+  String registrationFeeNote(String fee) {
+    return 'Ishtirok toʻlovi $fee tashkilotchiga toʻlanadi.';
+  }
+
+  @override
+  String get waitlistSheetNote =>
+      'Toifa toʻlgan. Joy boʻshasa, uni egallash uchun 24 soat beriladi.';
+
+  @override
+  String get partnerTitle => 'Sherik tanlang';
+
+  @override
+  String get partnerTabPlayers => 'Oʻyinchilar';
+
+  @override
+  String get partnerTabPhone => 'Telefon raqami';
+
+  @override
+  String get partnerPhoneHint => '+998 90 123 45 67';
+
+  @override
+  String get partnerFind => 'Qidirish';
+
+  @override
+  String get partnerNotFound => 'Bu raqamli oʻyinchi topilmadi';
+
+  @override
+  String get partnerPickFirst => 'Avval sherikni tanlang';
+
+  @override
+  String get sendInvite => 'Taklif yuborish';
+
+  @override
+  String get inviteNote =>
+      'Sherikda taklifni qabul qilish uchun 48 soat bor, roʻyxatdan oʻtish ertaroq tugasa, shungacha. Juftlik sherik rozi boʻlgach joy egallaydi.';
+
+  @override
+  String get statusRegistered => 'Roʻyxatga olingan';
+
+  @override
+  String get statusPendingPartner => 'Sherik kutilmoqda';
+
+  @override
+  String get statusInvited => 'Taklif';
+
+  @override
+  String get statusWaitlisted => 'Kutish roʻyxatida';
+
+  @override
+  String get statusOffered => 'Joy taklif qilindi';
+
+  @override
+  String get statusDeclined => 'Rad etilgan';
+
+  @override
+  String get statusExpired => 'Muddati tugagan';
+
+  @override
+  String get statusRemoved => 'Chiqarilgan';
+
+  @override
+  String get statusLapsed => 'Taklif muddati tugadi';
+
+  @override
+  String waitlistPlaceLabel(int place) {
+    return 'Navbatdagi oʻrni: $place';
+  }
+
+  @override
+  String pairedWith(String name) {
+    return '$name bilan juftlikda';
+  }
+
+  @override
+  String partnerInvitedYou(String name) {
+    return '$name sizni juftlikka taklif qildi';
+  }
+
+  @override
+  String get acceptLabel => 'Qabul qilish';
+
+  @override
+  String get claimLabel => 'Joyni egallash';
+
+  @override
+  String offerHeld(String left) {
+    return 'Joy siz uchun saqlanmoqda · $left qoldi';
+  }
+
+  @override
+  String durationHm(int hours, int minutes) {
+    return '$hours soat $minutes daq';
+  }
+
+  @override
+  String durationMin(int minutes) {
+    return '$minutes daq';
+  }
+
+  @override
+  String get cancelRegistration => 'Roʻyxatdan oʻtishni bekor qilish';
+
+  @override
+  String get cancelRegistrationTitle => 'Roʻyxatdan oʻtishni bekor qilasizmi?';
+
+  @override
+  String get cancelRegistrationMsg =>
+      'Joy navbatdagi oʻyinchiga oʻtadi. Joy qolsa, muddat tugaguncha qayta yozilishingiz mumkin.';
+
+  @override
+  String get keepRegistration => 'Qoldirish';
+
+  @override
+  String get myTournamentsEmpty => 'Sizda hali turnirlarga arizalar yoʻq';
+
+  @override
+  String get errTournamentFull => 'Bu toifa hozirgina toʻldi';
+
+  @override
+  String get errDeadlinePassed => 'Roʻyxatdan oʻtish yopilgan';
+
+  @override
+  String get errTournamentLevel =>
+      'Sizning yoki sherigingiz darajasi bu toifaga mos kelmaydi';
+
+  @override
+  String get errAlreadyRegistered => 'Siz bu toifada allaqachon qatnashasiz';
+
+  @override
+  String get errPartnerUnavailable => 'Bu sherik toifada allaqachon bor';
+
+  @override
+  String get errNotFull => 'Yana joy bor, roʻyxatdan oʻting';
+
+  @override
+  String get errWaitlistClosed => 'Bu toifada kutish roʻyxati yoʻq';
+
+  @override
+  String get errRateLimited =>
+      'Raqam boʻyicha qidiruv juda koʻp. Bir soatdan keyin urinib koʻring';
+
+  @override
+  String get notifTournamentFallback => 'turnir';
+
+  @override
+  String notifTournamentRegistered(String title) {
+    return 'Siz roʻyxatdan oʻtdingiz: $title';
+  }
+
+  @override
+  String notifTournamentPartnerInvite(String actor, String title) {
+    return '$actor sizni juftlikka taklif qildi: $title';
+  }
+
+  @override
+  String notifTournamentPartnerAccepted(String actor, String title) {
+    return '$actor taklifingizni qabul qildi: $title';
+  }
+
+  @override
+  String notifTournamentPartnerDeclined(String actor, String title) {
+    return '$actor taklifingizni rad etdi: $title';
+  }
+
+  @override
+  String notifTournamentPartnerExpired(String title) {
+    return 'Sherik oʻz vaqtida javob bermadi: $title';
+  }
+
+  @override
+  String notifTournamentSpotOffered(String title) {
+    return 'Siz uchun joy boʻshadi: $title. Boshqaga ketmasidan egallang';
+  }
+
+  @override
+  String notifTournamentDeadlineReminder(String title) {
+    return 'Roʻyxatdan oʻtish tez orada tugaydi, sherik esa javob bermadi: $title';
+  }
+
+  @override
+  String notifTournamentRemoved(String title) {
+    return 'Siz turnirdan chiqarildingiz: $title';
+  }
+
+  @override
+  String notifTournamentMoved(String title) {
+    return 'Siz boshqa toifaga oʻtkazildingiz: $title';
+  }
+
+  @override
+  String notifTournamentMovedTo(String category, String title) {
+    return 'Siz $category toifasiga oʻtkazildingiz: $title';
+  }
 }

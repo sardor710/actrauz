@@ -27,6 +27,9 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
   final actor = actorValue is String && actorValue.isNotEmpty ? actorValue : l.notifSomeone;
   final venue = name('venue_name', l.notifVenueFallback);
   final court = name('court_name', l.notifCourtFallback);
+  final tournament = name('title', l.notifTournamentFallback);
+  final categoryName = name('category_name', '');
+  final category = categoryName.isEmpty ? null : categoryName;
   return switch (n.kind) {
     'booking_confirmed' => l.notifBookingConfirmed(venue),
     'booking_cancelled_by_venue' => l.notifBookingCancelledByVenue(venue),
@@ -47,6 +50,17 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'request_interest' => l.notifRequestInterest(actor),
     'request_converted' => p['added'] == false ? l.notifRequestConvertedFull : l.notifRequestConvertedIn,
     'request_expired' => l.notifRequestExpired,
+    'tournament_registered' => l.notifTournamentRegistered(tournament),
+    'tournament_partner_invite' => l.notifTournamentPartnerInvite(actor, tournament),
+    'tournament_partner_accepted' => l.notifTournamentPartnerAccepted(actor, tournament),
+    'tournament_partner_declined' => l.notifTournamentPartnerDeclined(actor, tournament),
+    'tournament_partner_expired' => l.notifTournamentPartnerExpired(tournament),
+    'tournament_spot_offered' => l.notifTournamentSpotOffered(tournament),
+    'tournament_deadline_reminder' => l.notifTournamentDeadlineReminder(tournament),
+    'tournament_removed' => l.notifTournamentRemoved(tournament),
+    'tournament_moved' => category == null
+        ? l.notifTournamentMoved(tournament)
+        : l.notifTournamentMovedTo(category, tournament),
     _ => l.notifUnknown,
   };
 }
@@ -101,9 +115,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       }
     }
     if (route == null || !mounted) return;
-    // Games live inside the tabs, like everywhere else in the app: go, not
-    // push (pushing a tab route from outside the tabs duplicates its page).
-    route.startsWith('/games') ? context.go(route) : context.push(route);
+    // Games and tournaments live inside the tabs, like everywhere else in the
+    // app: go, not push (pushing a tab route from outside the tabs duplicates
+    // its page).
+    route.startsWith('/games') || route.startsWith('/tournaments') ? context.go(route) : context.push(route);
   }
 
   Future<void> _markAll(List<AppNotification> shown) async {

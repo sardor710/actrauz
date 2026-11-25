@@ -820,5 +820,247 @@
         "type": "String"
       }
     }
+  },
+  "tournamentsMine": "My tournaments",
+  "tournamentFilterDate": "Date",
+  "tournamentFilterFrom": "From {date}",
+  "@tournamentFilterFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tournamentSortAz": "A–Z",
+  "registrationClosed": "Registration closed",
+  "tournamentFree": "Free",
+  "tournamentCategories": "Categories",
+  "tournamentDeadline": "Registration closes {when}",
+  "@tournamentDeadline": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "tournamentClosedBanner": "Registration is closed",
+  "kindSingles": "Singles",
+  "kindPairs": "Pairs",
+  "genderMen": "Men",
+  "genderWomen": "Women",
+  "genderMixed": "Mixed",
+  "genderOpen": "Open",
+  "waitlistCount": "{count} waiting",
+  "@waitlistCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "joinWaitlist": "Join waitlist",
+  "registerLabel": "Register",
+  "confirmRegistration": "Confirm registration",
+  "registerSheetTitle": "Register: {category}",
+  "@registerSheetTitle": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "waitlistSheetTitle": "Waitlist: {category}",
+  "@waitlistSheetTitle": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "registrationFeeNote": "Entry fee {fee}, paid to the organiser.",
+  "@registrationFeeNote": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "waitlistSheetNote": "The category is full. If a spot frees up, you get 24 hours to claim it.",
+  "partnerTitle": "Choose a partner",
+  "partnerTabPlayers": "Players",
+  "partnerTabPhone": "Phone number",
+  "partnerPhoneHint": "+998 90 123 45 67",
+  "partnerFind": "Find",
+  "partnerNotFound": "No player has this number",
+  "partnerPickFirst": "Choose a partner first",
+  "sendInvite": "Send invite",
+  "inviteNote": "Your partner has 48 hours to accept, or until registration closes if that is sooner. The pair takes a spot once they accept.",
+  "statusRegistered": "Registered",
+  "statusPendingPartner": "Waiting for partner",
+  "statusInvited": "Invitation",
+  "statusWaitlisted": "On the waitlist",
+  "statusOffered": "Spot offered",
+  "statusDeclined": "Declined",
+  "statusExpired": "Expired",
+  "statusRemoved": "Removed",
+  "statusLapsed": "Offer lapsed",
+  "waitlistPlaceLabel": "Place {place} in line",
+  "@waitlistPlaceLabel": {
+    "placeholders": {
+      "place": {
+        "type": "int"
+      }
+    }
+  },
+  "pairedWith": "With {name}",
+  "@pairedWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "partnerInvitedYou": "{name} invited you as a partner",
+  "@partnerInvitedYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "acceptLabel": "Accept",
+  "claimLabel": "Claim",
+  "offerHeld": "Held for you · {left} left",
+  "@offerHeld": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "durationHm": "{hours} h {minutes} min",
+  "@durationHm": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMin": "{minutes} min",
+  "@durationMin": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "cancelRegistration": "Cancel registration",
+  "cancelRegistrationTitle": "Cancel registration?",
+  "cancelRegistrationMsg": "Your spot goes to the next player in line. You can register again before the deadline if there is room.",
+  "keepRegistration": "Keep registration",
+  "myTournamentsEmpty": "You have no tournament entries yet",
+  "errTournamentFull": "This category just filled up",
+  "errDeadlinePassed": "Registration has closed",
+  "errTournamentLevel": "Your level, or that of your partner, is outside the range for this category",
+  "errAlreadyRegistered": "You are already in this category",
+  "errPartnerUnavailable": "This partner is already in the category",
+  "errNotFull": "There is room again. Register instead",
+  "errWaitlistClosed": "This category has no waitlist",
+  "errRateLimited": "Too many phone lookups. Try again in an hour",
+  "notifTournamentFallback": "the tournament",
+  "notifTournamentRegistered": "You are registered for {title}",
+  "@notifTournamentRegistered": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentPartnerInvite": "{actor} invited you to be their partner in {title}",
+  "@notifTournamentPartnerInvite": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentPartnerAccepted": "{actor} accepted your invitation for {title}",
+  "@notifTournamentPartnerAccepted": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentPartnerDeclined": "{actor} declined your invitation for {title}",
+  "@notifTournamentPartnerDeclined": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentPartnerExpired": "Your partner did not answer in time for {title}",
+  "@notifTournamentPartnerExpired": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentSpotOffered": "A spot opened for you in {title}. Claim it before it goes",
+  "@notifTournamentSpotOffered": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentDeadlineReminder": "Registration for {title} closes soon and your partner has not answered",
+  "@notifTournamentDeadlineReminder": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentRemoved": "You were removed from {title}",
+  "@notifTournamentRemoved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentMoved": "You were moved to another category in {title}",
+  "@notifTournamentMoved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTournamentMovedTo": "You were moved to {category} in {title}",
+  "@notifTournamentMovedTo": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }
