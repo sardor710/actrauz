@@ -22,7 +22,7 @@ class TournamentsScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: AsyncBody(
-          value: ref.watch(tournamentsProvider),
+          value: ref.watch(tournamentsProvider(kAllTournaments)),
           builder: (items) => ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [

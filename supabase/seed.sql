@@ -123,12 +123,23 @@ insert into public.banners (id, title_uz, title_ru, title_en, subtitle_uz, subti
   (md5('actra:bn2')::uuid, 'Sherik topilmayaptimi?', 'Не с кем играть?', 'Nobody to play with?', 'Oʻz darajangizdagi oʻyinga qoʻshiling', 'Присоединяйтесь к игре своего уровня', 'Join a game at your level', 'https://example.com/actra/games', 3, 1)
 on conflict (id) do update set title_uz = excluded.title_uz, title_ru = excluded.title_ru, title_en = excluded.title_en, subtitle_uz = excluded.subtitle_uz, subtitle_ru = excluded.subtitle_ru, subtitle_en = excluded.subtitle_en, url = excluded.url, color_seed = excluded.color_seed, sort_order = excluded.sort_order;
 
--- Tournaments, dated from today
-insert into public.tournaments (id, city_id, sport_id, venue_id, title_uz, title_ru, title_en, starts_on, ends_on, min_fee, max_fee, slots_total, slots_filled) values
-  (md5('actra:t1')::uuid, 'tashkent', 'padel', md5('actra:v1')::uuid, 'Toshkent Padel Kubogi', 'Кубок Ташкента по паделу', 'Tashkent Padel Cup', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 12, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 13, 300000, 500000, 32, 19),
-  (md5('actra:t2')::uuid, 'tashkent', 'football', md5('actra:v2')::uuid, 'Havaskorlar ligasi 5×5', 'Любительская лига 5×5', 'Amateur 5-a-side League', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, 800000, 800000, 12, 12),
-  (md5('actra:t3')::uuid, 'almaty', 'tennis', md5('actra:v4')::uuid, 'Olmaota ochiq tennis turniri', 'Открытый теннисный турнир Алматы', 'Almaty Open Tennis', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 15, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 17, 15000, 25000, 24, 9)
-on conflict (id) do update set city_id = excluded.city_id, sport_id = excluded.sport_id, venue_id = excluded.venue_id, title_uz = excluded.title_uz, title_ru = excluded.title_ru, title_en = excluded.title_en, starts_on = excluded.starts_on, ends_on = excluded.ends_on, min_fee = excluded.min_fee, max_fee = excluded.max_fee, slots_total = excluded.slots_total, slots_filled = excluded.slots_filled;
+-- Tournaments, dated from today. The summary columns (min_fee, max_fee, slots_total,
+-- slots_filled) are not written: the last statement of this file recomputes them.
+insert into public.tournaments (id, city_id, sport_id, venue_id, title_uz, title_ru, title_en, starts_on, ends_on, registration_deadline) values
+  (md5('actra:t1')::uuid, 'tashkent', 'padel', md5('actra:v1')::uuid, 'Toshkent Padel Kubogi', 'Кубок Ташкента по паделу', 'Tashkent Padel Cup', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 12, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 13, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 10)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'tashkent'))),
+  (md5('actra:t2')::uuid, 'tashkent', 'football', md5('actra:v2')::uuid, 'Havaskorlar ligasi 5×5', 'Любительская лига 5×5', 'Amateur 5-a-side League', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 18)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'tashkent'))),
+  (md5('actra:t3')::uuid, 'almaty', 'tennis', md5('actra:v4')::uuid, 'Olmaota ochiq tennis turniri', 'Открытый теннисный турнир Алматы', 'Almaty Open Tennis', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 15, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 17, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 13)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'almaty')))
+on conflict (id) do update set city_id = excluded.city_id, sport_id = excluded.sport_id, venue_id = excluded.venue_id, title_uz = excluded.title_uz, title_ru = excluded.title_ru, title_en = excluded.title_en, starts_on = excluded.starts_on, ends_on = excluded.ends_on, registration_deadline = excluded.registration_deadline;
+
+-- Tournament categories (the first of each is the default category the migration made)
+insert into public.tournament_categories (id, tournament_id, name_uz, name_ru, name_en, kind, gender, min_level, max_level, fee, cap, waitlist_enabled, sort_order) values
+  (md5('actra:default-category:' || md5('actra:t1')::uuid::text)::uuid, md5('actra:t1')::uuid, 'Ochiq juftliklar', 'Открытые пары', 'Open pairs', 'pairs', 'open', 1, 5, 300000, 12, true, 0),
+  (md5('actra:t1c2')::uuid, md5('actra:t1')::uuid, 'Erkaklar juftliklari', 'Мужские пары', 'Men''s pairs', 'pairs', 'men', 3, 5, 500000, 8, true, 1),
+  (md5('actra:t1c3')::uuid, md5('actra:t1')::uuid, 'Aralash juftliklar', 'Смешанные пары', 'Mixed pairs', 'pairs', 'mixed', 2, 4, 400000, 12, true, 2),
+  (md5('actra:default-category:' || md5('actra:t2')::uuid::text)::uuid, md5('actra:t2')::uuid, 'Ochiq', 'Открытая', 'Open', 'singles', 'open', 1, 5, 800000, 12, true, 0),
+  (md5('actra:default-category:' || md5('actra:t3')::uuid::text)::uuid, md5('actra:t3')::uuid, 'Ochiq, yakkalik', 'Открытая, одиночный', 'Open singles', 'singles', 'open', 1, 5, 15000, 16, true, 0),
+  (md5('actra:t3c2')::uuid, md5('actra:t3')::uuid, 'Erkaklar, yakkalik', 'Мужчины, одиночный', 'Men''s singles', 'singles', 'men', 3, 5, 25000, 8, true, 1)
+on conflict (id) do update set tournament_id = excluded.tournament_id, name_uz = excluded.name_uz, name_ru = excluded.name_ru, name_en = excluded.name_en, kind = excluded.kind, gender = excluded.gender, min_level = excluded.min_level, max_level = excluded.max_level, fee = excluded.fee, cap = excluded.cap, waitlist_enabled = excluded.waitlist_enabled, sort_order = excluded.sort_order;
 
 -- Sample players. They have no password and an undeliverable address,
 -- so nobody can sign in as them.
@@ -229,3 +240,8 @@ select pg_temp.actra_seed_game(md5('actra:g5')::uuid, md5('actra:v4c1')::uuid, 1
 select pg_temp.actra_seed_game(md5('actra:g6')::uuid, md5('actra:v6c1')::uuid, 1, 1260, 10, 1, 5, array[md5('actra:p6')::uuid, md5('actra:p3')::uuid, md5('actra:p1')::uuid, md5('actra:p7')::uuid, md5('actra:p4')::uuid]);
 
 drop function pg_temp.actra_seed_game(uuid, uuid, integer, integer, integer, integer, integer, uuid[]);
+
+-- Each tournament summary (fees, places, places taken) becomes the real totals
+-- of its categories and registrations.
+select app.sync_tournament_summary(id) from public.tournaments
+where id in (md5('actra:t1')::uuid, md5('actra:t2')::uuid, md5('actra:t3')::uuid);

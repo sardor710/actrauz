@@ -15,11 +15,13 @@ import '../data/supabase/supabase_catalog_repository.dart';
 import '../data/supabase/supabase_game_repository.dart';
 import '../data/supabase/supabase_notification_repository.dart';
 import '../data/supabase/supabase_social_repository.dart';
+import '../data/supabase/supabase_tournament_repository.dart';
 import '../domain/booking_engine.dart';
 import '../domain/community.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
 import '../domain/pricing.dart';
+import '../domain/tournaments.dart';
 import 'session.dart';
 
 /// Overridden in `main()` with the loaded instance.
@@ -103,6 +105,12 @@ final notificationRepositoryProvider = Provider<NotificationRepository>(
       : ref.watch(sampleBackendProvider),
 );
 
+final tournamentRepositoryProvider = Provider<TournamentRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseTournamentRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider).tournament,
+);
+
 final sportsProvider = FutureProvider<List<Sport>>((ref) => ref.watch(catalogRepositoryProvider).sports());
 
 final venuesProvider = FutureProvider<List<Venue>>(
@@ -115,8 +123,27 @@ final bannersProvider = FutureProvider<List<BannerItem>>(
   (ref) => ref.watch(catalogRepositoryProvider).banners(ref.watch(currentCityProvider).id),
 );
 
-final tournamentsProvider = FutureProvider<List<TournamentItem>>(
-  (ref) => ref.watch(catalogRepositoryProvider).tournaments(ref.watch(currentCityProvider).id),
+/// A tournament search: the city is the current one. A record, so equal
+/// searches share one result.
+typedef TournamentQuery = ({String? sportId, DateTime? from, TournamentSort sort});
+
+/// Every upcoming tournament in the city, by first day.
+const TournamentQuery kAllTournaments = (sportId: null, from: null, sort: TournamentSort.date);
+
+final tournamentsProvider = FutureProvider.family<List<Tournament>, TournamentQuery>(
+  (ref, query) => ref
+      .watch(tournamentRepositoryProvider)
+      .list(ref.watch(currentCityProvider).id, sportId: query.sportId, from: query.from, sort: query.sort),
+);
+
+final tournamentProvider = FutureProvider.family<Tournament, String>(
+  (ref, id) => ref.watch(tournamentRepositoryProvider).get(id),
+);
+
+/// The player's entries (as registrant or partner) in tournaments that have
+/// not ended, newest first.
+final myRegistrationsProvider = FutureProvider<List<Registration>>(
+  (ref) => ref.watch(tournamentRepositoryProvider).myRegistrations(),
 );
 
 typedef AvailabilityKey = ({String venueId, String courtId, DateTime date});
@@ -226,6 +253,16 @@ void refreshBookings(WidgetRef ref) {
   ref.invalidate(myBookingsProvider);
   ref.invalidate(freeTodayProvider);
   // A booking writes to the inbox (confirmed, cancelled).
+  ref.invalidate(inboxProvider);
+  ref.invalidate(unreadCountProvider);
+}
+
+/// Refreshes everything that depends on tournaments and the player's
+/// registrations (also what a registration writes to the inbox).
+void refreshTournaments(WidgetRef ref) {
+  ref.invalidate(tournamentsProvider);
+  ref.invalidate(tournamentProvider);
+  ref.invalidate(myRegistrationsProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }

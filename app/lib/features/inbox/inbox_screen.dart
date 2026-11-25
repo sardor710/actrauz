@@ -57,6 +57,7 @@ IconData _categoryIcon(String category) => switch (category) {
   'games' => Icons.sports_tennis_outlined,
   'requests' => Icons.campaign_outlined,
   'invites' => Icons.mail_outline_rounded,
+  'tournaments' => Icons.emoji_events_outlined,
   _ => Icons.notifications_none_rounded,
 };
 

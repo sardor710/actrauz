@@ -15,6 +15,7 @@ String _categoryLabel(AppLocalizations l, String category) => switch (category) 
   'games' => l.notifCategoryGames,
   'requests' => l.notifCategoryRequests,
   'invites' => l.notifCategoryInvites,
+  'tournaments' => l.notifCategoryTournaments,
   _ => category,
 };
 

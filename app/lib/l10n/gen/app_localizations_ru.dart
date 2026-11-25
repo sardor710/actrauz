@@ -1162,6 +1162,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get notifCategoryInvites => 'Приглашения';
 
   @override
+  String get notifCategoryTournaments => 'Турниры';
+
+  @override
   String get privacyTitle => 'Приватность';
 
   @override

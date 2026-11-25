@@ -6,13 +6,16 @@ import '../../domain/community.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
+import '../../domain/tournaments.dart';
 import '../../domain/pricing.dart';
 import '../admin_repository.dart';
 import '../owner_repository.dart';
 import '../repositories.dart';
 import '../social.dart';
-import '../supabase/mappers.dart' show bannerDraftJson, courtDraftJson, isoLocal, sportDraftJson, venueDraftJson;
+import '../supabase/mappers.dart'
+    show bannerDraftJson, categoryDraftJson, courtDraftJson, isoLocal, sportDraftJson, tournamentDraftJson, venueDraftJson;
 import 'sample_data.dart';
+import 'sample_tournaments.dart';
 
 /// In-memory stand-in for the backend. State lives for one app run.
 class SampleBackend
@@ -21,6 +24,8 @@ class SampleBackend
     _engine = BookingEngine(venueById: _venue);
     _seedGames();
     _seedCommunity();
+    // Dated from the clock at start-up, like the games.
+    _rules;
   }
 
   /// Current UTC time; injected so tests can fix the clock.
@@ -212,30 +217,7 @@ class SampleBackend
   ];
 
   @override
-  Future<List<TournamentItem>> tournaments(String cityId) async {
-    final items = <TournamentItem>[];
-    for (final seed in kTournamentSeeds) {
-      final venue = _venue(seed.venueId);
-      if (venue.cityId != cityId) continue;
-      final start = dateOnly(_nowAt(venue)).add(Duration(days: seed.daysAhead));
-      items.add(
-        TournamentItem(
-          id: seed.id,
-          cityId: venue.cityId,
-          sportId: seed.sportId,
-          title: seed.title,
-          venueName: venue.name,
-          start: start,
-          end: start.add(Duration(days: seed.days - 1)),
-          minFee: seed.minFee,
-          maxFee: seed.maxFee,
-          slotsTotal: seed.slotsTotal,
-          slotsFilled: seed.slotsFilled,
-        ),
-      );
-    }
-    return items;
-  }
+  Future<List<TournamentItem>> tournaments(String cityId) async => _rules.list(kMeId, cityId);
 
   // ---- BookingRepository ----
 
@@ -1055,6 +1037,43 @@ class SampleBackend
     );
   }
 
+  // ---- Tournaments ----
+
+  late final SampleTournaments _rules = SampleTournaments(
+    utcNow: utcNow,
+    cityNow: _cityNow,
+    venueCity: (id) => _venues[id]?.cityId,
+    venueName: (id) => _venue(id).name,
+    knownSport: _sports.containsKey,
+    nameOf: _nameOf,
+    levelOf: (userId, sportId) => _playerOf(userId).levelFor(sportId),
+    userExists: _exists,
+    isBlocked: (userId) => _reliability(userId).isBlocked,
+    notify: _notify,
+  );
+
+  /// The tournament calls for any player, so tests can fill a category, have a
+  /// partner accept or a waitlisted player claim an offer. The demo player's
+  /// own go through [tournament].
+  Future<Registration> registerAs(String userId, String categoryId, {String? partnerId}) async =>
+      _rules.register(userId, categoryId, partnerId);
+
+  Future<Registration> respondPartnerAs(String userId, String registrationId, {required bool accept}) async =>
+      _rules.respondPartner(userId, registrationId, accept: accept);
+
+  Future<Registration> cancelRegistrationAs(String userId, String registrationId) async =>
+      _rules.cancel(userId, registrationId);
+
+  Future<Registration> joinWaitlistAs(String userId, String categoryId, {String? partnerId}) async =>
+      _rules.joinWaitlist(userId, categoryId, partnerId);
+
+  Future<Registration> claimOfferAs(String userId, String registrationId) async =>
+      _rules.claimOffer(userId, registrationId);
+
+  /// The demo player's tournament operations. A separate object, because
+  /// [TournamentRepository.cancel] clashes with [BookingRepository.cancel].
+  late final TournamentRepository tournament = _SampleTournamentRepository(this);
+
   // ---- Booking hooks the owner repository calls ----
 
   /// A venue cancelled [booking]: the player hears, the games on it are off.
@@ -1717,6 +1736,190 @@ class _SampleAdminRepository implements AdminRepository {
     if (limit < 1 || limit > 100) _invalid();
     return _b._audit.reversed.where((e) => before == null || e.at.isBefore(before)).take(limit).toList();
   }
+
+  // ---- Tournaments ----
+
+  SampleTournaments get _t => _b._rules;
+
+  static Map<String, dynamic> _registrationLog(AdminRegistration r) => {
+    'registration_id': r.registration.id,
+    'category_id': r.registration.categoryId,
+    'status': r.registration.status.name,
+    'paid': r.registration.paid,
+  };
+
+  @override
+  Future<List<AdminTournament>> tournaments() async => _t.adminTournaments();
+
+  @override
+  Future<String> saveTournament(TournamentDraft draft) async {
+    final existing = draft.id == null ? null : _t.adminTournaments().where((t) => t.tournament.id == draft.id).firstOrNull;
+    final id = _t.saveTournament(draft);
+    _b._log(
+      draft.id == null ? 'create_tournament' : 'update_tournament',
+      'tournament',
+      id,
+      before: existing == null ? null : tournamentDraftJson(TournamentDraft.from(existing.tournament)),
+      after: tournamentDraftJson(draft),
+    );
+    return id;
+  }
+
+  @override
+  Future<String> saveCategory(CategoryDraft draft) async {
+    final id = _t.saveCategory(draft);
+    _b._log(
+      draft.id == null ? 'create_category' : 'update_category',
+      'tournament_category',
+      id,
+      after: categoryDraftJson(draft),
+    );
+    return id;
+  }
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {
+    _t.deleteCategory(categoryId);
+    _b._log('delete_category', 'tournament_category', categoryId);
+  }
+
+  @override
+  Future<List<AdminRegistration>> registrations(String tournamentId) async => _t.registrations(tournamentId);
+
+  @override
+  Future<AdminRegistration> setPaid(String registrationId, bool paid) async {
+    final r = _t.setPaid(registrationId, paid);
+    _b._log('set_registration_paid', 'tournament_registration', registrationId, after: _registrationLog(r));
+    return r;
+  }
+
+  @override
+  Future<AdminRegistration> removeRegistration(String registrationId) async {
+    final r = _t.removeRegistration(registrationId);
+    _b._log('remove_registration', 'tournament_registration', registrationId, after: _registrationLog(r));
+    return r;
+  }
+
+  @override
+  Future<AdminRegistration> moveRegistration(String registrationId, String categoryId) async {
+    final r = _t.moveRegistration(registrationId, categoryId);
+    _b._log('move_registration', 'tournament_registration', registrationId, after: _registrationLog(r));
+    return r;
+  }
+
+  @override
+  Future<AdminRegistration> addRegistration(String categoryId, String userId, {String? partnerId}) async {
+    final r = _t.addRegistration(categoryId, userId, partnerId);
+    _b._log('add_registration', 'tournament_registration', r.registration.id, after: _registrationLog(r));
+    return r;
+  }
+
+  @override
+  Future<int> offerNext(String categoryId) async {
+    final offered = _t.offerNext(categoryId);
+    _b._log('offer_next', 'tournament_category', categoryId, after: {'offered': offered});
+    return offered;
+  }
+
+  @override
+  Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to}) async {
+    if (cityId != null && !_knownCity(cityId)) throw const TournamentException(TournamentError.notFound);
+    final first = dateOnly(from);
+    final last = dateOnly(to);
+    final days = last.difference(first).inDays + 1;
+    if (days < 1 || days > 366) throw const TournamentException(TournamentError.invalidArgument);
+
+    // Venue revenue and bookings come from the owner dashboard, whose limit is
+    // shorter than this one's: ask in windows.
+    const window = BookingEngine.maxDashboardDays;
+    final venues = <Currency, int>{};
+    var bookings = 0;
+    for (final venue in _b._venues.values) {
+      if (cityId != null && venue.cityId != cityId) continue;
+      final currency = cityById(venue.cityId).currency;
+      for (var day = first; !day.isAfter(last); day = day.add(const Duration(days: window))) {
+        final end = day.add(const Duration(days: window - 1));
+        final stats = _b._engine.ownerDashboard(venue.id, from: day, to: end.isAfter(last) ? last : end);
+        venues[currency] = (venues[currency] ?? 0) + stats.revenuePaid;
+        bookings += stats.bookingsApp + stats.bookingsWalkIn;
+      }
+    }
+    final tournaments = _t.paidRevenue(cityId, first, last);
+    final currencies = {
+      ...tournaments.keys,
+      for (final e in venues.entries)
+        if (e.value > 0) e.key,
+    }.toList()..sort((a, b) => a.name.compareTo(b.name));
+
+    // The sample players live in Tashkent, and the demo player joined today.
+    final everyone = kSamplePlayers.length + 1;
+    final users = cityId == null || cityId == SampleBackend._homeCityId
+        ? UserStats(total: everyone, active30d: everyone, newToday: 1, new7d: 1, newMonth: 1)
+        : const UserStats();
+    return AdminDashboard(
+      users: users,
+      revenue: [
+        for (final c in currencies) CurrencyRevenue(currency: c, venues: venues[c] ?? 0, tournaments: tournaments[c] ?? 0),
+      ],
+      counts: ActivityCounts(
+        bookings: bookings,
+        // Sample games have no creation time: those played in the period.
+        games: _b._games.values
+            .where(
+              (g) =>
+                  (cityId == null || g.cityId == cityId) &&
+                  !dateOnly(g.start).isBefore(first) &&
+                  !dateOnly(g.start).isAfter(last),
+            )
+            .length,
+        registrations: _t.registrationsCreated(cityId, first, last),
+      ),
+    );
+  }
+}
+
+/// The demo player's view of [SampleTournaments].
+class _SampleTournamentRepository implements TournamentRepository {
+  _SampleTournamentRepository(this._b);
+
+  final SampleBackend _b;
+
+  SampleTournaments get _rules => _b._rules;
+
+  @override
+  Future<List<Tournament>> list(
+    String cityId, {
+    String? sportId,
+    DateTime? from,
+    TournamentSort sort = TournamentSort.date,
+  }) async => _rules.list(kMeId, cityId, sportId: sportId, from: from, sort: sort);
+
+  @override
+  Future<Tournament> get(String id) async => _rules.get(kMeId, id);
+
+  @override
+  Future<Registration> register(String categoryId, {String? partnerId}) =>
+      _b.registerAs(kMeId, categoryId, partnerId: partnerId);
+
+  @override
+  Future<Registration> respondPartner(String registrationId, {required bool accept}) =>
+      _b.respondPartnerAs(kMeId, registrationId, accept: accept);
+
+  @override
+  Future<Registration> cancel(String registrationId) => _b.cancelRegistrationAs(kMeId, registrationId);
+
+  @override
+  Future<Registration> joinWaitlist(String categoryId, {String? partnerId}) =>
+      _b.joinWaitlistAs(kMeId, categoryId, partnerId: partnerId);
+
+  @override
+  Future<Registration> claimOffer(String registrationId) => _b.claimOfferAs(kMeId, registrationId);
+
+  @override
+  Future<List<Registration>> myRegistrations() async => _rules.myRegistrations(kMeId);
+
+  @override
+  Future<PlayerRef?> findPlayerByPhone(String phone) async => _rules.findPlayerByPhone(kMeId, phone);
 }
 
 enum _Invite { pending, accepted, declined }

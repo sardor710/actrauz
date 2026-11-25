@@ -2086,6 +2086,12 @@ abstract class AppLocalizations {
   /// **'Invitations'**
   String get notifCategoryInvites;
 
+  /// No description provided for @notifCategoryTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournaments'**
+  String get notifCategoryTournaments;
+
   /// No description provided for @privacyTitle.
   ///
   /// In en, this message translates to:

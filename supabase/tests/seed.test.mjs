@@ -102,6 +102,70 @@ test('banners, tournaments and players are there', async () => {
   assert.deepEqual(rows, [{ days: 2, name_en: 'Alatau Padel & Tennis' }]);
 });
 
+test('tournaments have their categories and a deadline; the summary columns are real counts', async () => {
+  assert.equal(await count('tournament_categories'), 6);
+  const { rows } = await pool.query(`
+    select t.title_en, t.min_fee, t.max_fee, t.slots_total, t.slots_filled,
+           (select min(c.fee) from tournament_categories c where c.tournament_id = t.id) as fee_min,
+           (select max(c.fee) from tournament_categories c where c.tournament_id = t.id) as fee_max,
+           (select sum(c.cap)::int from tournament_categories c where c.tournament_id = t.id) as cap_sum,
+           (select count(*)::int from tournament_categories c where c.tournament_id = t.id) as categories,
+           t.registration_deadline > now() as deadline_ahead,
+           t.registration_deadline < app.to_instant(t.starts_on::timestamp, ci.utc_offset_minutes) as deadline_before_start
+    from tournaments t join cities ci on ci.id = t.city_id order by t.title_en`);
+  assert.deepEqual(
+    rows.map((r) => [r.title_en, r.categories, r.slots_total, r.slots_filled]),
+    [
+      ['Almaty Open Tennis', 2, 24, 0],
+      ['Amateur 5-a-side League', 1, 12, 0],
+      ['Tashkent Padel Cup', 3, 32, 0],
+    ],
+  );
+  for (const r of rows) {
+    assert.equal(r.min_fee, r.fee_min, r.title_en);
+    assert.equal(r.max_fee, r.fee_max, r.title_en);
+    assert.equal(r.slots_total, r.cap_sum, r.title_en);
+    assert.ok(r.deadline_ahead && r.deadline_before_start, r.title_en);
+  }
+});
+
+test('the first category of each tournament has the id the tournaments migration gives its default one', async () => {
+  const { rows } = await pool.query(`
+    select t.title_en, c.id = md5('actra:default-category:' || t.id::text)::uuid as is_default
+    from tournaments t join tournament_categories c on c.tournament_id = t.id and c.sort_order = 0`);
+  assert.equal(rows.length, 3);
+  for (const r of rows) assert.ok(r.is_default, r.title_en);
+});
+
+test('a seed run updates the default category the migration made instead of adding a second', async () => {
+  const other = await freshDb('seed_backfill');
+  try {
+    await other.pool.query(seed);
+    // A database whose tournaments predate categories: the migration's backfill
+    // gives each one open singles category under the default id.
+    await other.pool.query('delete from tournament_categories');
+    await other.pool.query('select app.backfill_tournaments()');
+    const backfilled = await other.pool.query(
+      `select c.name_en, c.cap from tournament_categories c join tournaments t on t.id = c.tournament_id
+       where t.title_en = 'Tashkent Padel Cup'`,
+    );
+    assert.deepEqual(backfilled.rows.map((r) => r.name_en), ['Open']);
+
+    await other.pool.query(seed);
+    const { rows } = await other.pool.query(
+      `select t.title_en, count(*)::int as n, bool_or(c.name_en = 'Open pairs') as updated
+       from tournaments t join tournament_categories c on c.tournament_id = t.id group by t.title_en order by t.title_en`,
+    );
+    assert.deepEqual(rows, [
+      { title_en: 'Almaty Open Tennis', n: 2, updated: false },
+      { title_en: 'Amateur 5-a-side League', n: 1, updated: false },
+      { title_en: 'Tashkent Padel Cup', n: 3, updated: true },
+    ]);
+  } finally {
+    await other.end();
+  }
+});
+
 test('sample games sit on real bookings and are not over capacity', async () => {
   const { rows } = await pool.query(`
     select g.id, g.spots, g.price_per_player, b.status, b.total_price, b.court_id, b.user_id, g.host_id,
@@ -133,7 +197,7 @@ test('the full sample game is hidden from discovery, as in the app', async () =>
 test('running the seed again changes nothing', async () => {
   const tables = [
     'cities', 'sports', 'venues', 'courts', 'working_hours', 'price_rules', 'banners',
-    'tournaments', 'profiles', 'player_levels', 'games', 'game_participants', 'bookings',
+    'tournaments', 'tournament_categories', 'profiles', 'player_levels', 'games', 'game_participants', 'bookings',
   ];
   const snapshot = async () => {
     const counts = {};

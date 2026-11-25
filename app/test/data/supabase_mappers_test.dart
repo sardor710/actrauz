@@ -1,3 +1,5 @@
+import 'package:actra/core/localized_text.dart';
+import 'package:actra/core/markets.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/supabase/errors.dart';
 import 'package:actra/data/supabase/mappers.dart';
@@ -7,6 +9,7 @@ import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/pricing.dart';
 import 'package:actra/domain/slot_generator.dart';
+import 'package:actra/domain/tournaments.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -747,6 +750,477 @@ void main() {
         bookingExceptionFor(const PostgrestException(message: 'reliability_too_low', code: 'P0001')).error,
         BookingError.reliabilityTooLow,
       );
+    });
+  });
+
+  group('tournaments', () {
+    Map<String, dynamic> category(String id, {int cap = 8, int filled = 3, String? myStatus, int sortOrder = 0}) => {
+      'id': id,
+      'tournament_id': 'tour-1',
+      'name_uz': 'Juftliklar',
+      'name_ru': 'Пары',
+      'name_en': 'Pairs',
+      'kind': 'pairs',
+      'gender': 'mixed',
+      'min_level': 2,
+      'max_level': 4,
+      'fee': 300000,
+      'cap': cap,
+      'filled': filled,
+      'full': filled >= cap,
+      'waitlist_enabled': true,
+      'waitlist_count': 2,
+      'sort_order': sortOrder,
+      'my_status': myStatus,
+    };
+
+    Map<String, dynamic> entry({
+      String id = 'reg-1',
+      String status = 'registered',
+      String registrant = me,
+      String? partner = other,
+      bool confirmed = true,
+      Map<String, dynamic>? extra,
+    }) => {
+      'id': id,
+      'tournament_id': 'tour-1',
+      'category_id': 'cat-1',
+      'category_name': {'uz': 'Juftliklar', 'ru': 'Пары', 'en': 'Pairs'},
+      'kind': 'pairs',
+      'status': status,
+      'registrant': {'id': registrant, 'name': 'Sam'},
+      'partner': partner == null ? null : {'id': partner, 'name': 'Aziz'},
+      'partner_confirmed': confirmed,
+      'fee': 300000,
+      'currency': 'UZS',
+      'paid': false,
+      'partner_expires_local': '2026-11-24T10:00:00',
+      'offer_expires_local': null,
+      'waitlist_place': null,
+      'created_at': '2026-11-22T05:00:00+00:00',
+      ...?extra,
+    };
+
+    Map<String, dynamic> tournament() => {
+      'id': 'tour-1',
+      'city_id': 'tashkent',
+      'sport_id': 'padel',
+      'venue_id': 'venue-1',
+      'venue_name': {'uz': 'Lochin', 'ru': 'Лочин', 'en': 'Lochin Padel Club'},
+      'title_uz': null,
+      'title_ru': 'Кубок',
+      'title_en': 'Cup',
+      'description_uz': null,
+      'description_ru': 'Два дня',
+      'description_en': null,
+      'starts_on': '2026-12-04',
+      'ends_on': '2026-12-05',
+      'registration_deadline_local': '2026-12-02T18:00:00',
+      'registration_open': true,
+      'cover_url': 'https://example.com/cup.jpg',
+      'color_seed': 7,
+      'active': true,
+      'currency': 'UZS',
+      'fee_min': 300000,
+      'fee_max': 500000,
+      'slots_total': 16,
+      'slots_filled': 8,
+      'categories': [
+        category('cat-1', myStatus: 'pending_partner'),
+        category('cat-2', cap: 8, filled: 8, sortOrder: 1),
+      ],
+      'my_registrations': [
+        entry(status: 'pending_partner', confirmed: false),
+        entry(id: 'reg-2', registrant: other, partner: me),
+      ],
+    };
+
+    test('a tournament with two categories and my registrations', () {
+      final t = tournamentFromJson(tournament(), myUserId: me);
+      expect((t.id, t.cityId, t.sportId, t.venueId), ('tour-1', 'tashkent', 'padel', 'venue-1'));
+      expect(t.title.ru, 'Кубок');
+      expect(t.title.uz, isNull);
+      expect(t.venueName.en, 'Lochin Padel Club');
+      expect(t.description.ru, 'Два дня');
+      expect((t.start, t.end), (DateTime.utc(2026, 12, 4), DateTime.utc(2026, 12, 5)));
+      expect(t.registrationDeadline, DateTime.utc(2026, 12, 2, 18));
+      expect((t.registrationOpen, t.active, t.currency), (true, true, Currency.uzs));
+      expect((t.coverUrl, t.colorSeed), ('https://example.com/cup.jpg', 7));
+      // As a TournamentItem: the fee range and the places come from the categories.
+      expect((t.minFee, t.maxFee, t.slotsTotal, t.slotsFilled), (300000, 500000, 16, 8));
+
+      expect(t.categories.map((c) => c.id), ['cat-1', 'cat-2']);
+      final c = t.categories.first;
+      expect((c.kind, c.gender, c.minLevel, c.maxLevel), (CategoryKind.pairs, CategoryGender.mixed, 2, 4));
+      expect((c.fee, c.cap, c.filled, c.full, c.waitlistCount, c.waitlistEnabled), (300000, 8, 3, false, 2, true));
+      expect(c.name.uz, 'Juftliklar');
+      expect(c.myStatus, RegistrationStatus.pendingPartner);
+      expect(t.categories.last.full, isTrue);
+      expect(t.categories.last.myStatus, isNull);
+
+      expect(t.myRegistrations.map((r) => (r.id, r.status, r.role)), [
+        ('reg-1', RegistrationStatus.pendingPartner, RegistrationRole.registrant),
+        ('reg-2', RegistrationStatus.registered, RegistrationRole.partner),
+      ]);
+      expect(t.myRegistrations.first.registrant.id, kMeId);
+      expect(t.myRegistrations.last.partner?.id, kMeId);
+      expect(t.myRegistrations.last.registrant.id, other);
+    });
+
+    test('a tournament with nothing in it still reads', () {
+      final json = tournament()
+        ..['categories'] = null
+        ..['my_registrations'] = null
+        ..['fee_min'] = null
+        ..['fee_max'] = null
+        ..['venue_name'] = null
+        ..['venue_id'] = null
+        ..['cover_url'] = null;
+      final t = tournamentFromJson(json, myUserId: null);
+      expect(t.categories, isEmpty);
+      expect(t.myRegistrations, isEmpty);
+      expect((t.minFee, t.maxFee), (0, 0));
+      expect(t.venueId, isNull);
+      expect(t.coverUrl, isNull);
+      expect(t.venueName.resolve('ru'), '');
+    });
+
+    test('a registration: players, fee, times and the signed-in player\'s role', () {
+      final r = registrationFromJson(
+        entry(
+          status: 'offered',
+          extra: {'offer_expires_local': '2026-11-23T10:00:00', 'paid': true, 'waitlist_place': 2},
+        ),
+        myUserId: me,
+      );
+      expect((r.id, r.tournamentId, r.categoryId, r.kind), ('reg-1', 'tour-1', 'cat-1', CategoryKind.pairs));
+      expect(r.categoryName.en, 'Pairs');
+      expect(r.status, RegistrationStatus.offered);
+      expect(r.registrant, const PlayerRef(id: kMeId, name: 'Sam'));
+      expect(r.partner, const PlayerRef(id: other, name: 'Aziz'));
+      expect((r.partnerConfirmed, r.fee, r.currency, r.paid), (true, 300000, Currency.uzs, true));
+      expect(r.partnerExpiresAt, DateTime.utc(2026, 11, 24, 10));
+      expect(r.offerExpiresAt, DateTime.utc(2026, 11, 23, 10));
+      expect(r.waitlistPlace, 2);
+      expect(r.createdAt, DateTime.utc(2026, 11, 22, 5));
+      expect((r.role, r.isMine), (RegistrationRole.registrant, true));
+      expect(r.tournament, isNull);
+
+      final asPartner = registrationFromJson(entry(registrant: other, partner: me), myUserId: me);
+      expect(asPartner.role, RegistrationRole.partner);
+      final single = registrationFromJson(entry(partner: null), myUserId: me);
+      expect(single.partner, isNull);
+      expect(single.role, RegistrationRole.registrant);
+      // Neither player: an admin looking at somebody else's entry.
+      final stranger = registrationFromJson(entry(registrant: other, partner: 'p3'), myUserId: me);
+      expect(stranger.role, isNull);
+      expect(stranger.isMine, isFalse);
+      expect(registrationFromJson(entry(), myUserId: null).role, isNull);
+    });
+
+    test('every status and label the database writes', () {
+      const statuses = {
+        'pending_partner': RegistrationStatus.pendingPartner,
+        'registered': RegistrationStatus.registered,
+        'waitlisted': RegistrationStatus.waitlisted,
+        'offered': RegistrationStatus.offered,
+        'declined': RegistrationStatus.declined,
+        'expired': RegistrationStatus.expired,
+        'cancelled': RegistrationStatus.cancelled,
+        'removed': RegistrationStatus.removed,
+        'lapsed': RegistrationStatus.lapsed,
+      };
+      expect(statuses.length, RegistrationStatus.values.length);
+      for (final e in statuses.entries) {
+        expect(registrationStatusOf(e.key), e.value, reason: e.key);
+      }
+      expect(() => registrationStatusOf('bogus'), throwsFormatException);
+      expect(categoryKindOf('singles'), CategoryKind.singles);
+      expect([for (final g in ['men', 'women', 'mixed', 'open']) categoryGenderOf(g)], CategoryGender.values);
+      expect(() => categoryGenderOf('other'), throwsFormatException);
+    });
+
+    test('a row of my_registrations carries its tournament', () {
+      final r = registrationFromJson(
+        entry(
+          extra: {
+            'tournament': {
+              'id': 'tour-1',
+              'city_id': 'tashkent',
+              'sport_id': 'padel',
+              'venue_id': null,
+              'title_uz': null,
+              'title_ru': 'Кубок',
+              'title_en': 'Cup',
+              'starts_on': '2026-12-04',
+              'ends_on': '2026-12-05',
+              'color_seed': 7,
+              'cover_url': null,
+            },
+          },
+        ),
+        myUserId: me,
+      );
+      final t = r.tournament!;
+      expect((t.id, t.cityId, t.sportId, t.venueId, t.colorSeed), ('tour-1', 'tashkent', 'padel', null, 7));
+      expect(t.title.en, 'Cup');
+      expect((t.start, t.end), (DateTime.utc(2026, 12, 4), DateTime.utc(2026, 12, 5)));
+    });
+
+    test('the admin\'s entry has phones, the paid time and the override flag', () {
+      final json = entry(
+        registrant: other,
+        partner: 'p3',
+        extra: {
+          'registrant': {'id': other, 'name': 'Aziz', 'phone': '+998901000001'},
+          'partner': {'id': 'p3', 'name': 'Timur', 'phone': null},
+          'paid': true,
+          'paid_at': '2026-11-22T06:30:00+00:00',
+          'admin_override': true,
+          'waitlist_position': 12,
+        },
+      );
+      final r = adminRegistrationFromJson(json, myUserId: me);
+      expect(r.registrantPhone, '+998901000001');
+      expect(r.partnerPhone, isNull);
+      expect(r.paidAt, DateTime.utc(2026, 11, 22, 6, 30));
+      expect((r.adminOverride, r.waitlistPosition, r.registration.paid), (true, 12, true));
+      expect(r.registration.registrant.name, 'Aziz');
+      expect(r.registration.role, isNull);
+
+      final singles = adminRegistrationFromJson(
+        entry(
+          partner: null,
+          extra: {
+            'registrant': {'id': me, 'name': 'Sam', 'phone': null},
+            'paid_at': null,
+            'admin_override': false,
+            'waitlist_position': null,
+          },
+        ),
+        myUserId: me,
+      );
+      expect(singles.partnerPhone, isNull);
+      expect(singles.paidAt, isNull);
+      expect(singles.adminOverride, isFalse);
+    });
+
+    test('a row of admin_list_tournaments', () {
+      final a = adminTournamentFromJson({...tournament(), 'category_count': 2, 'registration_count': 5}, myUserId: me);
+      expect((a.categoryCount, a.registrationCount, a.tournament.id), (2, 5, 'tour-1'));
+      expect(a.tournament.categories, hasLength(2));
+    });
+
+    test('the dashboard with two currencies, never summed', () {
+      final d = adminDashboardFromJson({
+        'users': {'total': 120, 'active_30d': 80, 'new_today': 3, 'new_7d': 21, 'new_month': 40},
+        'revenue': [
+          {'currency': 'KZT', 'venues': 1500000, 'tournaments': 200000},
+          {'currency': 'UZS', 'venues': 9000000, 'tournaments': 0},
+        ],
+        'counts': {'bookings': 310, 'games': 45, 'registrations': 66},
+      });
+      expect((d.users.total, d.users.active30d, d.users.newToday, d.users.new7d, d.users.newMonth), (
+        120,
+        80,
+        3,
+        21,
+        40,
+      ));
+      expect(d.revenue.map((r) => (r.currency, r.venues, r.tournaments, r.total)), [
+        (Currency.kzt, 1500000, 200000, 1700000),
+        (Currency.uzs, 9000000, 0, 9000000),
+      ]);
+      expect((d.counts.bookings, d.counts.games, d.counts.registrations), (310, 45, 66));
+
+      final empty = adminDashboardFromJson({'users': {}, 'revenue': [], 'counts': {}});
+      expect((empty.users.total, empty.counts.games), (0, 0));
+      expect(empty.revenue, isEmpty);
+    });
+
+    // The keys admin_save_tournament / admin_save_category accept (their
+    // app.clean_payload specs): anything else is refused, and so is a null for
+    // a string, int or bool.
+    const tournamentKeys = {
+      'id',
+      'city_id',
+      'sport_id',
+      'venue_id',
+      'title_uz',
+      'title_ru',
+      'title_en',
+      'description_uz',
+      'description_ru',
+      'description_en',
+      'starts_on',
+      'ends_on',
+      'registration_deadline_local',
+      'cover_url',
+      'color_seed',
+      'active',
+      'categories',
+    };
+    const categoryKeys = {
+      'id',
+      'tournament_id',
+      'name_uz',
+      'name_ru',
+      'name_en',
+      'kind',
+      'gender',
+      'min_level',
+      'max_level',
+      'fee',
+      'cap',
+      'waitlist_enabled',
+      'sort_order',
+    };
+    const nullable = {
+      'venue_id',
+      'title_uz',
+      'title_ru',
+      'title_en',
+      'description_uz',
+      'description_ru',
+      'description_en',
+      'registration_deadline_local',
+      'cover_url',
+      'name_uz',
+      'name_ru',
+      'name_en',
+    };
+
+    test('a category draft sends only keys the database accepts, and no null where one is refused', () {
+      final draft = CategoryDraft(
+        tournamentId: 'tour-1',
+        name: const LocalizedText(ru: ' Пары ', en: ''),
+        kind: CategoryKind.pairs,
+        gender: CategoryGender.women,
+        minLevel: 2,
+        maxLevel: 4,
+        fee: 250000,
+        cap: 12,
+        waitlistEnabled: false,
+      );
+      final json = categoryDraftJson(draft);
+      expect(json.keys.toSet().difference(categoryKeys), isEmpty);
+      expect(json, {
+        'tournament_id': 'tour-1',
+        'name_uz': null,
+        'name_ru': 'Пары',
+        'name_en': null,
+        'kind': 'pairs',
+        'gender': 'women',
+        'min_level': 2,
+        'max_level': 4,
+        'fee': 250000,
+        'cap': 12,
+        'waitlist_enabled': false,
+      });
+      for (final e in json.entries) {
+        if (!nullable.contains(e.key)) expect(e.value, isNotNull, reason: e.key);
+      }
+
+      draft
+        ..id = 'cat-1'
+        ..sortOrder = 3;
+      final update = categoryDraftJson(draft);
+      expect(update['id'], 'cat-1');
+      expect(update['sort_order'], 3);
+    });
+
+    test('a tournament draft: create brings its categories, update never does', () {
+      final draft = TournamentDraft(
+        cityId: 'tashkent',
+        sportId: 'padel',
+        start: DateTime.utc(2026, 12, 4, 15),
+        end: DateTime.utc(2026, 12, 5),
+        title: const LocalizedText(ru: 'Кубок'),
+        registrationDeadline: DateTime.utc(2026, 12, 2, 18, 30),
+        coverUrl: '  ',
+        categories: [CategoryDraft(name: const LocalizedText(en: 'Open'), cap: 8)],
+      );
+      final create = tournamentDraftJson(draft);
+      expect(create.keys.toSet().difference(tournamentKeys), isEmpty);
+      expect(create.containsKey('id'), isFalse);
+      expect(create.containsKey('color_seed'), isFalse);
+      expect(create, containsPair('starts_on', '2026-12-04'));
+      expect(create, containsPair('ends_on', '2026-12-05'));
+      expect(create, containsPair('registration_deadline_local', '2026-12-02T18:30:00'));
+      expect(create, containsPair('title_ru', 'Кубок'));
+      expect(create, containsPair('title_en', null));
+      expect(create, containsPair('cover_url', null));
+      expect(create, containsPair('venue_id', null));
+      expect(create, containsPair('active', true));
+      final nested = (create['categories'] as List).single as Map;
+      expect(nested.keys.toSet().difference(categoryKeys), isEmpty);
+      expect(nested.containsKey('id') || nested.containsKey('tournament_id'), isFalse);
+      expect(nested['cap'], 8);
+      for (final e in create.entries) {
+        if (!nullable.contains(e.key)) expect(e.value, isNotNull, reason: e.key);
+      }
+
+      // The summary columns are never sent: the database keeps them.
+      for (final key in ['min_fee', 'max_fee', 'slots_total', 'slots_filled']) {
+        expect(create.containsKey(key), isFalse);
+      }
+
+      draft
+        ..id = 'tour-1'
+        ..colorSeed = 5
+        ..registrationDeadline = null;
+      final update = tournamentDraftJson(draft);
+      expect(update['id'], 'tour-1');
+      expect(update['color_seed'], 5);
+      expect(update, containsPair('registration_deadline_local', null));
+      expect(update.containsKey('categories'), isFalse);
+      expect(update.keys.toSet().difference(tournamentKeys), isEmpty);
+    });
+
+    test('the database\'s rule violations become TournamentErrors', () {
+      const codes = {
+        'full': TournamentError.full,
+        'deadline_passed': TournamentError.deadlinePassed,
+        'level_out_of_range': TournamentError.levelOutOfRange,
+        'already_registered': TournamentError.alreadyRegistered,
+        'partner_unavailable': TournamentError.partnerUnavailable,
+        'not_full': TournamentError.notFull,
+        'waitlist_closed': TournamentError.waitlistClosed,
+        'not_found': TournamentError.notFound,
+        'invalid_argument': TournamentError.invalidArgument,
+        'has_registrations': TournamentError.hasRegistrations,
+        'reliability_too_low': TournamentError.reliabilityTooLow,
+        'rate_limited': TournamentError.rateLimited,
+        'not_allowed': TournamentError.notAllowed,
+        'not_markable': TournamentError.notMarkable,
+      };
+      for (final e in codes.entries) {
+        expect(
+          tournamentExceptionFor(PostgrestException(message: e.key, code: 'P0001')).error,
+          e.value,
+          reason: e.key,
+        );
+      }
+      // Anything else: no connection, a server fault, a code of another feature.
+      expect(tournamentExceptionFor(StateError('offline')).error, TournamentError.unavailable);
+      expect(
+        tournamentExceptionFor(const PostgrestException(message: 'slot_taken', code: 'P0001')).error,
+        TournamentError.unavailable,
+      );
+      const already = TournamentException(TournamentError.full);
+      expect(identical(tournamentExceptionFor(already), already), isTrue);
+    });
+
+    test('guardTournament turns every failure into a TournamentException', () async {
+      await expectLater(
+        guardTournament<void>(() async => throw const PostgrestException(message: 'full', code: 'P0001')),
+        throwsA(isA<TournamentException>().having((e) => e.error, 'error', TournamentError.full)),
+      );
+      await expectLater(
+        guardTournament<void>(() async => throw Exception('socket closed')),
+        throwsA(isA<TournamentException>().having((e) => e.error, 'error', TournamentError.unavailable)),
+      );
+      expect(await guardTournament(() async => 7), 7);
     });
   });
 }

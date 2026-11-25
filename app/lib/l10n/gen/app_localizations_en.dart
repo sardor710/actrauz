@@ -1138,6 +1138,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifCategoryInvites => 'Invitations';
 
   @override
+  String get notifCategoryTournaments => 'Tournaments';
+
+  @override
   String get privacyTitle => 'Privacy';
 
   @override

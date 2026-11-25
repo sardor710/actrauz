@@ -238,7 +238,7 @@ class GameRequestDraft {
 // ---- Inbox and settings ----
 
 /// The categories a player can mute (spec §13).
-const kNotificationCategories = ['bookings', 'venue', 'games', 'requests', 'invites'];
+const kNotificationCategories = ['bookings', 'venue', 'games', 'requests', 'invites', 'tournaments'];
 
 /// One inbox entry. The database stores no sentence: the app renders the text
 /// from [kind] and [payload].
@@ -289,6 +289,17 @@ class AppNotification {
           'request_converted':
         final gameId = text('game_id');
         return gameId == null ? null : '/games/$gameId';
+      case 'tournament_registered' ||
+          'tournament_partner_invite' ||
+          'tournament_partner_accepted' ||
+          'tournament_partner_declined' ||
+          'tournament_partner_expired' ||
+          'tournament_spot_offered' ||
+          'tournament_deadline_reminder' ||
+          'tournament_removed' ||
+          'tournament_moved':
+        final tournamentId = text('tournament_id');
+        return tournamentId == null ? null : '/tournaments/$tournamentId';
       case 'request_interest' || 'request_expired':
         final requestId = text('request_id');
         return requestId == null ? null : '/games/requests/$requestId';

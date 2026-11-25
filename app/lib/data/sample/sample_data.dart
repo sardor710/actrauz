@@ -1,6 +1,7 @@
 import '../../core/localized_text.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../domain/tournaments.dart';
 
 /// Fictional sample content used until the backend is connected.
 
@@ -451,7 +452,39 @@ const kSampleBanners = <BannerItem>[
   ),
 ];
 
-/// A sample tournament, placed relative to "today".
+/// A sample category. `taken` entries are already in it, held by players the
+/// sample data does not name; the demo player and the sample players register
+/// on top of them.
+class CategorySeed {
+  const CategorySeed({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.cap,
+    required this.taken,
+    required this.fee,
+    this.gender = CategoryGender.open,
+    this.minLevel = 1,
+    this.maxLevel = 5,
+    this.waitlistEnabled = true,
+  });
+
+  final String id;
+  final LocalizedText name;
+  final CategoryKind kind;
+  final int cap;
+  final int taken;
+  final int fee;
+  final CategoryGender gender;
+  final int minLevel;
+  final int maxLevel;
+  final bool waitlistEnabled;
+}
+
+/// A sample tournament, placed relative to "today". Its first category is the
+/// one the seed gives the id `md5('actra:default-category:' || tournament id)`
+/// (see `tool/seed_sql.dart`), so a seed run updates the category the
+/// tournaments migration created instead of adding a second.
 class TournamentSeed {
   const TournamentSeed({
     required this.id,
@@ -460,10 +493,8 @@ class TournamentSeed {
     required this.title,
     required this.daysAhead,
     required this.days,
-    required this.minFee,
-    required this.maxFee,
-    required this.slotsTotal,
-    required this.slotsFilled,
+    required this.categories,
+    this.deadlineDaysBefore = 2,
   });
 
   final String id;
@@ -472,10 +503,10 @@ class TournamentSeed {
   final LocalizedText title;
   final int daysAhead;
   final int days;
-  final int minFee;
-  final int maxFee;
-  final int slotsTotal;
-  final int slotsFilled;
+  final List<CategorySeed> categories;
+
+  /// Registration closes this many days before the first day, at 18:00.
+  final int deadlineDaysBefore;
 }
 
 const kTournamentSeeds = <TournamentSeed>[
@@ -486,10 +517,37 @@ const kTournamentSeeds = <TournamentSeed>[
     title: LocalizedText(uz: 'Toshkent Padel Kubogi', ru: 'Кубок Ташкента по паделу', en: 'Tashkent Padel Cup'),
     daysAhead: 12,
     days: 2,
-    minFee: 300000,
-    maxFee: 500000,
-    slotsTotal: 32,
-    slotsFilled: 19,
+    categories: [
+      CategorySeed(
+        id: 't1c1',
+        name: LocalizedText(uz: 'Ochiq juftliklar', ru: 'Открытые пары', en: 'Open pairs'),
+        kind: CategoryKind.pairs,
+        cap: 12,
+        taken: 9,
+        fee: 300000,
+      ),
+      CategorySeed(
+        id: 't1c2',
+        name: LocalizedText(uz: 'Erkaklar juftliklari', ru: 'Мужские пары', en: "Men's pairs"),
+        kind: CategoryKind.pairs,
+        gender: CategoryGender.men,
+        minLevel: 3,
+        cap: 8,
+        taken: 8,
+        fee: 500000,
+      ),
+      CategorySeed(
+        id: 't1c3',
+        name: LocalizedText(uz: 'Aralash juftliklar', ru: 'Смешанные пары', en: 'Mixed pairs'),
+        kind: CategoryKind.pairs,
+        gender: CategoryGender.mixed,
+        minLevel: 2,
+        maxLevel: 4,
+        cap: 12,
+        taken: 2,
+        fee: 400000,
+      ),
+    ],
   ),
   TournamentSeed(
     id: 't2',
@@ -498,10 +556,16 @@ const kTournamentSeeds = <TournamentSeed>[
     title: LocalizedText(uz: 'Havaskorlar ligasi 5×5', ru: 'Любительская лига 5×5', en: 'Amateur 5-a-side League'),
     daysAhead: 20,
     days: 1,
-    minFee: 800000,
-    maxFee: 800000,
-    slotsTotal: 12,
-    slotsFilled: 12,
+    categories: [
+      CategorySeed(
+        id: 't2c1',
+        name: LocalizedText(uz: 'Ochiq', ru: 'Открытая', en: 'Open'),
+        kind: CategoryKind.singles,
+        cap: 12,
+        taken: 12,
+        fee: 800000,
+      ),
+    ],
   ),
   TournamentSeed(
     id: 't3',
@@ -510,12 +574,41 @@ const kTournamentSeeds = <TournamentSeed>[
     title: LocalizedText(uz: 'Olmaota ochiq tennis turniri', ru: 'Открытый теннисный турнир Алматы', en: 'Almaty Open Tennis'),
     daysAhead: 15,
     days: 3,
-    minFee: 15000,
-    maxFee: 25000,
-    slotsTotal: 24,
-    slotsFilled: 9,
+    categories: [
+      CategorySeed(
+        id: 't3c1',
+        name: LocalizedText(uz: 'Ochiq, yakkalik', ru: 'Открытая, одиночный', en: 'Open singles'),
+        kind: CategoryKind.singles,
+        cap: 16,
+        taken: 5,
+        fee: 15000,
+      ),
+      CategorySeed(
+        id: 't3c2',
+        name: LocalizedText(uz: 'Erkaklar, yakkalik', ru: 'Мужчины, одиночный', en: "Men's singles"),
+        kind: CategoryKind.singles,
+        gender: CategoryGender.men,
+        minLevel: 3,
+        cap: 8,
+        taken: 4,
+        fee: 25000,
+      ),
+    ],
   ),
 ];
+
+/// Phone numbers of the sample players, for "find a partner by phone" in the
+/// demo. Fictional.
+const kSamplePlayerPhones = <String, String>{
+  'p1': '+998901000001',
+  'p2': '+998901000002',
+  'p3': '+998901000003',
+  'p4': '+77011000004',
+  'p5': '+998901000005',
+  'p6': '+998901000006',
+  'p7': '+998901000007',
+  'p8': '+77011000008',
+};
 
 /// A sample Game Request ("looking for players"), placed relative to "today".
 class RequestSeed {

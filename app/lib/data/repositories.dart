@@ -2,6 +2,7 @@ import '../domain/booking_engine.dart';
 import '../domain/community.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
+import '../domain/tournaments.dart';
 
 /// What screens need from the backend. Milestone 1 ships a sample-data
 /// implementation; Milestone 2 adds a Supabase one behind the same interfaces.
@@ -81,6 +82,48 @@ abstract class GameRepository {
   /// Poster only: makes the game at [place] and adds the interested players,
   /// in the order they tapped, while spots remain.
   Future<Game> convertRequest(String id, PlacePick place);
+}
+
+/// Tournaments and the signed-in player's registrations in them (product spec
+/// §14). Every failure is a [TournamentException]. Partner ids are player ids
+/// from [SocialRepository.players] or [findPlayerByPhone].
+abstract class TournamentRepository {
+  /// Active tournaments in the city that have not ended, first day first
+  /// ([TournamentSort.date]) or by title ([TournamentSort.az]); [from] hides
+  /// those that end before that day.
+  Future<List<Tournament>> list(
+    String cityId, {
+    String? sportId,
+    DateTime? from,
+    TournamentSort sort = TournamentSort.date,
+  });
+
+  /// Throws [TournamentError.notFound] when there is no such active tournament.
+  Future<Tournament> get(String id);
+
+  /// Singles are registered at once while there is room (else
+  /// [TournamentError.full]). Pairs wait for [partnerId] to accept.
+  Future<Registration> register(String categoryId, {String? partnerId});
+
+  /// The invited partner answers a pair's invitation.
+  Future<Registration> respondPartner(String registrationId, {required bool accept});
+
+  /// The registrant or the confirmed partner, until the deadline.
+  Future<Registration> cancel(String registrationId);
+
+  /// Only into a full category that has the waitlist on.
+  Future<Registration> joinWaitlist(String categoryId, {String? partnerId});
+
+  /// Takes a spot offered from the waitlist while the offer runs.
+  Future<Registration> claimOffer(String registrationId);
+
+  /// Every entry of the player (as registrant or partner, any state) in
+  /// tournaments that have not ended, newest first.
+  Future<List<Registration>> myRegistrations();
+
+  /// Whether an account has this exact phone number. Never returns the
+  /// phone; at most 20 calls an hour ([TournamentError.rateLimited]).
+  Future<PlayerRef?> findPlayerByPhone(String phone);
 }
 
 /// The player's inbox and community settings.

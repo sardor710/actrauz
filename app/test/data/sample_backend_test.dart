@@ -51,6 +51,35 @@ void main() {
     }
   });
 
+  test('every sample tournament has valid categories, in three languages, and none is over its cap', () {
+    for (final t in kTournamentSeeds) {
+      expect(t.categories, isNotEmpty, reason: t.id);
+      expect(t.categories.map((c) => c.id).toSet(), hasLength(t.categories.length), reason: t.id);
+      for (final c in t.categories) {
+        expect(c.taken, lessThanOrEqualTo(c.cap), reason: c.id);
+        expect(c.minLevel, inInclusiveRange(1, 5), reason: c.id);
+        expect(c.maxLevel, inInclusiveRange(c.minLevel, 5), reason: c.id);
+        expect(c.cap, inInclusiveRange(1, 512), reason: c.id);
+        expect([c.name.uz, c.name.ru, c.name.en], everyElement(isNotEmpty), reason: c.id);
+      }
+    }
+    // The ids are unique across tournaments too (the seed turns each into a uuid).
+    final ids = [for (final t in kTournamentSeeds) ...t.categories.map((c) => c.id)];
+    expect(ids.toSet(), hasLength(ids.length));
+  });
+
+  test('the sample tournaments are dated from today, each closing registration before it starts', () async {
+    for (final city in kCities) {
+      for (final t in await backend.tournament.list(city.id)) {
+        final seed = kTournamentSeeds.firstWhere((s) => s.id == t.id);
+        final today = DateTime.utc(2026, 11, 22);
+        expect(t.start, today.add(Duration(days: seed.daysAhead)));
+        expect(t.end, today.add(Duration(days: seed.daysAhead + seed.days - 1)));
+        expect(t.registrationDeadline, t.start.add(Duration(days: -seed.deadlineDaysBefore, hours: 18)));
+      }
+    }
+  });
+
   test('sample games sit on real bookings and are not over capacity', () async {
     var total = 0;
     for (final city in kCities) {

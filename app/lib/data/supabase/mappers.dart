@@ -6,6 +6,7 @@ import '../../domain/community.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
+import '../../domain/tournaments.dart';
 import '../sample/sample_data.dart' show kMeId;
 
 /// Rows and JSON from the backend → domain objects. Pure functions, no
@@ -622,3 +623,228 @@ Player playerFromRow(Row row, {required String? myUserId}) => Player(
   name: row['full_name'] as String? ?? '',
   levels: {for (final l in _rows(row['player_levels'])) l['sport_id'] as String: l['level'] as int},
 );
+
+// ---- Tournaments ----
+
+/// `{ "uz": …, "ru": …, "en": … }`, as the functions write names that are not
+/// columns (a tournament's venue, a registration's category).
+LocalizedText localizedTextFromJson(Object? value) {
+  if (value is! Map) return const LocalizedText();
+  return LocalizedText(uz: value['uz'] as String?, ru: value['ru'] as String?, en: value['en'] as String?);
+}
+
+CategoryKind categoryKindOf(String value) => switch (value) {
+  'singles' => CategoryKind.singles,
+  'pairs' => CategoryKind.pairs,
+  _ => throw FormatException('Unknown category kind "$value"'),
+};
+
+CategoryGender categoryGenderOf(String value) => switch (value) {
+  'men' => CategoryGender.men,
+  'women' => CategoryGender.women,
+  'mixed' => CategoryGender.mixed,
+  'open' => CategoryGender.open,
+  _ => throw FormatException('Unknown category gender "$value"'),
+};
+
+RegistrationStatus registrationStatusOf(String value) => switch (value) {
+  'pending_partner' => RegistrationStatus.pendingPartner,
+  'registered' => RegistrationStatus.registered,
+  'waitlisted' => RegistrationStatus.waitlisted,
+  'offered' => RegistrationStatus.offered,
+  'declined' => RegistrationStatus.declined,
+  'expired' => RegistrationStatus.expired,
+  'cancelled' => RegistrationStatus.cancelled,
+  'removed' => RegistrationStatus.removed,
+  'lapsed' => RegistrationStatus.lapsed,
+  _ => throw FormatException('Unknown registration status "$value"'),
+};
+
+PlayerRef playerRefFromJson(Row json, {required String? myUserId}) =>
+    PlayerRef(id: _userId(json['id'], myUserId), name: json['name'] as String? ?? '');
+
+DateTime? _wallClockOrNull(Object? value) => value == null ? null : wallClock(value as String);
+
+/// One of a tournament's `categories`.
+TournamentCategory tournamentCategoryFromJson(Row json) => TournamentCategory(
+  id: json['id'] as String,
+  tournamentId: json['tournament_id'] as String,
+  name: textOf(json, 'name'),
+  kind: categoryKindOf(json['kind'] as String),
+  gender: categoryGenderOf(json['gender'] as String? ?? 'open'),
+  minLevel: json['min_level'] as int? ?? 1,
+  maxLevel: json['max_level'] as int? ?? 5,
+  fee: json['fee'] as int? ?? 0,
+  cap: json['cap'] as int,
+  filled: json['filled'] as int? ?? 0,
+  waitlistCount: json['waitlist_count'] as int? ?? 0,
+  waitlistEnabled: json['waitlist_enabled'] as bool? ?? true,
+  sortOrder: json['sort_order'] as int? ?? 0,
+  myStatus: json['my_status'] == null ? null : registrationStatusOf(json['my_status'] as String),
+);
+
+/// The `tournament` embedded in a row of `my_registrations`.
+TournamentSummary tournamentSummaryFromJson(Row json) => TournamentSummary(
+  id: json['id'] as String,
+  cityId: json['city_id'] as String,
+  sportId: json['sport_id'] as String,
+  title: textOf(json, 'title'),
+  start: wallClock(json['starts_on'] as String),
+  end: wallClock(json['ends_on'] as String),
+  venueId: json['venue_id'] as String?,
+  colorSeed: json['color_seed'] as int? ?? 0,
+  coverUrl: json['cover_url'] as String?,
+);
+
+/// The JSON returned by `register_tournament`, `respond_partner`,
+/// `cancel_registration`, `join_waitlist`, `claim_offer`, a row of
+/// `my_registrations` and an entry inside a tournament's `my_registrations`.
+/// The role is not on the wire: it is whichever of the two players is the
+/// signed-in one.
+Registration registrationFromJson(Row json, {required String? myUserId}) {
+  final registrant = playerRefFromJson(Map<String, dynamic>.from(json['registrant'] as Map), myUserId: myUserId);
+  final partnerJson = json['partner'];
+  final partner = partnerJson == null
+      ? null
+      : playerRefFromJson(Map<String, dynamic>.from(partnerJson as Map), myUserId: myUserId);
+  final tournament = json['tournament'];
+  return Registration(
+    id: json['id'] as String,
+    tournamentId: json['tournament_id'] as String,
+    categoryId: json['category_id'] as String,
+    categoryName: localizedTextFromJson(json['category_name']),
+    kind: categoryKindOf(json['kind'] as String),
+    status: registrationStatusOf(json['status'] as String),
+    registrant: registrant,
+    partner: partner,
+    partnerConfirmed: json['partner_confirmed'] as bool? ?? false,
+    fee: json['fee'] as int? ?? 0,
+    currency: currencyOf(json['currency'] as String),
+    paid: json['paid'] as bool? ?? false,
+    partnerExpiresAt: _wallClockOrNull(json['partner_expires_local']),
+    offerExpiresAt: _wallClockOrNull(json['offer_expires_local']),
+    waitlistPlace: json['waitlist_place'] as int?,
+    createdAt: _instant(json['created_at']),
+    role: registrant.id == kMeId
+        ? RegistrationRole.registrant
+        : partner?.id == kMeId
+        ? RegistrationRole.partner
+        : null,
+    tournament: tournament == null ? null : tournamentSummaryFromJson(Map<String, dynamic>.from(tournament as Map)),
+  );
+}
+
+/// The JSON returned by `get_tournament` and each row of `list_tournaments`.
+/// `fee_min` / `fee_max` (table columns `min_fee` / `max_fee`) are the
+/// categories' fee range.
+Tournament tournamentFromJson(Row json, {required String? myUserId}) => Tournament(
+  id: json['id'] as String,
+  cityId: json['city_id'] as String,
+  sportId: json['sport_id'] as String,
+  title: textOf(json, 'title'),
+  venueName: localizedTextFromJson(json['venue_name']),
+  start: wallClock(json['starts_on'] as String),
+  end: wallClock(json['ends_on'] as String),
+  minFee: json['fee_min'] as int? ?? 0,
+  maxFee: json['fee_max'] as int? ?? 0,
+  slotsTotal: json['slots_total'] as int? ?? 0,
+  slotsFilled: json['slots_filled'] as int? ?? 0,
+  currency: currencyOf(json['currency'] as String),
+  registrationDeadline: wallClock(json['registration_deadline_local'] as String),
+  registrationOpen: json['registration_open'] as bool? ?? false,
+  venueId: json['venue_id'] as String?,
+  description: textOf(json, 'description'),
+  coverUrl: json['cover_url'] as String?,
+  colorSeed: json['color_seed'] as int? ?? 0,
+  active: json['active'] as bool? ?? true,
+  categories: [for (final c in _rows(json['categories'])) tournamentCategoryFromJson(c)],
+  myRegistrations: [for (final r in _rows(json['my_registrations'])) registrationFromJson(r, myUserId: myUserId)],
+);
+
+/// One row of `admin_list_tournaments`: a tournament plus `category_count`
+/// and `registration_count`.
+AdminTournament adminTournamentFromJson(Row json, {required String? myUserId}) => AdminTournament(
+  tournament: tournamentFromJson(json, myUserId: myUserId),
+  categoryCount: json['category_count'] as int? ?? 0,
+  registrationCount: json['registration_count'] as int? ?? 0,
+);
+
+/// The JSON returned by the `admin_*` registration functions: an entry with
+/// phones in `registrant` and `partner`, `paid_at`, `admin_override` and
+/// `waitlist_position`.
+AdminRegistration adminRegistrationFromJson(Row json, {required String? myUserId}) {
+  final partner = json['partner'];
+  return AdminRegistration(
+    registration: registrationFromJson(json, myUserId: myUserId),
+    registrantPhone: (json['registrant'] as Map)['phone'] as String?,
+    partnerPhone: partner == null ? null : (partner as Map)['phone'] as String?,
+    paidAt: json['paid_at'] == null ? null : _instant(json['paid_at']),
+    adminOverride: json['admin_override'] as bool? ?? false,
+    waitlistPosition: json['waitlist_position'] as int?,
+  );
+}
+
+/// The JSON returned by `admin_dashboard`.
+AdminDashboard adminDashboardFromJson(Row json) {
+  final users = Map<String, dynamic>.from(json['users'] as Map? ?? const {});
+  final counts = Map<String, dynamic>.from(json['counts'] as Map? ?? const {});
+  return AdminDashboard(
+    users: UserStats(
+      total: users['total'] as int? ?? 0,
+      active30d: users['active_30d'] as int? ?? 0,
+      newToday: users['new_today'] as int? ?? 0,
+      new7d: users['new_7d'] as int? ?? 0,
+      newMonth: users['new_month'] as int? ?? 0,
+    ),
+    revenue: [
+      for (final r in _rows(json['revenue']))
+        CurrencyRevenue(
+          currency: currencyOf(r['currency'] as String),
+          venues: r['venues'] as int? ?? 0,
+          tournaments: r['tournaments'] as int? ?? 0,
+        ),
+    ],
+    counts: ActivityCounts(
+      bookings: counts['bookings'] as int? ?? 0,
+      games: counts['games'] as int? ?? 0,
+      registrations: counts['registrations'] as int? ?? 0,
+    ),
+  );
+}
+
+/// `p_category` of `admin_save_category`, or one of a new tournament's
+/// `categories` when [nested]. `sort_order` is left out when the draft has
+/// none (the database refuses a null); `id` and `tournament_id` are left out
+/// inside a tournament.
+Map<String, Object?> categoryDraftJson(CategoryDraft draft, {bool nested = false}) => {
+  if (!nested && draft.id != null) 'id': draft.id,
+  if (!nested && draft.tournamentId != null) 'tournament_id': draft.tournamentId,
+  ...textJson('name', draft.name),
+  'kind': draft.kind.name,
+  'gender': draft.gender.name,
+  'min_level': draft.minLevel,
+  'max_level': draft.maxLevel,
+  'fee': draft.fee,
+  'cap': draft.cap,
+  'waitlist_enabled': draft.waitlistEnabled,
+  if (draft.sortOrder != null) 'sort_order': draft.sortOrder,
+};
+
+/// `p_tournament` of `admin_save_tournament`. `categories` only when creating
+/// (the database refuses it on an update); the summary columns are never sent.
+Map<String, Object?> tournamentDraftJson(TournamentDraft draft) => {
+  if (draft.id != null) 'id': draft.id,
+  'city_id': draft.cityId,
+  'sport_id': draft.sportId,
+  'venue_id': draft.venueId,
+  ...textJson('title', draft.title),
+  ...textJson('description', draft.description),
+  'starts_on': isoDate(draft.start),
+  'ends_on': isoDate(draft.end),
+  'registration_deadline_local': draft.registrationDeadline == null ? null : isoLocal(draft.registrationDeadline!),
+  'cover_url': _blankToNull(draft.coverUrl),
+  if (draft.colorSeed != null) 'color_seed': draft.colorSeed,
+  'active': draft.active,
+  if (draft.id == null && draft.categories.isNotEmpty)
+    'categories': [for (final c in draft.categories) categoryDraftJson(c, nested: true)],
+};

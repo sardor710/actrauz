@@ -1134,6 +1134,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get notifCategoryInvites => 'Takliflar';
 
   @override
+  String get notifCategoryTournaments => 'Turnirlar';
+
+  @override
   String get privacyTitle => 'Maxfiylik';
 
   @override

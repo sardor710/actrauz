@@ -528,6 +528,7 @@
   "notifCategoryGames": "Games",
   "notifCategoryRequests": "Game Requests",
   "notifCategoryInvites": "Invitations",
+  "notifCategoryTournaments": "Tournaments",
   "privacyTitle": "Privacy",
   "hideFromSearch": "Hide me from player search",
   "hideFromSearchHint": "Other players will not find you when they look for people to invite.",

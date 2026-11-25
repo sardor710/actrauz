@@ -27,8 +27,10 @@ String buildSeedSql() {
   _priceRules(out);
   _banners(out);
   _tournaments(out);
+  _categories(out);
   _players(out);
   _games(out);
+  _summaries(out);
   return out.toString();
 }
 
@@ -204,8 +206,11 @@ String _today(String venueSampleId) {
   return '(select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = ${_text(cityId)})';
 }
 
+String _cityOf(String venueSampleId) => kSampleVenues.firstWhere((v) => v.id == venueSampleId).cityId;
+
 void _tournaments(StringBuffer out) {
-  out.writeln('-- Tournaments, dated from today');
+  out.writeln('-- Tournaments, dated from today. The summary columns (min_fee, max_fee, slots_total,');
+  out.writeln('-- slots_filled) are not written: the last statement of this file recomputes them.');
   _upsert(
     out,
     'tournaments',
@@ -217,26 +222,67 @@ void _tournaments(StringBuffer out) {
       ..._langCols('title'),
       'starts_on',
       'ends_on',
-      'min_fee',
-      'max_fee',
-      'slots_total',
-      'slots_filled',
+      'registration_deadline',
     ],
     [
       for (final t in kTournamentSeeds)
         [
           _id(t.id),
-          _text(kSampleVenues.firstWhere((v) => v.id == t.venueId).cityId),
+          _text(_cityOf(t.venueId)),
           _text(t.sportId),
           _id(t.venueId),
           ..._lang(t.title),
           '${_today(t.venueId)} + ${t.daysAhead}',
           '${_today(t.venueId)} + ${t.daysAhead + t.days - 1}',
-          '${t.minFee}',
-          '${t.maxFee}',
-          '${t.slotsTotal}',
-          '${t.slotsFilled}',
+          // Venue wall-clock time, 18:00 on the day [deadlineDaysBefore] days before the first.
+          'app.to_instant((${_today(t.venueId)} + ${t.daysAhead - t.deadlineDaysBefore})::timestamp + interval \'18 hours\', '
+              '(select c.utc_offset_minutes from public.cities c where c.id = ${_text(_cityOf(t.venueId))}))',
         ],
+    ],
+  );
+}
+
+/// The id of a sample tournament's category. The first one gets the id the
+/// tournaments migration gives the default category it creates for a
+/// tournament without any (the seed then updates that row instead of adding a
+/// second); the rest are derived from their sample id like everything else.
+String _categoryId(TournamentSeed t, CategorySeed c) =>
+    t.categories.first == c ? "md5('actra:default-category:' || ${_id(t.id)}::text)::uuid" : _id(c.id);
+
+void _categories(StringBuffer out) {
+  out.writeln('-- Tournament categories (the first of each is the default category the migration made)');
+  _upsert(
+    out,
+    'tournament_categories',
+    [
+      'id',
+      'tournament_id',
+      ..._langCols('name'),
+      'kind',
+      'gender',
+      'min_level',
+      'max_level',
+      'fee',
+      'cap',
+      'waitlist_enabled',
+      'sort_order',
+    ],
+    [
+      for (final t in kTournamentSeeds)
+        for (final (i, c) in t.categories.indexed)
+          [
+            _categoryId(t, c),
+            _id(t.id),
+            ..._lang(c.name),
+            _text(c.kind.name),
+            _text(c.gender.name),
+            '${c.minLevel}',
+            '${c.maxLevel}',
+            '${c.fee}',
+            '${c.cap}',
+            '${c.waitlistEnabled}',
+            '$i',
+          ],
     ],
   );
 }
@@ -345,4 +391,13 @@ end $$;
   out
     ..writeln()
     ..writeln('drop function pg_temp.actra_seed_game(uuid, uuid, integer, integer, integer, integer, integer, uuid[]);');
+}
+
+void _summaries(StringBuffer out) {
+  out
+    ..writeln()
+    ..writeln('-- Each tournament summary (fees, places, places taken) becomes the real totals')
+    ..writeln('-- of its categories and registrations.')
+    ..writeln('select app.sync_tournament_summary(id) from public.tournaments')
+    ..writeln('where id in (${_idList(kTournamentSeeds.map((t) => t.id))});');
 }

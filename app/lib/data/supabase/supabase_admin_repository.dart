@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/admin.dart';
+import '../../domain/tournaments.dart';
 import '../admin_repository.dart';
 import 'errors.dart';
 import 'mappers.dart';
@@ -87,4 +88,76 @@ class SupabaseAdminRepository implements AdminRepository {
     auditEntryFromJson,
     params: {'p_limit': limit, 'p_before': before?.toUtc().toIso8601String()},
   );
+
+  // ---- Tournaments ----
+
+  String? get _me => _client.auth.currentUser?.id;
+
+  Map<String, dynamic> _map(Object? json) => Map<String, dynamic>.from(json as Map);
+
+  Future<AdminRegistration> _entry(String fn, Map<String, dynamic> params) => guardTournament(
+    () async => adminRegistrationFromJson(_map(await _client.rpc(fn, params: params)), myUserId: _me),
+  );
+
+  @override
+  Future<List<AdminTournament>> tournaments() => guardTournament(() async {
+    final rows = await _client.rpc('admin_list_tournaments');
+    return [for (final row in rows as List) adminTournamentFromJson(_map(row), myUserId: _me)];
+  });
+
+  @override
+  Future<String> saveTournament(TournamentDraft draft) => guardTournament(
+    () async => (await _client.rpc('admin_save_tournament', params: {'p_tournament': tournamentDraftJson(draft)})).toString(),
+  );
+
+  @override
+  Future<String> saveCategory(CategoryDraft draft) => guardTournament(
+    () async => (await _client.rpc('admin_save_category', params: {'p_category': categoryDraftJson(draft)})).toString(),
+  );
+
+  @override
+  Future<void> deleteCategory(String categoryId) => guardTournament(() async {
+    await _client.rpc('admin_delete_category', params: {'p_category_id': categoryId});
+  });
+
+  @override
+  Future<List<AdminRegistration>> registrations(String tournamentId) => guardTournament(() async {
+    final rows = await _client.rpc('admin_list_registrations', params: {'p_tournament_id': tournamentId});
+    return [for (final row in rows as List) adminRegistrationFromJson(_map(row), myUserId: _me)];
+  });
+
+  @override
+  Future<AdminRegistration> setPaid(String registrationId, bool paid) =>
+      _entry('admin_set_paid', {'p_registration_id': registrationId, 'p_paid': paid});
+
+  @override
+  Future<AdminRegistration> removeRegistration(String registrationId) =>
+      _entry('admin_remove_registration', {'p_registration_id': registrationId});
+
+  @override
+  Future<AdminRegistration> moveRegistration(String registrationId, String categoryId) =>
+      _entry('admin_move_registration', {'p_registration_id': registrationId, 'p_category_id': categoryId});
+
+  @override
+  Future<AdminRegistration> addRegistration(String categoryId, String userId, {String? partnerId}) =>
+      _entry('admin_add_registration', {
+        'p_category_id': categoryId,
+        'p_user_id': userIdOut(userId, _me),
+        'p_partner_id': partnerId == null ? null : userIdOut(partnerId, _me),
+      });
+
+  @override
+  Future<int> offerNext(String categoryId) => guardTournament(
+    () async => (await _client.rpc('admin_offer_next', params: {'p_category_id': categoryId})) as int,
+  );
+
+  @override
+  Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to}) =>
+      guardTournament(() async {
+        final json = await _client.rpc(
+          'admin_dashboard',
+          params: {'p_city_id': cityId, 'p_from': isoDate(from), 'p_to': isoDate(to)},
+        );
+        return adminDashboardFromJson(_map(json));
+      });
 }

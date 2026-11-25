@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/booking_engine.dart';
 import '../../domain/games.dart';
+import '../../domain/tournaments.dart';
 
 /// The database functions raise their rule violations as an error whose
 /// message is a code (`slot_taken`, `full`, …). These turn that code back
@@ -46,6 +47,23 @@ const _joinErrors = <String, JoinError>{
   'not_cancellable': JoinError.notCancellable,
 };
 
+const _tournamentErrors = <String, TournamentError>{
+  'full': TournamentError.full,
+  'deadline_passed': TournamentError.deadlinePassed,
+  'level_out_of_range': TournamentError.levelOutOfRange,
+  'already_registered': TournamentError.alreadyRegistered,
+  'partner_unavailable': TournamentError.partnerUnavailable,
+  'not_full': TournamentError.notFull,
+  'waitlist_closed': TournamentError.waitlistClosed,
+  'not_found': TournamentError.notFound,
+  'invalid_argument': TournamentError.invalidArgument,
+  'has_registrations': TournamentError.hasRegistrations,
+  'reliability_too_low': TournamentError.reliabilityTooLow,
+  'rate_limited': TournamentError.rateLimited,
+  'not_allowed': TournamentError.notAllowed,
+  'not_markable': TournamentError.notMarkable,
+};
+
 /// The rule a failed booking call broke, or `unavailable` for anything else
 /// (no connection, expired session, a server fault).
 BookingException bookingExceptionFor(Object error) {
@@ -58,6 +76,12 @@ JoinException joinExceptionFor(Object error) {
   if (error is JoinException) return error;
   final code = error is PostgrestException ? _joinErrors[error.message] : null;
   return JoinException(code ?? JoinError.unavailable);
+}
+
+TournamentException tournamentExceptionFor(Object error) {
+  if (error is TournamentException) return error;
+  final code = error is PostgrestException ? _tournamentErrors[error.message] : null;
+  return TournamentException(code ?? TournamentError.unavailable);
 }
 
 /// Runs a booking call; every failure surfaces as a [BookingException].
@@ -75,5 +99,14 @@ Future<T> guardJoin<T>(Future<T> Function() call) async {
     return await call();
   } catch (e) {
     throw joinExceptionFor(e);
+  }
+}
+
+/// Runs a tournament call; every failure surfaces as a [TournamentException].
+Future<T> guardTournament<T>(Future<T> Function() call) async {
+  try {
+    return await call();
+  } catch (e) {
+    throw tournamentExceptionFor(e);
   }
 }
