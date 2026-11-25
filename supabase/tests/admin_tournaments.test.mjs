@@ -304,24 +304,33 @@ test('admin_offer_next before the deadline fills free spots from the waitlist; n
   assert.equal(await statusOf(wl.id), 'lapsed');
 });
 
-test('deleting a category: refused with live entries, allowed with only finished ones, never the last one', async () => {
-  const { t, cats } = await adminTournament({ categories: [cat(), cat({ name_en: 'Second', fee: 70000 })] });
-  const [c1, c2] = cats;
+test('deleting a category: refused with any entry, finished ones included; never the last one; history kept', async () => {
+  const { t, cats } = await adminTournament({
+    categories: [cat(), cat({ name_en: 'Second', fee: 70000 }), cat({ name_en: 'Empty', fee: 50000 })],
+  });
+  const [, c2, c3] = cats;
   const p = await player('P');
   const r = await register(p, c2);
   assert.equal(await errorOf(deleteCategory(admin, c2)), 'has_registrations');
+  // Finished entries are history: still refused, and the row stays.
   await cancel(p, r.id);
-
   await pool.query('delete from audit_log');
-  await deleteCategory(admin, c2);
-  assert.equal((await one(`select count(*)::int as n from tournament_categories where id = $1`, [c2])).n, 0);
-  assert.deepEqual(await summary(t), { min_fee: 100000, max_fee: 100000, slots_total: 2, slots_filled: 0 });
+  assert.equal(await errorOf(deleteCategory(admin, c2)), 'has_registrations');
+  assert.equal(await statusOf(r.id), 'cancelled');
+  assert.equal(await auditCount(), 0);
+
+  // An empty category goes; the summary follows.
+  await deleteCategory(admin, c3);
+  assert.equal((await one(`select count(*)::int as n from tournament_categories where id = $1`, [c3])).n, 0);
+  assert.deepEqual(await summary(t), { min_fee: 70000, max_fee: 100000, slots_total: 4, slots_filled: 0 });
   const audit = await auditRows();
   assert.equal(audit.length, 1);
-  assert.deepEqual([audit[0].action, audit[0].entity_id, audit[0].before.name_en, audit[0].after], ['delete_category', c2, 'Second', null]);
+  assert.deepEqual([audit[0].action, audit[0].entity_id, audit[0].before.name_en, audit[0].after], ['delete_category', c3, 'Empty', null]);
 
-  assert.equal(await errorOf(deleteCategory(admin, c1)), 'invalid_argument');
   assert.equal(await errorOf(deleteCategory(admin, randomUUID())), 'not_found');
+  // The last category never goes, even when empty.
+  const { cats: lone } = await adminTournament({ starts: '2026-12-20' });
+  assert.equal(await errorOf(deleteCategory(admin, lone[0])), 'invalid_argument');
 });
 
 // --- registrations -------------------------------------------------------------------
@@ -436,6 +445,27 @@ test('remove: any live entry becomes removed, both players are told, a counted s
   // Finished entries cannot be removed again.
   assert.equal(await errorOf(removeReg(admin, w.id)), 'not_found');
   assert.equal(await errorOf(removeReg(c, pair.id)), 'not_allowed');
+});
+
+test('remove: a pending invitee is told; expired offers are settled before the freed spot is offered', async () => {
+  const { cats } = await adminTournament({ categories: [cat({ name_en: 'Pairs', kind: 'pairs', cap: 2 }), cat({ cap: 2 })] });
+  const [cp, cs] = cats;
+  const [a, b] = [await player('A'), await player('B')];
+  const pending = await register(a, cp, b);
+  assert.equal((await removeReg(admin, pending.id)).status, 'removed');
+  assert.equal((await notesOf(a, 'tournament_removed')).length, 1);
+  assert.equal((await notesOf(b, 'tournament_removed')).length, 1);
+
+  // cap 2: x and y in, w1..w3 waiting; y cancels, so w1 holds an offer until later(24).
+  const [x, y, w1, w2, w3] = [await player('X'), await player('Y'), await player('W1'), await player('W2'), await player('W3')];
+  const rx = await register(x, cs);
+  const ry = await register(y, cs);
+  const [q1, q2, q3] = [await joinWaitlist(w1, cs), await joinWaitlist(w2, cs), await joinWaitlist(w3, cs)];
+  await cancel(y, ry.id);
+  assert.equal(await statusOf(q1.id), 'offered');
+  // After w1's offer ran out, x is removed: w1 lapses, both free spots go to w2 and w3.
+  await removeReg(admin, rx.id, later(25));
+  assert.deepEqual([await statusOf(q1.id), await statusOf(q2.id), await statusOf(q3.id)], ['lapsed', 'offered', 'offered']);
 });
 
 test('move: same tournament and kind, keeps the fee, refuses a full target, tells the players, offers the source spot', async () => {
@@ -640,6 +670,8 @@ test('dashboard: users (active from last_seen_at, else last sign-in) and counts 
   await booking({ start: tashkent('2026-12-05', 12), price: 1, status: 'confirmed', source: 'block', created: tashkent('2026-11-20', 9) });
   await booking({ start: tashkent('2026-12-05', 14), price: 1, status: 'released', user: old, created: tashkent('2026-11-20', 9) });
   await booking({ start: tashkent('2026-12-06', 10), price: 1, status: 'confirmed', user: old, created: tashkent('2026-12-01', 9) });
+  // Cancelled later: still a booking made in the period.
+  await booking({ start: tashkent('2026-12-08', 10), price: 1, status: 'cancelled_by_player', user: old, created: tashkent('2026-11-21', 9) });
   await booking({ court: almatyCourt, venue: almatyVenue, start: '2026-12-05T10:00:00+05:00', price: 1, status: 'confirmed', currency: 'KZT', user: old, created: tashkent('2026-11-20', 9) });
   await pool.query(
     `insert into games (sport_id, city_id, venue_id, host_id, during, utc_offset_minutes, spots, created_at) values
@@ -652,8 +684,8 @@ test('dashboard: users (active from last_seen_at, else last sign-in) and counts 
   const r2 = await register(staleSeen, cats[0], null, tashkent('2026-11-20', 9));
   await cancel(staleSeen, r2.id, tashkent('2026-11-20', 10));
 
-  assert.deepEqual((await dashboard(admin, null, '2026-11-01', '2026-11-30')).counts, { bookings: 2, games: 2, registrations: 2 });
-  assert.deepEqual((await dashboard(admin, 'tashkent', '2026-11-01', '2026-11-30')).counts, { bookings: 1, games: 1, registrations: 2 });
+  assert.deepEqual((await dashboard(admin, null, '2026-11-01', '2026-11-30')).counts, { bookings: 3, games: 2, registrations: 2 });
+  assert.deepEqual((await dashboard(admin, 'tashkent', '2026-11-01', '2026-11-30')).counts, { bookings: 2, games: 1, registrations: 2 });
   assert.deepEqual((await dashboard(admin, 'almaty', '2026-11-01', '2026-11-30')).counts, { bookings: 1, games: 1, registrations: 0 });
 });
 

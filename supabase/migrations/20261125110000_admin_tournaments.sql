@@ -403,29 +403,24 @@ begin
   return v_row.id;
 end $$;
 
--- Refused while it has live entries (has_registrations) and for a
--- tournament's last category (invalid_argument: every tournament keeps one).
--- Its finished entries (cancelled, removed, declined, expired, lapsed) go
--- with it; the audit row records how many.
+-- Only a category no registration has ever been in, finished ones included
+-- (has_registrations): registration history is never deleted, as the
+-- foreign key's `on delete restrict` intends. Never a tournament's last
+-- category (invalid_argument: every tournament keeps one).
 create function app.admin_delete_category(p_user uuid, p_category_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
 as $$
 declare
   v_category public.tournament_categories;
-  v_dropped integer;
 begin
   perform app.require_admin(p_user);
   select c.* into v_category from public.tournament_categories c where c.id = p_category_id for update;
   if not found then raise exception 'not_found'; end if;
-  perform app.sweep_category(v_category.id, p_now);
-  if exists (select 1 from public.tournament_registrations r
-             where r.category_id = v_category.id and r.status in ('pending_partner', 'registered', 'waitlisted', 'offered')) then
+  -- The category row lock keeps new entries out while this runs.
+  if exists (select 1 from public.tournament_registrations r where r.category_id = v_category.id) then
     raise exception 'has_registrations';
   end if;
-  -- Registration rows before the tournament row (rolled back if refused).
-  delete from public.tournament_registrations r where r.category_id = v_category.id;
-  get diagnostics v_dropped = row_count;
   -- The tournament row (taken last) makes two deletes of its last two
   -- categories take turns, so one of them sees the other's.
   perform 1 from public.tournaments t where t.id = v_category.tournament_id for update;
@@ -437,7 +432,7 @@ begin
   delete from public.tournament_categories c where c.id = v_category.id;
   perform app.sync_tournament_summary(v_category.tournament_id);
   perform app.audit(p_user, 'delete_category', 'tournament_category', v_category.id::text,
-    to_jsonb(v_category) || jsonb_build_object('finished_registrations', v_dropped), null, p_now);
+    to_jsonb(v_category), null, p_now);
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -490,8 +485,9 @@ begin
 end $$;
 
 -- Any live entry (also a waitlisted one: this is admin_remove_waitlisted)
--- becomes removed, at any time. The registrant and a confirmed partner are
--- told; a spot it held goes to the waitlist (until the deadline).
+-- becomes removed, at any time. The registrant and the named partner
+-- (confirmed, or still holding the invite) are told; expired entries are
+-- settled, then a spot it held goes to the waitlist (until the deadline).
 create function app.admin_remove_registration(p_user uuid, p_registration_id uuid, p_now timestamptz)
 returns public.tournament_registrations
 language plpgsql
@@ -513,7 +509,9 @@ begin
 
   v_note := app.registration_note(v_reg);
   perform app.notify(v_reg.user_id, 'tournament_removed', 'tournaments', v_note, p_now);
-  perform app.notify(case when v_reg.partner_confirmed then v_reg.partner_id end, 'tournament_removed', 'tournaments', v_note, p_now);
+  -- A pending invitee is told too, so the invite does not linger.
+  perform app.notify(v_reg.partner_id, 'tournament_removed', 'tournaments', v_note, p_now);
+  perform app.sweep_category(v_reg.category_id, p_now);
   if v_before.status in ('registered', 'offered') then perform app.offer_next(v_reg.category_id, p_now); end if;
   perform app.sync_tournament_summary((select c.tournament_id from public.tournament_categories c where c.id = v_reg.category_id));
   perform app.audit(p_user, 'remove_registration', 'tournament_registration', v_reg.id::text,
@@ -686,8 +684,11 @@ end $$;
 --     date of their start. tournaments: sum(fee) of registered entries with
 --     paid_at, by the city-local date of paid_at (a cancelled or removed
 --     entry is not revenue).
---   counts: bookings created (app and walk-in, not holds that never became
---     bookings), games created, tournament entries created (any state).
+--   counts: bookings created in the period, app and walk-in, in any state
+--     they are in now, cancelled ones included (only holds still running or
+--     released without confirming are left out, as they never became
+--     bookings; blocks are not bookings); games created (cancelled ones
+--     included); tournament entries created (any state).
 create function app.admin_dashboard(p_user uuid, p_city_id text, p_from date, p_to date, p_now timestamptz)
 returns jsonb
 language plpgsql stable
@@ -765,6 +766,7 @@ begin
   left join tournament_revenue tr on tr.currency = x.currency;
 
   select jsonb_build_object(
+    -- Every booking made in the period, cancelled ones included.
     'bookings', (
       select count(*) from public.bookings b
       join public.venues v on v.id = b.venue_id
