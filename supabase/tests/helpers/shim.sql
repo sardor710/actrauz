@@ -36,6 +36,7 @@ create table if not exists auth.users (
   email_change text,
   raw_app_meta_data jsonb,
   raw_user_meta_data jsonb,
+  last_sign_in_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
