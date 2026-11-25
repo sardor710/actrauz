@@ -4,7 +4,8 @@ import '../domain/tournaments.dart';
 /// What the admin screens need from the backend. Every call is refused with
 /// `BookingException(BookingError.notAllowed)` for someone who is not an
 /// admin; validation failures surface as `invalidArgument`, `notFound`,
-/// `hasBookings` or `alreadyExists`.
+/// `hasBookings` or `alreadyExists`. The tournament calls at the end are the
+/// exception: they fail with a `TournamentException` instead (see there).
 abstract class AdminRepository {
   /// Never refused: `false` for anyone who is not an admin.
   Future<bool> isAdmin();

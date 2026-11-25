@@ -425,6 +425,45 @@ void main() {
     });
   });
 
+  group('a blocked player', () {
+    test('cannot register, accept, join the waitlist or claim; may still decline; an admin can add them', () async {
+      final room = await makeCategory(cap: 3);
+      final full = await makeCategory(cap: 1);
+      final pairs = await makeCategory(cap: 3, kind: CategoryKind.pairs);
+      final offeredFor = await makeCategory(cap: 1);
+      final invite = await backend.registerAs('p1', pairs, partnerId: kMeId);
+      final declinable = await backend.registerAs('p5', pairs, partnerId: kMeId);
+      final holder = await backend.registerAs('p1', offeredFor);
+      await backend.tournament.joinWaitlist(offeredFor);
+      await backend.registerAs('p1', full);
+      await backend.cancelRegistrationAs('p1', holder.id);
+      expect((await backend.tournament.myRegistrations()).any((r) => r.status == RegistrationStatus.offered), isTrue);
+
+      // No-shows take the score below 50: blocked.
+      for (final ref in ['b1', 'b2', 'b3']) {
+        backend.recordReliability(kMeId, ReliabilityKind.noShow, ref);
+      }
+      expect((await backend.settings()).reliability.isBlocked, isTrue);
+
+      await expectLater(backend.tournament.register(room), refuses(TournamentError.reliabilityTooLow));
+      await expectLater(backend.tournament.joinWaitlist(full), refuses(TournamentError.reliabilityTooLow));
+      await expectLater(
+        backend.tournament.respondPartner(invite.id, accept: true),
+        refuses(TournamentError.reliabilityTooLow),
+      );
+      final offered = (await backend.tournament.myRegistrations()).firstWhere(
+        (r) => r.status == RegistrationStatus.offered,
+      );
+      await expectLater(backend.tournament.claimOffer(offered.id), refuses(TournamentError.reliabilityTooLow));
+
+      expect(
+        (await backend.tournament.respondPartner(declinable.id, accept: false)).status,
+        RegistrationStatus.declined,
+      );
+      expect((await backend.admin.addRegistration(room, kMeId)).registration.status, RegistrationStatus.registered);
+    });
+  });
+
   group('finding a partner by phone', () {
     test('an exact number finds the player, whatever its spacing; nothing else does', () async {
       expect(await backend.tournament.findPlayerByPhone('+998 90 100-00-01'), const PlayerRef(id: 'p1', name: 'Aziz'));
