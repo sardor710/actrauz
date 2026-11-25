@@ -276,10 +276,12 @@ as $$
     'paid', r.paid_at is not null,
     'partner_expires_local', app.to_local(r.partner_expires_at, app.tournament_offset(t)),
     'offer_expires_local', app.to_local(r.offer_expires_at, app.tournament_offset(t)),
-    -- 1 = next in line.
-    'waitlist_place', case when r.status = 'waitlisted' then
+    -- 1 = next in line, among entries that can be offered a spot (singles,
+    -- and pairs whose partner confirmed); null for a pair still waiting on
+    -- its partner.
+    'waitlist_place', case when r.status = 'waitlisted' and r.partner_confirmed then
       (select count(*) from public.tournament_registrations w
-       where w.category_id = r.category_id and w.status = 'waitlisted'
+       where w.category_id = r.category_id and w.status = 'waitlisted' and w.partner_confirmed
          and (w.waitlist_position, w.id) <= (r.waitlist_position, r.id)) end,
     'created_at', r.created_at)
   from public.tournament_categories c
@@ -464,6 +466,8 @@ declare
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
   v_category := app.lock_category(p_category_id);
+  -- Expired offers and invites hold no spot and block nobody.
+  perform app.sweep_category(v_category.id, p_now);
   select t.* into v_tournament from public.tournaments t where t.id = v_category.tournament_id;
   perform app.check_entry(p_user, v_category, v_tournament, p_partner_id, p_now);
   v_deadline := app.tournament_deadline(v_tournament);
@@ -526,8 +530,8 @@ begin
   select c.* into v_category from public.tournament_categories c where c.id = v_reg.category_id;
   select t.* into v_tournament from public.tournaments t where t.id = v_category.tournament_id;
   if p_now >= app.tournament_deadline(v_tournament) then raise exception 'deadline_passed'; end if;
-  if not ((v_reg.status = 'pending_partner' and v_reg.partner_expires_at > p_now)
-          or (v_reg.status = 'waitlisted' and not v_reg.partner_confirmed)) then
+  if not (v_reg.status in ('pending_partner', 'waitlisted') and not v_reg.partner_confirmed
+          and coalesce(v_reg.partner_expires_at > p_now, true)) then
     raise exception 'not_found';
   end if;
 
@@ -541,6 +545,13 @@ begin
   end if;
 
   perform app.require_reliable(p_user, p_now);
+  -- Levels may have changed since the invite: both players must still fit.
+  if app.player_level(v_reg.user_id, v_tournament.sport_id) not between v_category.min_level and v_category.max_level
+     or app.player_level(p_user, v_tournament.sport_id) not between v_category.min_level and v_category.max_level then
+    raise exception 'level_out_of_range';
+  end if;
+  -- Expired offers and invites hold no spot and block nobody.
+  perform app.sweep_category(v_category.id, p_now);
   if app.live_in_category(v_category.id, v_reg.user_id, v_reg.id)
      or app.live_in_category(v_category.id, p_user, v_reg.id) then
     raise exception 'partner_unavailable';
@@ -593,6 +604,7 @@ begin
   select t.* into v_tournament from public.tournaments t
   join public.tournament_categories c on c.tournament_id = t.id
   where c.id = v_reg.category_id;
+  if not v_tournament.active then raise exception 'not_found'; end if;
   if p_now >= app.tournament_deadline(v_tournament) then raise exception 'deadline_passed'; end if;
   if v_reg.status not in ('pending_partner', 'registered', 'waitlisted', 'offered') then raise exception 'not_found'; end if;
 
@@ -616,22 +628,32 @@ as $$
 declare
   v_category public.tournament_categories;
   v_tournament public.tournaments;
+  v_deadline timestamptz;
   v_reg public.tournament_registrations;
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
   v_category := app.lock_category(p_category_id);
+  -- Expired offers and invites hold no spot and block nobody.
+  perform app.sweep_category(v_category.id, p_now);
   select t.* into v_tournament from public.tournaments t where t.id = v_category.tournament_id;
   perform app.check_entry(p_user, v_category, v_tournament, p_partner_id, p_now);
   if not v_category.waitlist_enabled then raise exception 'waitlist_closed'; end if;
   if app.category_counted(v_category.id) < v_category.cap then raise exception 'not_full'; end if;
+  v_deadline := app.tournament_deadline(v_tournament);
 
+  -- A pair's invite runs like a pending pair's: 48 hours, or until the
+  -- deadline if sooner, with the same reminder rule.
   begin
     insert into public.tournament_registrations (
-      category_id, user_id, partner_id, partner_confirmed, status, fee, currency, waitlist_position, created_at)
+      category_id, user_id, partner_id, partner_confirmed, status, fee, currency, waitlist_position,
+      partner_expires_at, reminded_at, created_at)
     values (
       v_category.id, p_user, p_partner_id, v_category.kind = 'singles', 'waitlisted', v_category.fee,
       (select ci.currency from public.cities ci where ci.id = v_tournament.city_id),
-      nextval('app.tournament_waitlist_seq'), p_now)
+      nextval('app.tournament_waitlist_seq'),
+      case when v_category.kind = 'pairs' then least(p_now + interval '48 hours', v_deadline) end,
+      case when v_category.kind = 'pairs' and v_deadline <= p_now + interval '24 hours' then p_now end,
+      p_now)
     returning * into v_reg;
   exception when unique_violation then
     raise exception 'already_registered';
@@ -704,10 +726,15 @@ begin
   if p_user is null then raise exception 'not_authenticated'; end if;
   v_reg := app.lock_registration(p_registration_id);
   if v_reg.id is null or not app.entry_member(v_reg, p_user)
-     or v_reg.status <> 'offered' or coalesce(v_reg.offer_expires_at <= p_now, true) then
+     or v_reg.status <> 'offered' or coalesce(v_reg.offer_expires_at <= p_now, true)
+     or not (select t.active from public.tournaments t
+             join public.tournament_categories c on c.tournament_id = t.id
+             where c.id = v_reg.category_id) then
     raise exception 'not_found';
   end if;
   perform app.require_reliable(p_user, p_now);
+  -- Expired offers and invites elsewhere in the category are settled too.
+  perform app.sweep_category(v_reg.category_id, p_now);
 
   update public.tournament_registrations r set status = 'registered', decided_at = p_now
   where r.id = v_reg.id returning * into v_reg;
@@ -723,12 +750,50 @@ end $$;
 -- Scheduled work
 -- ---------------------------------------------------------------------------
 
--- Pending pairs past their expiry: expired, the registrant told. Offers past
--- theirs: lapsed, and the spot offered to the next entry. Pending pairs
--- whose deadline is within 24 hours: the registrant reminded once. Every
--- category it will touch is locked first, in id order, before any tournament
--- row, so the job never deadlocks with a player's call. Returns how many
--- entries expired or lapsed.
+-- Settles one category's expired entries as of p_now: invites past their
+-- expiry (pending pairs, and waitlisted pairs whose partner never confirmed)
+-- become expired and the registrant is told; offers past theirs become
+-- lapsed and the spot goes to the next entry. The caller holds the
+-- category's row lock. Used by the job and, before they count, by register,
+-- respond_partner, join_waitlist and claim_offer, so an expired entry never
+-- holds a spot or blocks anyone until the job runs. Returns how many entries
+-- expired or lapsed.
+create function app.sweep_category(p_category_id uuid, p_now timestamptz) returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_reg public.tournament_registrations;
+  v_lapsed integer;
+  v_count integer := 0;
+begin
+  for v_reg in
+    update public.tournament_registrations r set status = 'expired', decided_at = p_now
+    where r.category_id = p_category_id and not r.partner_confirmed and r.partner_expires_at <= p_now
+      and r.status in ('pending_partner', 'waitlisted')
+    returning r.*
+  loop
+    perform app.notify(v_reg.user_id, 'tournament_partner_expired', 'tournaments', app.registration_note(v_reg), p_now);
+    v_count := v_count + 1;
+  end loop;
+
+  update public.tournament_registrations r set status = 'lapsed', decided_at = p_now
+  where r.category_id = p_category_id and r.status = 'offered' and r.offer_expires_at <= p_now;
+  get diagnostics v_lapsed = row_count;
+  if v_lapsed > 0 then
+    v_count := v_count + v_lapsed;
+    perform app.offer_next(p_category_id, p_now);
+    perform app.sync_tournament_summary((select c.tournament_id from public.tournament_categories c where c.id = p_category_id));
+  end if;
+  return v_count;
+end $$;
+
+-- Every category with expired entries is swept (app.sweep_category). Pairs
+-- still waiting on their partner (pending, or waitlisted unconfirmed) whose
+-- deadline is within 24 hours: the registrant reminded once. Every category
+-- it will touch is locked first, in id order, before any tournament row, so
+-- the job never deadlocks with a player's call. Returns how many entries
+-- expired or lapsed.
 create function app.expire_tournament_entries(p_now timestamptz) returns integer
 language plpgsql
 set search_path = ''
@@ -737,7 +802,6 @@ declare
   v_categories uuid[];
   v_category_id uuid;
   v_reg public.tournament_registrations;
-  v_lapsed integer;
   v_count integer := 0;
 begin
   select array_agg(x.id order by x.id) into v_categories
@@ -746,33 +810,18 @@ begin
     from public.tournament_registrations r
     join public.tournament_categories c on c.id = r.category_id
     join public.tournaments t on t.id = c.tournament_id
-    where (r.status = 'pending_partner' and r.partner_expires_at <= p_now)
+    where (r.status in ('pending_partner', 'waitlisted') and not r.partner_confirmed
+           and (r.partner_expires_at <= p_now
+                or (r.reminded_at is null
+                    and app.tournament_deadline(t) > p_now and app.tournament_deadline(t) <= p_now + interval '24 hours')))
        or (r.status = 'offered' and r.offer_expires_at <= p_now)
-       or (r.status = 'pending_partner' and r.reminded_at is null
-           and app.tournament_deadline(t) > p_now and app.tournament_deadline(t) <= p_now + interval '24 hours')
   ) x;
   if v_categories is null then return 0; end if;
 
   perform 1 from public.tournament_categories c where c.id = any (v_categories) order by c.id for update;
 
-  for v_reg in
-    update public.tournament_registrations r set status = 'expired', decided_at = p_now
-    where r.category_id = any (v_categories) and r.status = 'pending_partner' and r.partner_expires_at <= p_now
-    returning r.*
-  loop
-    perform app.notify(v_reg.user_id, 'tournament_partner_expired', 'tournaments', app.registration_note(v_reg), p_now);
-    v_count := v_count + 1;
-  end loop;
-
   foreach v_category_id in array v_categories loop
-    update public.tournament_registrations r set status = 'lapsed', decided_at = p_now
-    where r.category_id = v_category_id and r.status = 'offered' and r.offer_expires_at <= p_now;
-    get diagnostics v_lapsed = row_count;
-    if v_lapsed > 0 then
-      v_count := v_count + v_lapsed;
-      perform app.offer_next(v_category_id, p_now);
-      perform app.sync_tournament_summary((select c.tournament_id from public.tournament_categories c where c.id = v_category_id));
-    end if;
+    v_count := v_count + app.sweep_category(v_category_id, p_now);
   end loop;
 
   for v_reg in
@@ -780,7 +829,7 @@ begin
     from public.tournament_categories c, public.tournaments t
     where c.id = r.category_id and t.id = c.tournament_id
       and r.category_id = any (v_categories)
-      and r.status = 'pending_partner' and r.reminded_at is null
+      and r.status in ('pending_partner', 'waitlisted') and not r.partner_confirmed and r.reminded_at is null
       and app.tournament_deadline(t) > p_now and app.tournament_deadline(t) <= p_now + interval '24 hours'
     returning r.*
   loop

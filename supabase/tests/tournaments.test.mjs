@@ -219,6 +219,132 @@ test('a blocked player cannot register, accept, join the waitlist or claim', asy
   assert.equal(await statusOf(jw.id), 'offered');
 });
 
+// --- follow-up rulings ----------------------------------------------------------
+
+test('lazy expiry: an expired offer holds no spot before the job runs', async () => {
+  const t = await tournament();
+  const cat = await category(t, { cap: 1 });
+  const [a, w, n] = [await player('A'), await player('W'), await player('N')];
+  const ra = await register(a, cat);
+  const jw = await joinWaitlist(w, cat, null, later(0, 1));
+  await cancel(a, ra.id, later(1));
+  assert.equal(await statusOf(jw.id), 'offered');
+  // The offer ran out at later(25); no job since. The newcomer gets the spot.
+  assert.equal((await register(n, cat, null, later(25, 1))).status, 'registered');
+  assert.equal(await statusOf(jw.id), 'lapsed');
+  assert.equal((await catView(cat)).filled, 1);
+  assert.equal((await summary(t)).slots_filled, 1);
+});
+
+test('lazy expiry: an expired pending pair frees both players before the job runs', async () => {
+  const t = await tournament();
+  const cat = await category(t, { kind: 'pairs', cap: 2 });
+  const [a, p, q] = [await player('A'), await player('P'), await player('Q')];
+  const old = await register(a, cat, p);
+  // Past 48 hours, no job: A registers again with someone else.
+  const again = await register(a, cat, q, later(48, 1));
+  assert.equal(again.status, 'pending_partner');
+  assert.equal(await statusOf(old.id), 'expired');
+  assert.equal((await notesOf(a, 'tournament_partner_expired')).length, 1);
+  // And the swept entry is not swept or notified twice by the job.
+  await expire(later(48, 2));
+  assert.equal((await notesOf(a, 'tournament_partner_expired')).length, 1);
+});
+
+test('lazy expiry: an accepting partner is not blocked by an expired offer holding the last spot', async () => {
+  const t = await tournament();
+  const cat = await category(t, { kind: 'pairs', cap: 1 });
+  const [a, ap, w, wp, b, bp] = await Promise.all(['A', 'AP', 'W', 'WP', 'B', 'BP'].map((x) => player(x)));
+  const ra = await register(a, cat, ap);
+  await respond(ap, ra.id, true);
+  const jw = await joinWaitlist(w, cat, wp, later(0, 1));
+  await respond(wp, jw.id, true, later(0, 2));
+  await cancel(a, ra.id, later(1));
+  assert.equal(await statusOf(jw.id), 'offered');
+  const rb = await register(b, cat, bp, later(24, 30));
+  // W's offer ran out at later(25): BP's accept takes the spot.
+  assert.equal((await respond(bp, rb.id, true, later(25, 1))).status, 'registered');
+  assert.equal(await statusOf(jw.id), 'lapsed');
+});
+
+test('accepting re-checks both players\' levels', async () => {
+  const t = await tournament();
+  const cat = await category(t, { kind: 'pairs', cap: 2, min: 2, max: 4 });
+  const a = await player('A', { padel: 3 });
+  const p = await player('P', { padel: 3 });
+  const r = await register(a, cat, p);
+  await pool.query(`update player_levels set level = 5 where user_id = $1`, [p]);
+  assert.equal(await errorOf(respond(p, r.id, true)), 'level_out_of_range');
+  await pool.query(`update player_levels set level = 3 where user_id = $1`, [p]);
+  await pool.query(`update player_levels set level = 1 where user_id = $1`, [a]);
+  assert.equal(await errorOf(respond(p, r.id, true)), 'level_out_of_range');
+  assert.equal(await statusOf(r.id), 'pending_partner');
+});
+
+test('an unconfirmed waitlisted pair expires after 48 hours and is reminded before the deadline', async () => {
+  const t = await tournament({ deadline: tashkent('2026-11-24', 12) });
+  const cat = await category(t, { kind: 'pairs', cap: 1 });
+  const [a, ap, b, bp] = await Promise.all(['A', 'AP', 'B', 'BP'].map((x) => player(x)));
+  const ra = await register(a, cat, ap);
+  await respond(ap, ra.id, true);
+  const wb = await joinWaitlist(b, cat, bp);
+  // 48 hours from now is after the deadline: the invite runs to the deadline.
+  assert.equal(wb.partner_expires_local, '2026-11-24T12:00:00');
+  await expire(tashkent('2026-11-23', 13));
+  assert.equal((await notesOf(b, 'tournament_deadline_reminder')).length, 1);
+  await expire(tashkent('2026-11-24', 12, 1));
+  assert.equal(await statusOf(wb.id), 'expired');
+  const notes = await notesOf(b, 'tournament_partner_expired');
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].payload.registration_id, wb.id);
+});
+
+test('an unconfirmed waitlisted pair cannot be accepted after 48 hours', async () => {
+  const t = await tournament();
+  const cat = await category(t, { kind: 'pairs', cap: 1 });
+  const [a, ap, b, bp] = await Promise.all(['A', 'AP', 'B', 'BP'].map((x) => player(x)));
+  const ra = await register(a, cat, ap);
+  await respond(ap, ra.id, true);
+  const wb = await joinWaitlist(b, cat, bp);
+  assert.equal(wb.partner_expires_local, '2026-11-24T20:00:00');
+  assert.equal(await errorOf(respond(bp, wb.id, true, later(48, 1))), 'not_found');
+  assert.equal(await expire(later(48, 1)), 1);
+  assert.equal(await statusOf(wb.id), 'expired');
+});
+
+test('waitlist_place counts only entries that can be offered', async () => {
+  const t = await tournament();
+  const cat = await category(t, { kind: 'pairs', cap: 1 });
+  const [a, ap, b, bp, c, cp] = await Promise.all(['A', 'AP', 'B', 'BP', 'C', 'CP'].map((x) => player(x)));
+  const ra = await register(a, cat, ap);
+  await respond(ap, ra.id, true);
+  const wb = await joinWaitlist(b, cat, bp, later(0, 1));
+  const wc = await joinWaitlist(c, cat, cp, later(0, 2));
+  assert.equal(wb.waitlist_place, null);
+  const confirmed = await respond(cp, wc.id, true, later(0, 3));
+  // B joined first but is still waiting on its partner: C is next in line.
+  assert.equal(confirmed.waitlist_place, 1);
+  const b2 = await respond(bp, wb.id, true, later(0, 4));
+  assert.equal(b2.waitlist_place, 1);
+  const view = await one(`select app.registration_json(r) as r from tournament_registrations r where r.id = $1`, [wc.id]);
+  assert.equal(view.r.waitlist_place, 2);
+});
+
+test('cancel and claim on an inactive tournament get not_found', async () => {
+  const t = await tournament();
+  const cat = await category(t, { cap: 1 });
+  const [a, w] = [await player('A'), await player('W')];
+  const ra = await register(a, cat);
+  const jw = await joinWaitlist(w, cat);
+  const rb = await register(await player('B'), await category(t, { cap: 2, name: 'Other' }));
+  await cancel(a, ra.id, later(1));
+  await pool.query(`update tournaments set active = false where id = $1`, [t]);
+  assert.equal(await errorOf(claim(w, jw.id, later(2))), 'not_found');
+  assert.equal(await errorOf(cancel(rb.registrant.id, rb.id, later(2))), 'not_found');
+  assert.equal(await statusOf(jw.id), 'offered');
+  assert.equal(await statusOf(rb.id), 'registered');
+});
+
 test('unknown entries: respond, cancel and claim all get not_found', async () => {
   const a = await player('A');
   const id = randomUUID();
