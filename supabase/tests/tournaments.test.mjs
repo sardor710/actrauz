@@ -205,6 +205,26 @@ test('a blocked player cannot register, accept, join the waitlist or claim', asy
   assert.equal(await errorOf(joinWaitlist(bad, cat)), 'reliability_too_low');
   assert.equal(await errorOf(respond(bad, pending.id, true)), 'reliability_too_low');
   assert.equal(await statusOf(pending.id), 'pending_partner');
+
+  // Offered before being blocked: the claim is refused, the offer stands.
+  const w = await player('W');
+  const t2 = await tournament({ title: 'Second' });
+  const cat2 = await category(t2, { cap: 1 });
+  const first = await register(b, cat2);
+  const jw = await joinWaitlist(w, cat2);
+  await cancel(b, first.id, later(1));
+  assert.equal(await statusOf(jw.id), 'offered');
+  await block(w);
+  assert.equal(await errorOf(claim(w, jw.id, later(2))), 'reliability_too_low');
+  assert.equal(await statusOf(jw.id), 'offered');
+});
+
+test('unknown entries: respond, cancel and claim all get not_found', async () => {
+  const a = await player('A');
+  const id = randomUUID();
+  assert.equal(await errorOf(respond(a, id, true)), 'not_found');
+  assert.equal(await errorOf(cancel(a, id)), 'not_found');
+  assert.equal(await errorOf(claim(a, id)), 'not_found');
 });
 
 // --- waitlist and offers -----------------------------------------------------
@@ -235,6 +255,10 @@ test('cancel frees the spot and offers it to the first waitlisted player', async
   assert.equal(offers[0].category, 'tournaments');
   assert.equal(offers[0].payload.registration_id, j1.id);
   assert.equal(offers[0].payload.offer_expires_local, '2026-11-23T21:00:00');
+
+  // The offer holds the spot: a newcomer cannot register past it.
+  const newcomer = await player('Newcomer');
+  assert.equal(await errorOf(register(newcomer, cat, null, later(1, 30))), 'full');
 
   // The offer is the player's own: nobody else claims it, they do.
   assert.equal(await errorOf(claim(w2, j1.id, later(2))), 'not_found');
@@ -394,6 +418,10 @@ test('pairs: partner required, not self, not already in; accept when full gets f
   await respond(ap, ra.id, true);
   assert.equal(await errorOf(respond(bp, rb.id, true)), 'full');
   assert.equal(await statusOf(rb.id), 'pending_partner');
+  // The pair can move to the waitlist: the pending entry must go first.
+  assert.equal(await errorOf(joinWaitlist(b, cat, bp)), 'already_registered');
+  await cancel(b, rb.id);
+  assert.equal((await joinWaitlist(b, cat, bp)).status, 'waitlisted');
   // A confirmed partner is in the category: nobody else can name them.
   const c = await player('C');
   assert.equal(await errorOf(register(c, cat, ap)), 'partner_unavailable');
