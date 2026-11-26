@@ -20,7 +20,7 @@
 | M5b admin tournament manager and dashboard backend | built and verified | `admin_tournaments.test.mjs`; revenue per currency matches the owner dashboard |
 | M5c app | built and verified on sample data | `flutter analyze` clean, `flutter test` 420 pass (tournaments and admin tournaments flows) |
 | Reviews | every task reviewed; final whole-branch review found 2 Important items (seed overwriting live categories, silent pair cancel), fixed and re-reviewed (approved) | |
-| Deployment | **not deployed**: waiting for the user's go-ahead (`node scripts/deploy.mjs migrations` only) | |
+| Deployment | **deployed 2026-11-26** at the user's request (`deploy.mjs migrations`: tournaments, admin_tournaments) | cron `actra-send-reminders` now also runs `expire_tournament_entries`; each of the 3 live tournaments has 1 backfilled category, `slots_filled` 0; `admin_dashboard` owner (postgres) can read `auth.users`. No live end-to-end run yet |
 
 After deploy: the three live tournaments get one "Open" singles category each. Fix their categories in Admin → Tournaments before announcing registration, because a category's kind locks once anyone registers. The installed M4 app shows 0 filled spots and a single fee for them until then. Check that `admin_dashboard` can read `auth.users.last_sign_in_at` on the hosted project. Not built yet: the live check script `e2e-tournaments.mjs` (Task 6 step 2); the backend has 322 local tests but has not run on the hosted project.
 
