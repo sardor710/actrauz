@@ -90,8 +90,9 @@ class FakeAuth implements AuthRepository {
   Future<void> deleteAccount() async {
     deletes++;
     if (deleteError case final error?) throw error;
-    // Deleted, then signed out, like the real implementation.
-    session = false;
+    // Deleted, then signed out, like the real implementation: its sign-out
+    // reports the session as ended before deleteAccount returns.
+    loseSession();
   }
 }
 
