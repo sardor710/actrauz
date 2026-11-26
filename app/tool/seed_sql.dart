@@ -44,25 +44,9 @@ String _id(String sampleId) => "md5('actra:$sampleId')::uuid";
 String _text(String? value) => value == null ? 'null' : "'${value.replaceAll("'", "''")}'";
 
 /// The four language columns of one text, in `_uz, _ru, _kk, _en` order.
-///
-/// [kk] is the Kazakh text. The sample data has none yet, so it is null
-/// except for the city and sport names below.
-List<String> _lang(LocalizedText t, {String? kk}) => [_text(t.uz), _text(t.ru), _text(kk), _text(t.en)];
+List<String> _lang(LocalizedText t) => [_text(t.uz), _text(t.ru), _text(t.kk), _text(t.en)];
 
 List<String> _langCols(String field) => ['${field}_uz', '${field}_ru', '${field}_kk', '${field}_en'];
-
-/// Kazakh names of the sample cities and sports, by id (the same names the
-/// Kazakh migration gives a live database).
-const _kazakhCities = {'tashkent': 'Ташкент', 'almaty': 'Алматы', 'astana': 'Астана'};
-const _kazakhSports = {
-  'football': 'Футбол',
-  'padel': 'Падел',
-  'tennis': 'Теннис',
-  'basketball': 'Баскетбол',
-  'volleyball': 'Волейбол',
-  'running': 'Жүгіру',
-  'gym': 'Жаттығу залы',
-};
 
 void _upsert(
   StringBuffer out,
@@ -95,7 +79,7 @@ void _cities(StringBuffer out) {
     ['id', ..._langCols('name'), 'country_code', 'currency', 'utc_offset_minutes'],
     [
       for (final c in kCities)
-        [_text(c.id), ..._lang(c.name, kk: _kazakhCities[c.id]), _text(c.countryCode), _text(c.currency.name.toUpperCase()), '${c.utcOffsetMinutes}'],
+        [_text(c.id), ..._lang(c.name), _text(c.countryCode), _text(c.currency.name.toUpperCase()), '${c.utcOffsetMinutes}'],
     ],
   );
 }
@@ -108,7 +92,7 @@ void _sports(StringBuffer out) {
     ['id', ..._langCols('name'), 'icon_key', 'bookable', 'competitive_rating', 'default_players', 'sort_order'],
     [
       for (final (i, s) in kSampleSports.indexed)
-        [_text(s.id), ..._lang(s.name, kk: _kazakhSports[s.id]), _text(s.iconKey), '${s.bookable}', '${s.competitiveRating}', '${s.defaultPlayers}', '$i'],
+        [_text(s.id), ..._lang(s.name), _text(s.iconKey), '${s.bookable}', '${s.competitiveRating}', '${s.defaultPlayers}', '$i'],
     ],
   );
 }

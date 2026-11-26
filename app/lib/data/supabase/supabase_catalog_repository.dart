@@ -49,7 +49,7 @@ class SupabaseCatalogRepository implements CatalogRepository {
   Future<List<TournamentItem>> tournaments(String cityId) async {
     final rows = await _client
         .from('tournaments')
-        .select('*, venues!tournaments_venue_id_fkey(name_uz, name_ru, name_en)')
+        .select('*, venues!tournaments_venue_id_fkey(name_uz, name_ru, name_kk, name_en)')
         .eq('city_id', cityId)
         .order('starts_on');
     return rows.map(tournamentFromRow).toList();

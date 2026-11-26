@@ -517,12 +517,13 @@ void main() {
       final forPlayer = inbox.firstWhere((n) => n.kind == 'booking_confirmed');
       expect(forPlayer.payload['booking_id'], booking.id);
       expect((forPlayer.payload['venue_name'] as Map)['en'], 'Lochin Padel Club');
+      expect((forPlayer.payload['venue_name'] as Map).keys, containsAll(['uz', 'ru', 'kk', 'en']));
       expect(forPlayer.payload['sport_id'], 'padel');
       expect(forPlayer.route, '/bookings');
       final forOwner = inbox.firstWhere((n) => n.kind == 'venue_new_booking' && n.payload['booking_id'] == booking.id);
       expect(forOwner.payload.containsKey('venue_name'), isFalse);
       expect(forOwner.payload['venue_id'], 'v1');
-      expect((forOwner.payload['court_name'] as Map).keys, containsAll(['uz', 'ru', 'en']));
+      expect((forOwner.payload['court_name'] as Map).keys, containsAll(['uz', 'ru', 'kk', 'en']));
       expect(forOwner.route, '/owner/v1');
     });
   });

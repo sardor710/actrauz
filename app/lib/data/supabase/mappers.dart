@@ -20,10 +20,11 @@ import '../sample/sample_data.dart' show kMeId;
 
 typedef Row = Map<String, dynamic>;
 
-/// The `<field>_uz`, `<field>_ru`, `<field>_en` columns of one text.
+/// The `<field>_uz`, `<field>_ru`, `<field>_kk`, `<field>_en` columns of one text.
 LocalizedText textOf(Row row, String field) => LocalizedText(
   uz: row['${field}_uz'] as String?,
   ru: row['${field}_ru'] as String?,
+  kk: row['${field}_kk'] as String?,
   en: row['${field}_en'] as String?,
 );
 
@@ -288,10 +289,11 @@ String? _blankToNull(String? value) {
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
 
-/// `<field>_uz`, `<field>_ru`, `<field>_en`, blank languages as null.
+/// `<field>_uz`, `<field>_ru`, `<field>_kk`, `<field>_en`, blank languages as null.
 Map<String, Object?> textJson(String field, LocalizedText text) => {
   '${field}_uz': _blankToNull(text.uz),
   '${field}_ru': _blankToNull(text.ru),
+  '${field}_kk': _blankToNull(text.kk),
   '${field}_en': _blankToNull(text.en),
 };
 
@@ -626,11 +628,16 @@ Player playerFromRow(Row row, {required String? myUserId}) => Player(
 
 // ---- Tournaments ----
 
-/// `{ "uz": …, "ru": …, "en": … }`, as the functions write names that are not
+/// `{ "uz": …, "ru": …, "kk": …, "en": … }`, as the functions write names that are not
 /// columns (a tournament's venue, a registration's category).
 LocalizedText localizedTextFromJson(Object? value) {
   if (value is! Map) return const LocalizedText();
-  return LocalizedText(uz: value['uz'] as String?, ru: value['ru'] as String?, en: value['en'] as String?);
+  return LocalizedText(
+    uz: value['uz'] as String?,
+    ru: value['ru'] as String?,
+    kk: value['kk'] as String?,
+    en: value['en'] as String?,
+  );
 }
 
 CategoryKind categoryKindOf(String value) => switch (value) {

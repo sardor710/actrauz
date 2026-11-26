@@ -24,21 +24,21 @@ class City {
 const List<City> kCities = [
   City(
     id: 'tashkent',
-    name: LocalizedText(uz: 'Toshkent', ru: 'Ташкент', en: 'Tashkent'),
+    name: LocalizedText(uz: 'Toshkent', ru: 'Ташкент', kk: 'Ташкент', en: 'Tashkent'),
     countryCode: 'UZ',
     currency: Currency.uzs,
     utcOffsetMinutes: 300,
   ),
   City(
     id: 'almaty',
-    name: LocalizedText(uz: 'Olmaota', ru: 'Алматы', en: 'Almaty'),
+    name: LocalizedText(uz: 'Olmaota', ru: 'Алматы', kk: 'Алматы', en: 'Almaty'),
     countryCode: 'KZ',
     currency: Currency.kzt,
     utcOffsetMinutes: 300,
   ),
   City(
     id: 'astana',
-    name: LocalizedText(uz: 'Ostona', ru: 'Астана', en: 'Astana'),
+    name: LocalizedText(uz: 'Ostona', ru: 'Астана', kk: 'Астана', en: 'Astana'),
     countryCode: 'KZ',
     currency: Currency.kzt,
     utcOffsetMinutes: 300,

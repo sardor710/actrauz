@@ -1,5 +1,6 @@
 import 'package:actra/core/localized_text.dart';
 import 'package:actra/core/markets.dart';
+import 'package:actra/core/languages.dart';
 import 'package:actra/core/money.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,21 @@ void main() {
     expect(const LocalizedText().resolve('uz'), '');
   });
 
+  test('kazakh-only text falls back', () {
+    for (final code in ['uz', 'ru', 'kk', 'en']) {
+      expect(const LocalizedText(kk: 'Алатау').resolve(code), 'Алатау');
+    }
+    expect(const LocalizedText(ru: 'А', kk: 'Ә').resolve('kk'), 'Ә');
+    expect(const LocalizedText(ru: 'А', en: 'B').resolve('kk'), 'А');
+    expect(const LocalizedText.all('X').resolve('kk'), 'X');
+  });
+
+  test('every language has a code and a native name', () {
+    expect(kLanguageCodes, ['uz', 'ru', 'kk', 'en']);
+    expect(kLanguageNames.keys, kLanguageCodes);
+    expect(kLanguageNames['kk'], 'Қазақша');
+  });
+
   test('an empty translation counts as missing', () {
     expect(const LocalizedText(uz: '', ru: 'Корт').resolve('uz'), 'Корт');
   });
@@ -31,7 +47,8 @@ void main() {
   test('every city has a currency matching its country', () {
     for (final city in kCities) {
       expect(city.currency, city.countryCode == 'UZ' ? Currency.uzs : Currency.kzt);
-      for (final code in ['uz', 'ru', 'en']) {
+      expect(city.name.kk, isNotEmpty);
+      for (final code in ['uz', 'ru', 'kk', 'en']) {
         expect(city.name.resolve(code), isNotEmpty);
       }
     }

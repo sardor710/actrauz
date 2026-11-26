@@ -157,7 +157,7 @@ void main() {
       expect(note.payload['tournament_id'], 't1');
       expect(note.payload['category_id'], cat);
       expect((note.payload['title'] as Map)['en'], 'Tashkent Padel Cup');
-      expect((note.payload['category_name'] as Map).keys, containsAll(['uz', 'ru', 'en']));
+      expect((note.payload['category_name'] as Map).keys, containsAll(['uz', 'ru', 'kk', 'en']));
       expect(note.route, '/tournaments/t1');
     });
   });
@@ -573,7 +573,7 @@ void main() {
       expect(moved.registration.categoryId, to);
       expect(moved.registration.fee, 100000);
       final note = (await inboxOf('tournament_moved')).single;
-      expect((note.payload['from_category_name'] as Map).keys, containsAll(['uz', 'ru', 'en']));
+      expect((note.payload['from_category_name'] as Map).keys, containsAll(['uz', 'ru', 'kk', 'en']));
       expect(note.route, '/tournaments/t1');
 
       final second = await backend.registerAs('p1', from);

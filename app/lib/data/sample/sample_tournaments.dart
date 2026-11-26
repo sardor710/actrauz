@@ -133,7 +133,7 @@ class SampleTournaments {
 
   bool _isMember(_Entry e, String userId) => e.userId == userId || (e.partnerId == userId && e.partnerConfirmed);
 
-  static Map<String, Object?> _loc(LocalizedText t) => {'uz': t.uz, 'ru': t.ru, 'en': t.en};
+  static Map<String, Object?> _loc(LocalizedText t) => {'uz': t.uz, 'ru': t.ru, 'kk': t.kk, 'en': t.en};
 
   // ---- Expiry ----
 
@@ -605,14 +605,14 @@ class SampleTournaments {
 
   static bool _blank(String? s) => s == null || s.trim().isEmpty;
 
-  static bool _named(LocalizedText t) => !_blank(t.uz) || !_blank(t.ru) || !_blank(t.en);
+  static bool _named(LocalizedText t) => !_blank(t.uz) || !_blank(t.ru) || !_blank(t.kk) || !_blank(t.en);
 
-  static bool _fits(LocalizedText t, int max) => [t.uz, t.ru, t.en].every((s) => s == null || s.trim().length <= max);
+  static bool _fits(LocalizedText t, int max) => [t.uz, t.ru, t.kk, t.en].every((s) => s == null || s.trim().length <= max);
 
   /// Blank languages become null, as the database stores them.
   static LocalizedText _clean(LocalizedText t) {
     String? c(String? s) => _blank(s) ? null : s!.trim();
-    return LocalizedText(uz: c(t.uz), ru: c(t.ru), en: c(t.en));
+    return LocalizedText(uz: c(t.uz), ru: c(t.ru), kk: c(t.kk), en: c(t.en));
   }
 
   List<AdminTournament> adminTournaments() {

@@ -323,7 +323,7 @@ class SampleBackend
       'booking_id': b.id,
       'sport_id': venue.court(b.courtId).sportId,
       'starts_local': isoLocal(b.start),
-      'venue_name': {'uz': venue.name.uz, 'ru': venue.name.ru, 'en': venue.name.en},
+      'venue_name': {'uz': venue.name.uz, 'ru': venue.name.ru, 'kk': venue.name.kk, 'en': venue.name.en},
     };
   }
 
@@ -335,7 +335,7 @@ class SampleBackend
     return {
       ..._bookingNote(b)..remove('venue_name'),
       'venue_id': b.venueId,
-      'court_name': {'uz': court.uz, 'ru': court.ru, 'en': court.en},
+      'court_name': {'uz': court.uz, 'ru': court.ru, 'kk': court.kk, 'en': court.en},
       'actor_name': _nameOf(b.userId),
     };
   }
@@ -1384,14 +1384,14 @@ class _SampleAdminRepository implements AdminRepository {
   static Never _notFound() => throw const BookingException(BookingError.notFound);
 
   static bool _blank(String? s) => s == null || s.trim().isEmpty;
-  static bool _named(LocalizedText t) => !_blank(t.uz) || !_blank(t.ru) || !_blank(t.en);
-  static bool _fits(LocalizedText t, int max) => [t.uz, t.ru, t.en].every((s) => s == null || s.trim().length <= max);
+  static bool _named(LocalizedText t) => !_blank(t.uz) || !_blank(t.ru) || !_blank(t.kk) || !_blank(t.en);
+  static bool _fits(LocalizedText t, int max) => [t.uz, t.ru, t.kk, t.en].every((s) => s == null || s.trim().length <= max);
   static bool _knownCity(String id) => kCities.any((c) => c.id == id);
 
   /// Blank languages become null, as the database stores them.
   static LocalizedText _clean(LocalizedText t) {
     String? c(String? s) => _blank(s) ? null : s!.trim();
-    return LocalizedText(uz: c(t.uz), ru: c(t.ru), en: c(t.en));
+    return LocalizedText(uz: c(t.uz), ru: c(t.ru), kk: c(t.kk), en: c(t.en));
   }
 
   String _ownerName(String userId) => userId == kMeId
@@ -1572,7 +1572,12 @@ class _SampleAdminRepository implements AdminRepository {
       id: id,
       venueId: venue.id,
       sportId: original.sportId,
-      name: LocalizedText(uz: two(original.name.uz), ru: two(original.name.ru), en: two(original.name.en)),
+      name: LocalizedText(
+        uz: two(original.name.uz),
+        ru: two(original.name.ru),
+        kk: two(original.name.kk),
+        en: two(original.name.en),
+      ),
       slotMinutes: original.slotMinutes,
       basePrice: original.basePrice,
       priceRules: original.priceRules,

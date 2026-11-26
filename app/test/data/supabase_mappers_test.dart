@@ -24,6 +24,7 @@ Map<String, dynamic> venueRow() => {
   'city_id': 'tashkent',
   'name_uz': 'Lochin',
   'name_ru': 'Лочин',
+  'name_kk': 'Лочин',
   'name_en': 'Lochin',
   'description_uz': null,
   'description_ru': 'Два корта',
@@ -119,6 +120,22 @@ void main() {
       expect(venue.amenities, ['parking', 'showers']);
       expect(venue.colorSeed, 2);
       expect(venue.cityId, 'tashkent');
+    });
+
+    test('texts read the Kazakh column, and a Kazakh-only text resolves in every language', () {
+      expect(venue.name.kk, 'Лочин');
+      final only = textOf({'name_kk': 'Алатау'}, 'name');
+      expect(only.kk, 'Алатау');
+      for (final code in ['uz', 'ru', 'kk', 'en']) {
+        expect(only.resolve(code), 'Алатау');
+      }
+      expect(textJson('name', const LocalizedText(kk: ' Ә ')), {
+        'name_uz': null,
+        'name_ru': null,
+        'name_kk': 'Ә',
+        'name_en': null,
+      });
+      expect(localizedTextFromJson({'kk': 'Ә', 'ru': 'А'}).kk, 'Ә');
     });
 
     test('a weekday without a row is closed', () {
@@ -327,11 +344,12 @@ void main() {
         'max_fee': 25000,
         'slots_total': 24,
         'slots_filled': 9,
-        'venues': {'name_uz': 'Alatau', 'name_ru': 'Алатау', 'name_en': 'Alatau'},
+        'venues': {'name_uz': 'Alatau', 'name_ru': 'Алатау', 'name_kk': 'Алатау', 'name_en': 'Alatau'},
       });
       expect(tournament.start, DateTime.utc(2026, 12, 7));
       expect(tournament.end, DateTime.utc(2026, 12, 9));
       expect(tournament.venueName.ru, 'Алатау');
+      expect(tournament.venueName.kk, 'Алатау');
       expect(tournament.slotsFilled, 9);
     });
   });
@@ -1060,9 +1078,11 @@ void main() {
       'venue_id',
       'title_uz',
       'title_ru',
+      'title_kk',
       'title_en',
       'description_uz',
       'description_ru',
+      'description_kk',
       'description_en',
       'starts_on',
       'ends_on',
@@ -1077,6 +1097,7 @@ void main() {
       'tournament_id',
       'name_uz',
       'name_ru',
+      'name_kk',
       'name_en',
       'kind',
       'gender',
@@ -1091,14 +1112,17 @@ void main() {
       'venue_id',
       'title_uz',
       'title_ru',
+      'title_kk',
       'title_en',
       'description_uz',
       'description_ru',
+      'description_kk',
       'description_en',
       'registration_deadline_local',
       'cover_url',
       'name_uz',
       'name_ru',
+      'name_kk',
       'name_en',
     };
 
@@ -1120,6 +1144,7 @@ void main() {
         'tournament_id': 'tour-1',
         'name_uz': null,
         'name_ru': 'Пары',
+        'name_kk': null,
         'name_en': null,
         'kind': 'pairs',
         'gender': 'women',
@@ -1160,6 +1185,7 @@ void main() {
       expect(create, containsPair('ends_on', '2026-12-05'));
       expect(create, containsPair('registration_deadline_local', '2026-12-02T18:30:00'));
       expect(create, containsPair('title_ru', 'Кубок'));
+      expect(create, containsPair('title_kk', null));
       expect(create, containsPair('title_en', null));
       expect(create, containsPair('cover_url', null));
       expect(create, containsPair('venue_id', null));

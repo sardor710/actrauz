@@ -51,6 +51,7 @@ void main() {
 
     expect(find.text('Oʻzbekcha'), findsOneWidget);
     expect(find.text('Русский'), findsOneWidget);
+    expect(find.text('Қазақша'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
 
     await tap(tester, find.text('Русский'));
@@ -70,6 +71,13 @@ void main() {
       expect(find.text(label), findsOneWidget);
     }
     expect(find.text('Привет, Тест'), findsOneWidget);
+  });
+
+  testWidgets('onboarding in Kazakh shows the Kazakh city step', (tester) async {
+    await pumpApp(tester);
+    await tap(tester, find.text('Қазақша'));
+    expect(find.text('Қаланы таңдаңыз'), findsOneWidget);
+    expect(find.text('Қаланы профильде кез келген уақытта өзгертуге болады'), findsOneWidget);
   });
 
   testWidgets('the home screen renders in Uzbek with every section', (tester) async {
@@ -247,6 +255,9 @@ void main() {
     expect(find.text('Padel · Level 3'), findsOneWidget);
 
     await tap(tester, find.text('Language'));
+    for (final name in ['Oʻzbekcha', 'Русский', 'Қазақша', 'English']) {
+      expect(find.text(name), findsWidgets);
+    }
     await tap(tester, find.text('Русский'));
     expect(find.text('МОИ ВИДЫ СПОРТА'), findsOneWidget);
 

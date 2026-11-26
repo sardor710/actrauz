@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/languages.dart';
 import '../../core/markets.dart';
 import '../../data/auth/auth_repository.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
-
-/// Native language names: shown as-is so anyone can find their own.
-const kLanguageNames = {'uz': 'Oʻzbekcha', 'ru': 'Русский', 'en': 'English'};
 
 /// Language → city → sign-in.
 class OnboardingScreen extends ConsumerStatefulWidget {

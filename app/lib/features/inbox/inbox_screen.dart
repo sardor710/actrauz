@@ -19,7 +19,7 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     final value = p[key];
     if (value is! Map) return fallback;
     String? text(String code) => value[code] is String ? value[code] as String : null;
-    final resolved = LocalizedText(uz: text('uz'), ru: text('ru'), en: text('en')).resolve(lang);
+    final resolved = LocalizedText(uz: text('uz'), ru: text('ru'), kk: text('kk'), en: text('en')).resolve(lang);
     return resolved.isEmpty ? fallback : resolved;
   }
 

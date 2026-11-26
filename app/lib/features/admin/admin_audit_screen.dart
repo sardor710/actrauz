@@ -75,7 +75,7 @@ String? _entityName(AuditEntry entry, String lang) {
   final values = entry.after ?? entry.before;
   if (values != null) {
     for (final field in ['name', 'title']) {
-      for (final code in [lang, 'ru', 'en', 'uz']) {
+      for (final code in [lang, 'ru', 'en', 'uz', 'kk']) {
         final value = values['${field}_$code'];
         if (value is String && value.trim().isNotEmpty) return value;
       }

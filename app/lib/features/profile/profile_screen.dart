@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/languages.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
 import '../../domain/booking_engine.dart';
@@ -14,7 +15,6 @@ import '../common/app_header.dart';
 import '../common/formatters.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
-import '../onboarding/onboarding_screen.dart';
 
 /// The player's card, their sports, and the settings menu.
 class ProfileScreen extends ConsumerWidget {

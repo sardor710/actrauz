@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/languages.dart';
 import 'providers.dart';
-
-const kLanguageCodes = ['uz', 'ru', 'en'];
 
 class SessionState {
   const SessionState({this.languageCode, this.cityId, this.userName});

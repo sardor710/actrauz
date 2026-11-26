@@ -90,7 +90,7 @@ class _CategorySheetState extends State<_CategorySheet> {
     final l = context.l;
     final fee = int.tryParse(_fee.text.trim());
     final cap = int.tryParse(_cap.text.trim());
-    final named = [_draft.name.uz, _draft.name.ru, _draft.name.en].any((s) => s != null && s.trim().isNotEmpty);
+    final named = [_draft.name.uz, _draft.name.ru, _draft.name.kk, _draft.name.en].any((s) => s != null && s.trim().isNotEmpty);
     if (!named) return setState(() => _error = l.nameRequiredAny);
     if (fee == null || cap == null) return setState(() => _error = l.errInvalidArgument);
     // The database refuses it too; say why before asking.

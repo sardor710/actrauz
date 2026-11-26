@@ -341,6 +341,48 @@ void main() {
     expect(find.text('New banner'), findsOneWidget);
   });
 
+  testWidgets('a venue named only in Kazakh saves and shows that name in English', (tester) async {
+    await openAdmin(tester);
+    await tap(tester, key('admin-venues'));
+    await tap(tester, key('add-venue'));
+    expect(key('venue-name-kk'), findsOneWidget);
+
+    await tester.enterText(key('venue-name-kk'), 'Алатау Арена');
+    await tap(tester, key('save-venue'));
+    expect(find.text('Saved'), findsOneWidget);
+    await settleSnackbars(tester);
+
+    await goTo(tester, '/venues');
+    expect(find.text('Алатау Арена'), findsOneWidget);
+  });
+
+  testWidgets('localized inputs: 2x2 grid when wide, stacked on a phone, multiline always stacked', (tester) async {
+    await openAdmin(tester);
+    await tap(tester, key('admin-venues'));
+    await tap(tester, key('add-venue'));
+
+    Offset at(String k) => tester.getTopLeft(key(k));
+    // 900 wide: a 2x2 grid, uz | ru over kk | en.
+    expect(at('venue-name-uz').dy, at('venue-name-ru').dy);
+    expect(at('venue-name-kk').dy, at('venue-name-en').dy);
+    expect(at('venue-name-kk').dy, greaterThan(at('venue-name-uz').dy));
+    expect(at('venue-name-kk').dx, at('venue-name-uz').dx);
+    expect(at('venue-name-en').dx, at('venue-name-ru').dx);
+    // The description is multiline: four stacked inputs.
+    final tops = [for (final c in ['uz', 'ru', 'kk', 'en']) at('venue-description-$c')];
+    for (var i = 1; i < tops.length; i++) {
+      expect(tops[i].dy, greaterThan(tops[i - 1].dy));
+      expect(tops[i].dx, tops[0].dx);
+    }
+
+    tester.view.physicalSize = const Size(420, 3400);
+    await tester.pumpAndSettle();
+    final names = [for (final c in ['uz', 'ru', 'kk', 'en']) at('venue-name-$c')];
+    for (var i = 1; i < names.length; i++) {
+      expect(names[i].dy, greaterThan(names[i - 1].dy));
+    }
+  });
+
   testWidgets('the venue editor uses two columns on a wide screen', (tester) async {
     await openLochin(tester);
     tester.view.physicalSize = const Size(1400, 1000);

@@ -122,15 +122,19 @@ void main() {
         'city_id': 'tashkent',
         'name_uz': 'Lochin',
         'name_ru': 'Лочин',
+        'name_kk': null,
         'name_en': null,
         'description_uz': null,
         'description_ru': 'Два корта',
+        'description_kk': null,
         'description_en': null,
         'address_uz': 'A',
         'address_ru': 'Б',
+        'address_kk': null,
         'address_en': 'C',
         'district_uz': 'Yunusobod',
         'district_ru': 'Юнусабад',
+        'district_kk': null,
         'district_en': 'Yunusabad',
         'phone': '+998 71 200 00 01',
         'amenities': ['parking', 'cafe'],
@@ -143,6 +147,7 @@ void main() {
       expect(json.containsKey('id'), isFalse);
       expect(json['name_uz'], 'Yangi');
       expect(json['name_ru'], isNull);
+      expect(json['name_kk'], isNull);
       expect(json['name_en'], isNull);
       expect(json['city_id'], 'tashkent');
       expect(json['amenities'], isEmpty);
@@ -150,7 +155,7 @@ void main() {
       expect(json.keys.toSet(), {
         'city_id',
         for (final f in ['name', 'description', 'address', 'district'])
-          for (final l in ['uz', 'ru', 'en']) '${f}_$l',
+          for (final l in ['uz', 'ru', 'kk', 'en']) '${f}_$l',
         'phone',
         'amenities',
         'active',
@@ -167,6 +172,7 @@ void main() {
         'sport_id': 'tennis',
         'name_uz': null,
         'name_ru': null,
+        'name_kk': null,
         'name_en': 'Second',
         'slot_minutes': 60,
         'base_price': 200000,
@@ -186,6 +192,7 @@ void main() {
       'id': 'squash',
       'name_uz': 'Skvosh',
       'name_ru': 'Сквош',
+      'name_kk': 'Сквош',
       'name_en': 'Squash',
       'icon_key': 'squash',
       'bookable': true,
@@ -212,9 +219,11 @@ void main() {
       'city_id': null,
       'title_uz': 'Sarlavha',
       'title_ru': 'Заголовок',
+      'title_kk': 'Тақырып',
       'title_en': 'Title',
       'subtitle_uz': null,
       'subtitle_ru': 'Подзаголовок',
+      'subtitle_kk': null,
       'subtitle_en': null,
       'url': 'https://example.com',
       'sort_order': 2,
