@@ -25,10 +25,12 @@ const base64url = (bytes: Uint8Array) =>
  * Actra verifies the phone through Telegram instead, so each account gets a
  * private placeholder address derived from its number. No mail is ever sent
  * to it. By default it sits under this project's own host name, which
- * resolves (so address validation accepts it) and has no mailbox.
+ * resolves (so address validation accepts it) and has no mailbox. Closed
+ * (deleted) accounts are renamed under the same domain.
  */
-const loginEmail = (phone: string) =>
-  `${phone.replace(/\D/g, '')}@${Deno.env.get('LOGIN_EMAIL_DOMAIN') || new URL(env('SUPABASE_URL')).hostname}`;
+const loginDomain = () => Deno.env.get('LOGIN_EMAIL_DOMAIN') || new URL(env('SUPABASE_URL')).hostname;
+
+const loginEmail = (phone: string) => `${phone.replace(/\D/g, '')}@${loginDomain()}`;
 
 const must = <T>(result: { data: T; error: { message: string } | null }): T => {
   if (result.error) throw new Error(result.error.message);
@@ -44,9 +46,9 @@ function adminClient(): SupabaseClient {
   });
 }
 
-/** Renames and bans the auth user (delete_account_core.ts). */
+/** Renames (on the sign-in domain) and bans the auth user (delete_account_core.ts). */
 const closeAuthUser = (admin: SupabaseClient) => async (userId: string) => {
-  const { error } = await admin.auth.admin.updateUserById(userId, closedAuthUser(userId));
+  const { error } = await admin.auth.admin.updateUserById(userId, closedAuthUser(userId, loginDomain()));
   if (error) throw new Error(error.message);
 };
 

@@ -332,7 +332,7 @@ function fakeAuth() {
     isDeleted: async (userId) => users.get(userId)?.deleted ?? false,
     close: async (userId) => {
       const user = users.get(userId)!;
-      user.email = closedAuthUser(userId).email;
+      user.email = closedAuthUser(userId, 'login.test').email;
       user.banned = true;
     },
   };
@@ -407,6 +407,6 @@ test('a deletion that stopped before closing the auth user: signing in again clo
   assert.notEqual(newId, oldId, 'the scrubbed account is not revived');
   assert.equal(again.is_new, true);
   assert.equal(world.users.get(oldId)!.banned, true);
-  assert.equal(world.users.get(oldId)!.email, `deleted-${oldId}@deleted.actra.invalid`);
+  assert.equal(world.users.get(oldId)!.email, `deleted-${oldId}@login.test`, 'renamed on the sign-in domain');
   assert.equal(world.users.get(newId)!.email, '77010000001@login.test');
 });

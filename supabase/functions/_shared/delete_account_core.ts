@@ -17,15 +17,20 @@ export interface DeleteDeps {
   userIdFromToken(token: string): Promise<string | null>;
   /** Scrubs the account; throws Error('admin_account') for an admin. */
   scrub(userId: string): Promise<void>;
-  /** Renames and bans the auth user (closedAuthUser). */
+  /** Renames and bans the auth user (closedAuthUser, on the sign-in domain). */
   closeAuthUser(userId: string): Promise<void>;
 }
 
 export type DeleteResult = { status: 'deleted' } | { error: 'unauthorized' | 'admin_account' };
 
-/** What closing an auth user writes with auth.admin.updateUserById. */
-export const closedAuthUser = (userId: string) => ({
-  email: `deleted-${userId}@deleted.actra.invalid`,
+/**
+ * What closing an auth user writes with auth.admin.updateUserById. `domain`
+ * is the one sign-in addresses use (supabase_deps.ts loginDomain), which
+ * auth accepts; sign-in local parts are digits only, so `deleted-<id>` never
+ * collides with one.
+ */
+export const closedAuthUser = (userId: string, domain: string) => ({
+  email: `deleted-${userId}@${domain}`,
   ban_duration: '876000h',
   app_metadata: { phone: null, deleted: true },
 });

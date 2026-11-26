@@ -62,9 +62,9 @@ test('any other scrub failure is an error, and the auth user is not closed', asy
   assert.deepEqual(calls, []);
 });
 
-test('a closed auth user is renamed, banned and loses its phone', () => {
-  assert.deepEqual(closedAuthUser('3f1c'), {
-    email: 'deleted-3f1c@deleted.actra.invalid',
+test('a closed auth user is renamed on the sign-in domain, banned and loses its phone', () => {
+  assert.deepEqual(closedAuthUser('3f1c', 'abcd.supabase.co'), {
+    email: 'deleted-3f1c@abcd.supabase.co',
     ban_duration: '876000h',
     app_metadata: { phone: null, deleted: true },
   });

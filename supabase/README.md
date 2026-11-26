@@ -120,7 +120,7 @@ Supabase issues sessions for an e-mail or an SMS-verified phone. Since the phone
 
 The app calls `delete-account` with the player's session (the gateway checks the JWT). The function calls `public.delete_account_service` (service role only), which runs `app.delete_account`. Everything still to come is cancelled through the usual functions, so the other people get their usual notifications: bookings, hosted and joined games, join requests and invites, Game Requests and tournament entries. An entry past its deadline, or one only waiting on the player as partner, is cancelled directly with the same notice. The phone, levels, venue ownerships, notifications and phone lookups are deleted, and the profile keeps only its id, its history and `deleted_at`. A venue left without an owner stays and gets an `owner_account_deleted` audit row. Admins are refused (`admin_account`).
 
-Then the auth user is renamed to `deleted-<id>@deleted.actra.invalid` and banned, so the same phone signs up again as a new, empty account. If that step fails the app retries the call (both steps are idempotent); if the person signs in before that, sign-in closes the scrubbed auth user and creates a fresh one.
+Then the auth user is renamed to `deleted-<id>@<the sign-in domain>` (the domain of the placeholder addresses below; sign-in local parts are digits only, so they never collide) and banned, so the same phone signs up again as a new, empty account. If that step fails the app retries the call (both steps are idempotent); if the person signs in before that, sign-in closes the scrubbed auth user and creates a fresh one.
 
 ## Changing the sample content
 
