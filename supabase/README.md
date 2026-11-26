@@ -7,7 +7,7 @@ supabase/
   migrations/     schema, row-level security, booking and game functions
   seed.sql        sample content, GENERATED from app/lib/data/sample/sample_data.dart
   functions/      telegram-login, telegram-webhook, delete-account (Deno edge functions)
-  scripts/        deploy.mjs, e2e.mjs, e2e-owner.mjs, e2e-community.mjs
+  scripts/        deploy.mjs, e2e.mjs, e2e-owner.mjs, e2e-community.mjs, e2e-kz.mjs, e2e-delete.mjs
   tests/          database tests (Node + a throw-away Postgres, no Docker)
   .env            your secrets (git-ignored); .env.example is the template
 ```
@@ -50,6 +50,8 @@ Without `--dart-define-from-file` the app runs on built-in sample data with the 
 | `node scripts/e2e.mjs` | Sign in two throw-away accounts through the real functions, book a slot, check the row in the database, check the second account is blocked, clean up. |
 | `node scripts/e2e-owner.mjs` | The same for venue owners and admins: a throw-away admin creates a venue and court and assigns an owner; the owner adds a walk-in and a block, changes prices and reads the dashboard; a plain player is refused throughout; everything made is deleted again. |
 | `node scripts/e2e-community.mjs` | The same for games and the community: a throw-away admin creates a throw-away venue and court, a throw-away host books it and makes a game on it, a second account asks to join and is approved, the inbox is read, paged and marked read, an invite-only run stays invisible to a third account until it is invited, a Game Request gets an "I'm in" and is converted, finding players returns no phone numbers and respects "hidden", reliability reads back; everything made is deleted again and existing accounts are never changed. |
+| `node scripts/e2e-kz.mjs` | Kazakhstan: a throw-away Almaty venue (no owners, so nobody real is notified) with a court at 12 000, a throw-away player holds and confirms tomorrow 18:00 Almaty time, the booking must be KZT, 12 000 and read 18:00 on the wall clock, the player is set to Kazakh, everything is deleted. Run it after `deploy.mjs migrations`. |
+| `node scripts/e2e-delete.mjs` | Account deletion: a throw-away player calls the deployed `delete-account` function (expects 200 `{"status":"deleted"}`), signs in again with the same phone and must get a different user id; the old auth user must be renamed `deleted-<id>@<sign-in domain>` and banned (read with the admin API and `SUPABASE_SECRET_KEY`); both users are deleted. Run it after `deploy.mjs migrations` and `deploy.mjs functions`. |
 | `node scripts/dev-login.mjs <token-or-bot-link> <phone>` | Test helper: plays Telegram's part for one sign-in attempt, so the app can be signed in where there is no Telegram (browser build, emulator). Needs the webhook secret from `.env`. Use made-up numbers only and delete the account afterwards. |
 
 ## How booking is kept correct
