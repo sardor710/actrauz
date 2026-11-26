@@ -1,8 +1,8 @@
-// Everything the bot says, in the three launch languages.
+// Everything the bot says, in the four launch languages.
 
-export type Language = 'uz' | 'ru' | 'en';
+export type Language = 'uz' | 'ru' | 'kk' | 'en';
 
-export const languages: Language[] = ['uz', 'ru', 'en'];
+export const languages: Language[] = ['uz', 'ru', 'kk', 'en'];
 
 /** A supported language, defaulting to Russian (product spec §3). */
 export function pickLanguage(code: string | null | undefined): Language {
@@ -42,6 +42,17 @@ export const botTexts: Record<Language, BotTexts> = {
     ownNumberOnly: 'Пожалуйста, отправьте свой номер кнопкой ниже. Чужой контакт не подойдёт.',
     linkExpired: 'Эта ссылка устарела. Нажмите «Продолжить через Telegram» в приложении Actra ещё раз.',
     openApp: 'Это бот для входа в Actra. Откройте приложение и нажмите «Продолжить через Telegram».',
+  },
+  kk: {
+    askContact:
+      'Actra қолданбасына кіру үшін телефон нөміріңізді жіберіңіз.\n\n' +
+      'Кіруді қолданбада дәл қазір өзіңіз бастаған болсаңыз ғана жалғастырыңыз. ' +
+      'Бұл сілтемені сізге басқа адам жіберген болса, нөміріңізді жібермеңіз.',
+    shareButton: '📱 Нөмірімді жіберу',
+    done: 'Дайын! Actra қолданбасына оралыңыз — сіз жүйеге кірдіңіз.',
+    ownNumberOnly: 'Өтінеміз, төмендегі түймені басып, өз нөміріңізді жіберіңіз. Басқа адамның контактісі қабылданбайды.',
+    linkExpired: 'Бұл сілтеменің мерзімі өтті. Actra қолданбасында «Telegram арқылы жалғастыру» түймесін қайта басыңыз.',
+    openApp: 'Бұл Actra қолданбасына кіруге арналған бот. Қолданбаны ашып, «Telegram арқылы жалғастыру» түймесін басыңыз.',
   },
   en: {
     askContact:

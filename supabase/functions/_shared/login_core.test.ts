@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { beforeEach, test } from 'node:test';
-import { botTexts } from './bot_texts.ts';
+import { botTexts, pickLanguage } from './bot_texts.ts';
 import { handleLoginRequest, handleWebhookRequest } from './http.ts';
 import { claimLogin, handleUpdate, normalizePhone, startLogin } from './login_core.ts';
 import type { Deps, LoginToken, TelegramUpdate } from './login_core.ts';
@@ -205,7 +205,7 @@ test('the bot only talks in private chats', async () => {
 });
 
 test('the bot answers in the language chosen in the app', async () => {
-  for (const language of ['uz', 'ru', 'en'] as const) {
+  for (const language of ['uz', 'ru', 'kk', 'en'] as const) {
     const login = await startLogin(deps, { language });
     await handleUpdate(deps, start(1000, login.token, 'en'));
     assert.equal(lastMessage().text, botTexts[language].askContact);
@@ -216,14 +216,28 @@ test('the bot answers in the language chosen in the app', async () => {
     assert.equal(lastMessage().text, botTexts[language].done);
   }
   // An unsupported language falls back to Russian.
-  const login = await startLogin(deps, { language: 'kk' });
+  const login = await startLogin(deps, { language: 'kz' });
   await handleUpdate(deps, start(1001, login.token));
   assert.equal(lastMessage().text, botTexts.ru.askContact);
 });
 
-test('every bot text exists in all three languages', () => {
+test('Kazakh is picked from kk codes, and kz is not a language code', () => {
+  assert.equal(pickLanguage('kk'), 'kk');
+  assert.equal(pickLanguage('kk-KZ'), 'kk');
+  assert.equal(pickLanguage('kz'), 'ru');
+});
+
+test('a Kazakh-speaking user with a Kazakh login gets Kazakh replies', async () => {
+  const login = await startLogin(deps, { language: 'kk' });
+  await handleUpdate(deps, start(1002, login.token, 'kk'));
+  assert.equal(lastMessage().text, botTexts.kk.askContact);
+  await handleUpdate(deps, contact(1002, '77011234567'));
+  assert.equal(lastMessage().text, botTexts.kk.done);
+});
+
+test('every bot text exists in all four languages', () => {
   const keys = Object.keys(botTexts.en).sort();
-  for (const language of ['uz', 'ru'] as const) {
+  for (const language of ['uz', 'ru', 'kk'] as const) {
     assert.deepEqual(Object.keys(botTexts[language]).sort(), keys);
     for (const key of keys) assert.ok((botTexts[language] as any)[key].trim().length > 0, `${language}.${key}`);
   }
