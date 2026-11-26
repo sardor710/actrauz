@@ -177,9 +177,10 @@ end $$;
 -- Scrubs and closes the account. Admins cannot delete themselves
 -- (admin_account): another admin removes the role first. A second call does
 -- nothing. Each step selects exactly the rows the normal function accepts,
--- so none of them raises; where a timing rule would refuse (a registration
--- after its deadline, or an entry the player is only invited to) the same
--- change is made directly, with the same notifications. What has started or
+-- so none of them raises (a change made by someone else in between aborts
+-- the whole call, and the client retries). Where a timing rule would refuse
+-- (a registration after its deadline, or an entry the player is only invited
+-- to) the same change is made directly, with the same notifications. What has started or
 -- ended (bookings, games, past tournaments) stays as anonymous history.
 create or replace function app.delete_account(p_user uuid, p_now timestamptz) returns void
 language plpgsql
@@ -258,7 +259,15 @@ begin
   end loop;
 
   -- Live entries, as registrant or named partner, in tournaments that have
-  -- not ended; in category order, the order the category locks are taken.
+  -- not ended. Every category involved is locked first, in id order, before
+  -- any tournament row (as expire_tournament_entries does), so this never
+  -- deadlocks with a player's call in one of them.
+  perform 1 from public.tournament_categories c
+  where c.id in (
+    select r.category_id from public.tournament_registrations r
+    where (r.user_id = p_user or r.partner_id = p_user) and r.status = any (c_live))
+  order by c.id
+  for update;
   for v_id in
     select r.id from public.tournament_registrations r
     join public.tournament_categories c on c.id = r.category_id

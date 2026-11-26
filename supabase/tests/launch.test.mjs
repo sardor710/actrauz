@@ -170,6 +170,12 @@ test('deletes a busy account', async () => {
   const registrant = await player('Registrant');
   const waiting = await register(registrant, await category(cup), me);
   assert.ok((await rowsFor('notifications', me)) > 0, 'I had notifications');
+  // A sign-in attempt that carries my phone, and a partner lookup I made.
+  await pool.query(
+    `insert into login_tokens (token, poll_secret_hash, status, phone, expires_at) values ('t-leaving', 'h', 'verified', '+77010000001', $1)`,
+    [later(1)],
+  );
+  await pool.query(`insert into phone_lookups (user_id, at) values ($1, $2)`, [me, now]);
 
   await deleteAccount(me);
 
@@ -195,9 +201,13 @@ test('deletes a busy account', async () => {
   assert.equal((await notesOf(registrant, 'tournament_partner_cancelled')).length, 1);
 
   // Personal rows are gone, the profile is scrubbed.
-  for (const table of ['profile_contacts', 'player_levels', 'venue_owners', 'notifications']) {
+  for (const table of ['profile_contacts', 'player_levels', 'venue_owners', 'notifications', 'phone_lookups']) {
     assert.equal(await rowsFor(table, me), 0, table);
   }
+  assert.equal((await one(`select count(*)::int as n from login_tokens where phone = '+77010000001'`)).n, 0);
+  // A deleted account gets no new notifications either.
+  await pool.query(`select app.notify($1, 'game_invite', 'invites', '{}', $2)`, [me, now]);
+  assert.equal(await rowsFor('notifications', me), 0);
   const profile = await one(`select full_name, city_id, deleted_at from profiles where id = $1`, [me]);
   assert.equal(profile.full_name, null);
   assert.equal(profile.city_id, null);
