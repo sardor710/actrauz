@@ -373,7 +373,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get signOut => 'Шығу';
 
   @override
-  String get currencyUzs => 'сом';
+  String get currencyUzs => 'сум';
 
   @override
   String get currencyKzt => '₸';
