@@ -306,6 +306,20 @@ void main() {
       expect(player.levelFor('padel'), 3);
       expect(player.levelFor('tennis'), 1);
       expect(playerFromRow({'id': me, 'full_name': null, 'player_levels': null}, myUserId: me).id, kMeId);
+      expect(player.deleted, isFalse);
+    });
+
+    test('deleted player shows a placeholder name: a profile row with deleted_at is deleted', () {
+      final gone = playerFromRow({
+        'id': other,
+        'full_name': null,
+        'deleted_at': '2026-11-21T10:00:00+00:00',
+        'player_levels': [],
+      }, myUserId: me);
+      expect(gone.deleted, isTrue);
+      expect(gone.name, '');
+      // A null name alone is a sign-up never finished, not a deletion.
+      expect(playerFromRow({'id': other, 'full_name': null, 'deleted_at': null}, myUserId: me).deleted, isFalse);
     });
   });
 

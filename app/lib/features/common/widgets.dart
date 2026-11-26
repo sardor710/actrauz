@@ -213,15 +213,31 @@ class Pill extends StatelessWidget {
 }
 
 /// Circle with a person's initial on a soft colour picked from their name.
+/// A deleted account gets a plain grey circle with a person outline instead.
 class InitialAvatar extends StatelessWidget {
-  const InitialAvatar({super.key, required this.name, this.size = 44, this.border = false});
+  const InitialAvatar({super.key, required this.name, this.size = 44, this.border = false, this.deleted = false});
 
   final String name;
   final double size;
   final bool border;
+  final bool deleted;
 
   @override
   Widget build(BuildContext context) {
+    if (deleted) {
+      return Container(
+        key: const ValueKey('deleted-avatar'),
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.line,
+          shape: BoxShape.circle,
+          border: border ? Border.all(color: Colors.white, width: 2) : null,
+        ),
+        child: Icon(Icons.person_outline_rounded, size: size * 0.55, color: AppColors.muted),
+      );
+    }
     final tint = tintFor(name);
     final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
     return Container(
@@ -240,10 +256,15 @@ class InitialAvatar extends StatelessWidget {
 
 /// Overlapping avatars, the first one larger: who is already in a game.
 class AvatarStack extends StatelessWidget {
-  const AvatarStack({super.key, required this.names, this.max = 3});
+  const AvatarStack({super.key, required this.names, this.deleted = const [], this.max = 3});
 
   final List<String> names;
+
+  /// Per name, whether that account was deleted (missing = live).
+  final List<bool> deleted;
   final int max;
+
+  bool _isDeleted(int i) => i < deleted.length && deleted[i];
 
   @override
   Widget build(BuildContext context) {
@@ -261,9 +282,9 @@ class AvatarStack extends StatelessWidget {
             Positioned(
               left: big - 10 + (i - 1) * (small - 8),
               bottom: 0,
-              child: InitialAvatar(name: shown[i], size: small, border: true),
+              child: InitialAvatar(name: shown[i], size: small, border: true, deleted: _isDeleted(i)),
             ),
-          InitialAvatar(name: shown.first, size: big, border: true),
+          InitialAvatar(name: shown.first, size: big, border: true, deleted: _isDeleted(0)),
         ],
       ),
     );

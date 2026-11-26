@@ -34,6 +34,17 @@ Future<FakeAuth> openDeleteDialog(WidgetTester tester, {Object? error}) async {
 
 SampleBackend backendOf(WidgetTester tester) => containerOf(tester).read(sampleBackendProvider);
 
+/// A public running game on Monday morning at a meeting point.
+GameDraft runningDraft() => GameDraft(
+  sportId: 'running',
+  spots: 4,
+  meetingPoint: 'Bunyodkor park, main gate',
+  meetingLat: 41.3,
+  meetingLng: 69.2,
+  start: DateTime.utc(2026, 11, 23, 7),
+  end: DateTime.utc(2026, 11, 23, 8),
+);
+
 void main() {
   testWidgets('delete account asks before deleting', (tester) async {
     final auth = await openDeleteDialog(tester);
@@ -127,6 +138,43 @@ void main() {
       expect(find.text(en.deletedPlayer), findsOneWidget);
       expect(find.text('Aziz'), findsNothing);
       expect(find.text('Dilnoza'), findsOneWidget);
+    });
+
+    testWidgets('in the title of a game whose host deleted their account', (tester) async {
+      await sample.pumpApp(tester, prefs: sample.signedIn, utcNow: sample.sundayMorning);
+      final backend = backendOf(tester);
+      // Aziz hosts; deleting cancels the game, and its notification still
+      // opens it.
+      final game = await backend.createAs('p1', runningDraft());
+      backend.markDeleted('p1');
+      containerOf(tester).invalidate(playerProvider);
+
+      await goTo(tester, '/games/${game.id}');
+      expect(find.text(en.gameTitle(en.deletedPlayer, 'Running')), findsOneWidget);
+      expect(find.text(en.gameTitle('', 'Running')), findsNothing);
+      expect(find.textContaining('Aziz'), findsNothing);
+    });
+
+    testWidgets('on a game card, with a neutral avatar', (tester) async {
+      await sample.pumpApp(tester, prefs: sample.signedIn, utcNow: sample.sundayMorning);
+      final backend = backendOf(tester);
+      final game = await backend.createAs('p1', runningDraft());
+      await backend.joinAs('p2', game.id);
+      backend.markDeleted('p1');
+      containerOf(tester)
+        ..invalidate(playerProvider)
+        ..invalidate(gamesProvider);
+
+      await goTo(tester, '/games');
+      final card = find.ancestor(of: find.text(en.gameTitle(en.deletedPlayer, 'Running')), matching: find.byType(Card));
+      expect(card, findsOneWidget);
+      expect(find.descendant(of: card, matching: find.byKey(const ValueKey('deleted-avatar'))), findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('?')), findsNothing);
+      expect(
+        find.descendant(of: card, matching: find.text('D')),
+        findsOneWidget,
+        reason: 'Dilnoza keeps her initial',
+      );
     });
 
     testWidgets('in the owner\'s booking sheet', (tester) async {

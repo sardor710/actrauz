@@ -83,7 +83,7 @@ class JoinRequestsSection extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      InitialAvatar(name: nameOf(request.member), size: 42),
+                      InitialAvatar(name: nameOf(request.member), size: 42, deleted: request.member.deleted),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

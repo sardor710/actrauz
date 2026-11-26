@@ -67,7 +67,8 @@ class GameScreen extends ConsumerWidget {
           final gameNow = venueNow(cityById(game.cityId), utcNow: ref.watch(clockProvider)());
           final status = game.myStatus;
           final isHost = status == MyGameStatus.host;
-          final hostName = ref.watch(playerProvider(game.hostId)).valueOrNull?.name ?? '';
+          final host = ref.watch(playerProvider(game.hostId)).valueOrNull;
+          final hostName = host == null ? '' : playerName(l, host.name, deleted: host.deleted);
           final myLevel = ref.watch(playerProvider(kMeId)).valueOrNull?.levelFor(game.sportId);
           final inRange = myLevel == null || (myLevel >= game.minLevel && myLevel <= game.maxLevel);
           // A cancelled or started game takes no more joining or hosting changes.
@@ -314,17 +315,15 @@ class _PlayerTile extends ConsumerWidget {
     final l = context.l;
     // A game that came without names: look the player up. A deleted
     // player's name is gone for good.
-    final known = member.deleted
-        ? l.deletedPlayer
-        : member.name.isNotEmpty
-        ? member.name
-        : ref.watch(playerProvider(member.id)).valueOrNull?.name ?? '';
+    final looked = member.deleted || member.name.isNotEmpty ? null : ref.watch(playerProvider(member.id)).valueOrNull;
+    final deleted = member.id != kMeId && (member.deleted || (looked?.deleted ?? false));
+    final known = deleted ? l.deletedPlayer : (member.name.isNotEmpty ? member.name : looked?.name ?? '');
     final name = member.id == kMeId ? l.you : known;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
-          InitialAvatar(name: name, size: 42),
+          InitialAvatar(name: name, size: 42, deleted: deleted),
           const SizedBox(width: 12),
           Expanded(child: Text(name, style: manrope(15.5, 700))),
           if (isHost) Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),

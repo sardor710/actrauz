@@ -28,9 +28,15 @@ class GameCard extends ConsumerWidget {
     final sport = sports.where((s) => s.id == game.sportId).firstOrNull;
     final now = ref.watch(cityNowProvider)();
 
-    String nameOf(String id) =>
-        id == kMeId ? l.you : (ref.watch(playerProvider(id)).valueOrNull?.name ?? '');
+    Player? playerOf(String id) => ref.watch(playerProvider(id)).valueOrNull;
+    String nameOf(String id) {
+      if (id == kMeId) return l.you;
+      final player = playerOf(id);
+      return player == null ? '' : playerName(l, player.name, deleted: player.deleted);
+    }
+
     final names = [for (final id in game.participantIds) nameOf(id)];
+    final deleted = [for (final id in game.participantIds) id != kMeId && (playerOf(id)?.deleted ?? false)];
     final host = nameOf(game.hostId);
     final scarce = !game.isFull && game.spotsLeft <= 2;
 
@@ -63,7 +69,7 @@ class GameCard extends ConsumerWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  AvatarStack(names: names),
+                  AvatarStack(names: names, deleted: deleted),
                   const SizedBox(width: 10),
                   // Side by side when there is room, stacked on a narrow card.
                   Expanded(

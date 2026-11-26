@@ -53,7 +53,7 @@ class PlayerProfileScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              InitialAvatar(name: name, size: 72),
+                              InitialAvatar(name: name, size: 72, deleted: player.deleted),
                               const SizedBox(height: 12),
                               Text(name, style: manrope(22, 800), textAlign: TextAlign.center),
                               const SizedBox(height: 10),

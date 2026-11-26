@@ -56,7 +56,10 @@ class GameRequestCard extends ConsumerWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  AvatarStack(names: [for (final m in request.interested) playerName(l, m.name, deleted: m.deleted)]),
+                  AvatarStack(
+                    names: [for (final m in request.interested) playerName(l, m.name, deleted: m.deleted)],
+                    deleted: [for (final m in request.interested) m.deleted],
+                  ),
                   if (request.interested.isNotEmpty) const SizedBox(width: 10),
                   Expanded(
                     child: Text(

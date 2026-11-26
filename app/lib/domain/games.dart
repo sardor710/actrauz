@@ -3,10 +3,14 @@ import 'community.dart';
 export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
 
 class Player {
-  const Player({required this.id, required this.name, this.levels = const {}});
+  const Player({required this.id, required this.name, this.levels = const {}, this.deleted = false});
 
   final String id;
   final String name;
+
+  /// The account was deleted: the screens show "Deleted player" (the name is
+  /// empty by then).
+  final bool deleted;
 
   /// Self-selected level 1–5 per sport id (product spec §8.1).
   final Map<String, int> levels;

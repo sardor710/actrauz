@@ -683,7 +683,11 @@ class SampleBackend
   Future<Game> leave(String id) => leaveAs(kMeId, id);
 
   @override
-  Future<Player> player(String id) async => _playerOf(id);
+  Future<Player> player(String id) async {
+    final p = _playerOf(id);
+    // As the backend returns it: a deleted account has no name or levels left.
+    return _deleted.contains(id) ? Player(id: p.id, name: '', deleted: true) : p;
+  }
 
   @override
   Future<Game> create(GameDraft draft) => createAs(kMeId, draft);

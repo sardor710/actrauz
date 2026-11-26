@@ -55,7 +55,7 @@ class SupabaseGameRepository implements GameRepository {
     if (id == kMeId && _me == null) return Player(id: id, name: '');
     final row = await _client
         .from('profiles')
-        .select('id, full_name, player_levels!player_levels_user_id_fkey(sport_id, level)')
+        .select('id, full_name, deleted_at, player_levels!player_levels_user_id_fkey(sport_id, level)')
         .eq('id', userId)
         .maybeSingle();
     if (row == null) return Player(id: id, name: '');

@@ -626,11 +626,13 @@ Map<String, Object?> gameRequestDraftJson(GameRequestDraft draft) => {
   if (_blankToNull(draft.note) != null) 'note': _blankToNull(draft.note),
 };
 
-/// A profile row with `player_levels` embedded.
+/// A profile row with `player_levels` embedded. `deleted_at` set means the
+/// account was deleted (a null `full_name` alone is an unfinished sign-up).
 Player playerFromRow(Row row, {required String? myUserId}) => Player(
   id: _userId(row['id'], myUserId),
   name: row['full_name'] as String? ?? '',
   levels: {for (final l in _rows(row['player_levels'])) l['sport_id'] as String: l['level'] as int},
+  deleted: row['deleted_at'] != null,
 );
 
 // ---- Tournaments ----

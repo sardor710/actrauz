@@ -306,7 +306,7 @@ class _MemberTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(
           children: [
-            InitialAvatar(name: name, size: 42),
+            InitialAvatar(name: name, size: 42, deleted: !isMe && member.deleted),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
