@@ -267,6 +267,40 @@ test('categories: create, cap never below the count, a raised cap offers the wai
   assert.equal((await one(`select kind from tournament_categories where id = $1`, [c2])).kind, 'pairs');
 });
 
+test('creating categories concurrently in one tournament never deadlocks; each gets its own place', async () => {
+  const { t } = await adminTournament();
+  // The interleaving that deadlocked: another create has inserted its
+  // category (holding the foreign key's share lock on the tournament) but
+  // not yet recomputed the summary when this create starts.
+  const other = await db.connect();
+  try {
+    await other.query('begin');
+    await other.query(
+      `insert into tournament_categories (tournament_id, name_en, kind, cap, sort_order) values ($1, 'Other', 'singles', 2, 1)`,
+      [t],
+    );
+    const mine = saveCategory(admin, { tournament_id: t, name_en: 'Mine', kind: 'singles', cap: 2 });
+    // Let it reach its wait on the tournament row before the other one goes on.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await other.query(`select app.sync_tournament_summary($1)`, [t]);
+    await other.query('commit');
+    const id = await mine;
+    assert.equal((await one(`select sort_order from tournament_categories where id = $1`, [id])).sort_order, 2);
+  } catch (e) {
+    await other.query('rollback').catch(() => {});
+    throw e;
+  } finally {
+    other.release();
+  }
+
+  const ids = await Promise.all(
+    [1, 2, 3, 4, 5, 6].map((i) => saveCategory(admin, { tournament_id: t, name_en: `Parallel ${i}`, kind: 'singles', cap: 2 })),
+  );
+  const orders = (await pool.query(`select sort_order from tournament_categories where id = any ($1)`, [ids])).rows.map((r) => r.sort_order);
+  assert.equal(new Set(orders).size, 6);
+  assert.deepEqual(await summary(t), { min_fee: 0, max_fee: 100000, slots_total: 18, slots_filled: 0 });
+});
+
 test('after the deadline a raised cap offers nobody (only admin_offer_next does)', async () => {
   const { cats } = await adminTournament({ categories: [cat({ cap: 1 })] });
   const [a, w] = [await player('A'), await player('W')];

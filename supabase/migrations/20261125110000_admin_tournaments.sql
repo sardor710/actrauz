@@ -8,7 +8,9 @@
 --
 -- Locking order, as in 20261125100000_tournaments.sql: category rows first
 -- (several in id order), then registration rows, then the tournament row
--- (app.sync_tournament_summary, or an explicit lock taken last). offer_next
+-- (app.sync_tournament_summary, or an explicit lock taken last). Creating a
+-- category locks the tournament first, as it holds no other lock yet (see
+-- admin_save_category). offer_next
 -- runs before sync_tournament_summary. Functions that count (add, move,
 -- offer next, cap change, delete) sweep the category first, so an expired
 -- offer or invite never holds a spot or blocks anyone.
@@ -362,10 +364,17 @@ begin
   v_creating := not (v_patch ? 'id');
 
   if v_creating then
-    if not (v_patch ? 'tournament_id')
-       or not exists (select 1 from public.tournaments t where t.id = (v_patch ->> 'tournament_id')::uuid) then
-      raise exception 'invalid_argument';
-    end if;
+    if not (v_patch ? 'tournament_id') then raise exception 'invalid_argument'; end if;
+    -- The tournament row is locked before the insert. Otherwise two creates
+    -- in one tournament each take the foreign key's share lock on it with
+    -- the insert, then both wait for its update lock in
+    -- sync_tournament_summary: a deadlock. Taking it first does not break
+    -- the global order (category, registration, tournament): the new
+    -- category does not exist yet, so nobody can hold its lock or wait on
+    -- this one for it, and nothing else is locked here. It also makes
+    -- concurrent creates take turns for sort_order.
+    perform 1 from public.tournaments t where t.id = (v_patch ->> 'tournament_id')::uuid for update;
+    if not found then raise exception 'invalid_argument'; end if;
     v_row := app.apply_category(
       app.new_category((v_patch ->> 'tournament_id')::uuid,
         (select coalesce(max(c.sort_order) + 1, 0) from public.tournament_categories c

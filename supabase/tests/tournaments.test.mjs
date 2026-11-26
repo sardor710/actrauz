@@ -635,6 +635,64 @@ test('cancel: registrant or confirmed partner only, live entries only', async ()
   assert.equal(await statusOf(rs.id), 'registered');
 });
 
+test('cancelling a pair tells the other player: partner_cancelled with the canceller\'s name', async () => {
+  const t = await tournament();
+  const [a, p] = [await player('A'), await player('P')];
+  const check = async (to, reg, actor) => {
+    const notes = await notesOf(to, 'tournament_partner_cancelled');
+    assert.equal(notes.length, 1);
+    assert.equal(notes[0].category, 'tournaments');
+    assert.equal(notes[0].payload.registration_id, reg.id);
+    assert.equal(notes[0].payload.tournament_id, t);
+    assert.equal(notes[0].payload.category_id, reg.category_id);
+    assert.equal(notes[0].payload.actor_name, actor);
+    assert.equal(notes[0].payload.title.en, 'Cup');
+    assert.equal(notes[0].payload.category_name.en, reg.category_name.en);
+    await pool.query('delete from notifications');
+  };
+
+  // A registered pair: the partner cancels, the registrant is told.
+  const registered = await category(t, { kind: 'pairs', cap: 2, name: 'Registered' });
+  const r1 = await register(a, registered, p);
+  await respond(p, r1.id, true);
+  await pool.query('delete from notifications');
+  await cancel(p, r1.id, later(1));
+  await check(a, r1, 'P');
+  assert.equal((await notesOf(p, 'tournament_partner_cancelled')).length, 0);
+
+  // A pending pair: the registrant cancels, the invited partner is told.
+  const pending = await category(t, { kind: 'pairs', cap: 2, name: 'Pending' });
+  const r2 = await register(a, pending, p);
+  await pool.query('delete from notifications');
+  await cancel(a, r2.id, later(1));
+  await check(p, r2, 'A');
+
+  // A waitlisted pair (confirmed) and an offered pair: either side cancels.
+  const full = await category(t, { kind: 'pairs', cap: 1, name: 'Full' });
+  const [x, xp] = [await player('X'), await player('XP')];
+  const rx = await register(x, full, xp);
+  await respond(xp, rx.id, true);
+  const w = await joinWaitlist(a, full, p, later(0, 1));
+  await respond(p, w.id, true, later(0, 2));
+  await pool.query('delete from notifications');
+  await cancel(a, w.id, later(1));
+  await check(p, w, 'A');
+
+  const w2 = await joinWaitlist(a, full, p, later(2));
+  await respond(p, w2.id, true, later(2, 1));
+  await cancel(x, rx.id, later(3));
+  assert.equal(await statusOf(w2.id), 'offered');
+  await pool.query('delete from notifications');
+  await cancel(p, w2.id, later(4));
+  await check(a, w2, 'P');
+
+  // Singles: nobody else to tell.
+  const singles = await category(t, { cap: 2, name: 'Singles' });
+  const rs = await register(a, singles);
+  await cancel(a, rs.id, later(5));
+  assert.equal((await pool.query(`select count(*)::int as n from notifications where kind = 'tournament_partner_cancelled'`)).rows[0].n, 0);
+});
+
 test('after the deadline: register, cancel and respond are refused', async () => {
   const t = await tournament({ deadline: tashkent('2026-11-23', 12) });
   const singles = await category(t, { cap: 4 });
@@ -698,6 +756,62 @@ test('get_tournament shows the categories and only my own registrations', async 
   assert.equal(JSON.stringify(view).includes(b), false);
 });
 
+test('get_tournament settles expired offers and invites first, so none shows as claimable', async () => {
+  const t = await tournament();
+  const singles = await category(t, { cap: 1, name: 'Singles' });
+  const pairs = await category(t, { kind: 'pairs', cap: 2, name: 'Pairs' });
+  const [a, w1, w2, b, bp] = await Promise.all(['A', 'W1', 'W2', 'B', 'BP'].map((n) => player(n)));
+  const ra = await register(a, singles);
+  const j1 = await joinWaitlist(w1, singles, null, later(0, 1));
+  const j2 = await joinWaitlist(w2, singles, null, later(0, 2));
+  await cancel(a, ra.id, later(1));
+  assert.equal(await statusOf(j1.id), 'offered');
+  const pending = await register(b, pairs, bp, later(1));
+
+  const get = (user, when) => one(`select app.get_tournament($1, $2, $3) as t`, [user, t, when]).then((r) => r.t);
+  // Before anything runs out, a read changes nothing.
+  const early = await get(w1, later(2));
+  assert.equal(early.my_registrations[0].status, 'offered');
+
+  // 50 hours on: W1's offer and B's invite have run out; the job has not run.
+  const view = await get(w1, later(51));
+  assert.equal(await statusOf(j1.id), 'lapsed');
+  assert.deepEqual(view.my_registrations, []);
+  assert.equal(view.categories[0].my_status, null);
+  assert.equal(await statusOf(j2.id), 'offered');
+  assert.equal((await notesOf(w2, 'tournament_spot_offered')).length, 1);
+  assert.equal(await statusOf(pending.id), 'expired');
+  assert.equal((await notesOf(b, 'tournament_partner_expired')).length, 1);
+  assert.equal((await get(w2, later(51))).my_registrations[0].status, 'offered');
+
+  // An inactive tournament: null, and nothing is touched.
+  await pool.query(`update tournaments set active = false where id = $1`, [t]);
+  assert.equal(await get(w2, later(80)), null);
+  assert.equal(await statusOf(j2.id), 'offered');
+});
+
+test('my_registrations: active tournaments only, each saying whether registration is open', async () => {
+  const open = await tournament({ title: 'Open Cup' });
+  const closed = await tournament({ title: 'Closed Cup', deadline: tashkent('2026-11-23', 12) });
+  const hidden = await tournament({ title: 'Hidden Cup' });
+  const p = await player('P');
+  for (const t of [open, closed, hidden]) await register(p, await category(t, { cap: 2 }));
+  await pool.query(`update tournaments set active = false where id = $1`, [hidden]);
+
+  const mine = async (when) =>
+    (await pool.query(`select app.my_registrations($1, $2) as r`, [p, when])).rows
+      .map((r) => [r.r.tournament.title_en, r.r.tournament.registration_open])
+      .sort();
+  assert.deepEqual(await mine(later(1)), [
+    ['Closed Cup', true],
+    ['Open Cup', true],
+  ]);
+  assert.deepEqual(await mine(tashkent('2026-11-23', 12)), [
+    ['Closed Cup', false],
+    ['Open Cup', true],
+  ]);
+});
+
 test('muting tournaments silences tournament notifications; invites follow the invites switch', async () => {
   const t = await tournament();
   const cat = await category(t, { kind: 'pairs', cap: 2 });
@@ -724,6 +838,43 @@ test('find_player_by_phone returns id and name only; at most 20 lookups an hour'
   assert.equal(await errorOf(find('+998901234567', later(0, 30))), 'rate_limited');
   // An hour after the first lookups, room again.
   assert.deepEqual(await find('+998901234567', later(1, 0)), { id: them, name: 'Them' });
+});
+
+test('find_player_by_phone matches a number typed without its +, and does not block rows that reference the caller', async () => {
+  const [me, them] = [await player('Me'), await player('Them')];
+  await addPhone(pool, them, '+998905554433');
+  const find = (phone) => one(`select app.find_player_by_phone($1, $2, $3) as r`, [me, phone, now]).then((r) => r.r);
+  assert.deepEqual(await find('998905554433'), { id: them, name: 'Them' });
+  assert.deepEqual(await find('998 90 555-44-33'), { id: them, name: 'Them' });
+  assert.equal(await find('998900000000'), null);
+  assert.equal(await find('12'), null);
+
+  // Another transaction is writing a row that references my profile (a
+  // registration): its key share lock must not make the lookup wait.
+  const t = await tournament();
+  const cat = await category(t, { cap: 4 });
+  const other = await db.connect();
+  try {
+    await other.query('begin');
+    await other.query(
+      `insert into tournament_registrations (category_id, user_id, partner_confirmed, status, fee, currency)
+       values ($1, $2, true, 'registered', 0, 'UZS')`,
+      [cat, me],
+    );
+    const lookup = await db.connect();
+    try {
+      await lookup.query('begin');
+      await lookup.query(`set local lock_timeout = '2s'`);
+      const { rows } = await lookup.query(`select app.find_player_by_phone($1, '998905554433', $2) as r`, [me, now]);
+      assert.deepEqual(rows[0].r, { id: them, name: 'Them' });
+      await lookup.query('commit');
+    } finally {
+      lookup.release();
+    }
+    await other.query('rollback');
+  } finally {
+    other.release();
+  }
 });
 
 test('touch_last_seen writes at most once an hour', async () => {

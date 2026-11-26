@@ -587,7 +587,10 @@ begin
 end $$;
 
 -- The registrant or the confirmed partner, until the deadline. A spot that
--- held a place goes to the waitlist.
+-- held a place goes to the waitlist. On a pair, the other player is told
+-- (tournament_partner_cancelled): the partner when the registrant cancels,
+-- whether the partner confirmed or was only invited, and the registrant when
+-- the partner cancels.
 create function app.cancel_registration(p_user uuid, p_registration_id uuid, p_now timestamptz)
 returns public.tournament_registrations
 language plpgsql
@@ -597,6 +600,7 @@ declare
   v_reg public.tournament_registrations;
   v_tournament public.tournaments;
   v_counted boolean;
+  v_other uuid;
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
   v_reg := app.lock_registration(p_registration_id);
@@ -611,6 +615,13 @@ begin
   v_counted := v_reg.status in ('registered', 'offered');
   update public.tournament_registrations r set status = 'cancelled', cancelled_at = p_now
   where r.id = v_reg.id returning * into v_reg;
+
+  v_other := case when v_reg.user_id = p_user then v_reg.partner_id else v_reg.user_id end;
+  if v_other is not null then
+    perform app.notify(v_other, 'tournament_partner_cancelled', 'tournaments',
+      app.registration_note(v_reg) || jsonb_build_object('actor_name', (select p.full_name from public.profiles p where p.id = p_user)),
+      p_now);
+  end if;
 
   if v_counted then perform app.offer_next(v_reg.category_id, p_now); end if;
   perform app.sync_tournament_summary(v_tournament.id);
@@ -754,9 +765,10 @@ end $$;
 -- expiry (pending pairs, and waitlisted pairs whose partner never confirmed)
 -- become expired and the registrant is told; offers past theirs become
 -- lapsed and the spot goes to the next entry. The caller holds the
--- category's row lock. Used by the job and, before they count, by register,
--- respond_partner, join_waitlist and claim_offer, so an expired entry never
--- holds a spot or blocks anyone until the job runs. Returns how many entries
+-- category's row lock. Used by the job, by get_tournament before it shows
+-- the categories and, before they count, by register, respond_partner,
+-- join_waitlist and claim_offer, so an expired entry never holds a spot,
+-- blocks anyone or shows as claimable until the job runs. Returns how many entries
 -- expired or lapsed.
 create function app.sweep_category(p_category_id uuid, p_now timestamptz) returns integer
 language plpgsql
@@ -889,8 +901,47 @@ begin
       t.starts_on, t.id;
 end $$;
 
--- Every entry of mine (as registrant or partner, any state) in tournaments
--- that have not ended, newest first, each with its tournament.
+-- One active tournament for the player, or null. Its expired offers and
+-- invites are settled first (app.sweep_category), so an offer past its time
+-- never shows as claimable. Only categories with something expired are
+-- locked, all of them in id order before any is swept (as the job does), so
+-- a plain read takes no lock and the lock order stays category, then
+-- registration, then tournament.
+create function app.get_tournament(p_user uuid, p_tournament_id uuid, p_now timestamptz) returns jsonb
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_categories uuid[];
+  v_category_id uuid;
+  v_tournament public.tournaments;
+begin
+  if not exists (select 1 from public.tournaments t where t.id = p_tournament_id and t.active) then return null; end if;
+  select array_agg(x.id order by x.id) into v_categories
+  from (
+    select distinct r.category_id as id
+    from public.tournament_registrations r
+    join public.tournament_categories c on c.id = r.category_id
+    where c.tournament_id = p_tournament_id
+      and ((r.status in ('pending_partner', 'waitlisted') and not r.partner_confirmed and r.partner_expires_at <= p_now)
+           or (r.status = 'offered' and r.offer_expires_at <= p_now))
+  ) x;
+  if v_categories is not null then
+    perform 1 from public.tournament_categories c where c.id = any (v_categories) order by c.id for update;
+    foreach v_category_id in array v_categories loop
+      perform app.sweep_category(v_category_id, p_now);
+    end loop;
+  end if;
+
+  select t.* into v_tournament from public.tournaments t where t.id = p_tournament_id and t.active;
+  if not found then return null; end if;
+  return app.tournament_json(v_tournament, p_user, p_now);
+end $$;
+
+-- Every entry of mine (as registrant or partner, any state) in active
+-- tournaments that have not ended, newest first, each with its tournament
+-- (and whether registration is still open, which decides what the entry can
+-- still do).
 create function app.my_registrations(p_user uuid, p_now timestamptz) returns setof jsonb
 language sql
 set search_path = ''
@@ -898,11 +949,13 @@ as $$
   select app.registration_json(r) || jsonb_build_object('tournament', jsonb_build_object(
     'id', t.id, 'city_id', t.city_id, 'sport_id', t.sport_id, 'venue_id', t.venue_id,
     'title_uz', t.title_uz, 'title_ru', t.title_ru, 'title_en', t.title_en,
-    'starts_on', t.starts_on, 'ends_on', t.ends_on, 'color_seed', t.color_seed, 'cover_url', t.cover_url))
+    'starts_on', t.starts_on, 'ends_on', t.ends_on, 'color_seed', t.color_seed, 'cover_url', t.cover_url,
+    'registration_open', t.active and p_now < app.tournament_deadline(t)))
   from public.tournament_registrations r
   join public.tournament_categories c on c.id = r.category_id
   join public.tournaments t on t.id = c.tournament_id
   where p_user is not null
+    and t.active
     and (r.user_id = p_user or r.partner_id = p_user)
     and t.ends_on >= app.to_local(p_now, app.tournament_offset(t))::date
   order by r.created_at desc, r.id desc
@@ -910,7 +963,10 @@ $$;
 
 -- Whether an account has this exact phone number: {id, name} or null; never
 -- the phone. At most 20 calls per caller in any rolling hour, hits and misses
--- alike. The caller's profile row lock makes simultaneous calls take turns.
+-- alike. The caller's profile row lock makes simultaneous calls take turns;
+-- `for no key update`, so rows that reference the profile (bookings, games,
+-- registrations) are not blocked by it. Stored phones are E.164, so a number
+-- typed with digits only gets its leading `+`.
 create function app.find_player_by_phone(p_user uuid, p_phone text, p_now timestamptz) returns jsonb
 language plpgsql
 set search_path = ''
@@ -920,7 +976,8 @@ declare
   v_phone text := app.normalize_phone(p_phone);
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
-  perform 1 from public.profiles p where p.id = p_user for update;
+  if v_phone ~ '^[0-9]+$' then v_phone := '+' || v_phone; end if;
+  perform 1 from public.profiles p where p.id = p_user for no key update;
   if not found then raise exception 'not_authenticated'; end if;
   if (select count(*) from public.phone_lookups l
       where l.user_id = p_user and l.at > p_now - interval '1 hour') >= c_limit then
@@ -983,14 +1040,12 @@ language sql security definer
 set search_path = ''
 as $$ select app.list_tournaments((select auth.uid()), p_city_id, p_sport_id, p_from, p_sort, now()) $$;
 
--- null when there is no such active tournament.
+-- null when there is no such active tournament. Volatile (it may settle
+-- expired entries), so the API runs it in a read-write transaction.
 create function public.get_tournament(p_tournament_id uuid) returns jsonb
 language sql security definer
 set search_path = ''
-as $$
-  select app.tournament_json(t, (select auth.uid()), now()) from public.tournaments t
-  where t.id = p_tournament_id and t.active
-$$;
+as $$ select app.get_tournament((select auth.uid()), p_tournament_id, now()) $$;
 
 create function public.register_tournament(p_category_id uuid, p_partner_id uuid default null) returns jsonb
 language sql security definer

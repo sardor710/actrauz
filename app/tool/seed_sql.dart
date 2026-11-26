@@ -16,7 +16,8 @@ String buildSeedSql() {
     ..writeln('--   cd app && dart run tool/gen_seed.dart')
     ..writeln('--')
     ..writeln('-- Safe to run again at any time; sample games and tournaments are re-dated')
-    ..writeln('-- from today. Venues, people and banners are fictional.')
+    ..writeln('-- from today, except a tournament anyone has registered for, which keeps its')
+    ..writeln('-- dates and categories. Venues, people and banners are fictional.')
     ..writeln();
 
   _cities(out);
@@ -53,13 +54,14 @@ void _upsert(
   List<String> columns,
   List<List<String>> rows, {
   List<String> key = const ['id'],
+  String? where,
 }) {
   out.writeln('insert into public.$table (${columns.join(', ')}) values');
   for (var i = 0; i < rows.length; i++) {
     out.writeln('  (${rows[i].join(', ')})${i == rows.length - 1 ? '' : ','}');
   }
   final updates = columns.where((c) => !key.contains(c)).map((c) => '$c = excluded.$c').join(', ');
-  out.writeln('on conflict (${key.join(', ')}) do update set $updates;');
+  out.writeln('on conflict (${key.join(', ')}) do update set $updates${where == null ? '' : '\n  where $where'};');
   out.writeln();
 }
 
@@ -239,6 +241,10 @@ void _tournaments(StringBuffer out) {
               '(select c.utc_offset_minutes from public.cities c where c.id = ${_text(_cityOf(t.venueId))}))',
         ],
     ],
+    // A tournament someone registered for keeps its dates (and its title).
+    where:
+        'not exists (select 1 from public.tournament_registrations r '
+        'join public.tournament_categories c on c.id = r.category_id where c.tournament_id = excluded.id)',
   );
 }
 
@@ -284,6 +290,9 @@ void _categories(StringBuffer out) {
             '$i',
           ],
     ],
+    // A category anyone has registered in is left as it is: its kind, cap and
+    // fee are what those entries were made under.
+    where: 'not exists (select 1 from public.tournament_registrations r where r.category_id = excluded.id)',
   );
 }
 

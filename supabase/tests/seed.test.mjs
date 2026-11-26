@@ -2,6 +2,7 @@
 // sample data (app/lib/data/sample/sample_data.dart).
 
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
@@ -161,6 +162,60 @@ test('a seed run updates the default category the migration made instead of addi
       { title_en: 'Amateur 5-a-side League', n: 1, updated: false },
       { title_en: 'Tashkent Padel Cup', n: 3, updated: true },
     ]);
+  } finally {
+    await other.end();
+  }
+});
+
+test('a seed run leaves a category with registrations, and its tournament\'s dates, as they are', async () => {
+  const other = await freshDb('seed_registered');
+  try {
+    await other.pool.query(seed);
+    // The live case: the migration made the default category (singles, Open)
+    // and a player registered in it before the seed ever ran.
+    await other.pool.query('delete from tournament_categories');
+    await other.pool.query('select app.backfill_tournaments()');
+    const { id: tournamentId, category_id: categoryId } = (
+      await other.pool.query(
+        `select t.id, c.id as category_id from tournaments t join tournament_categories c on c.tournament_id = t.id
+         where t.title_en = 'Tashkent Padel Cup'`,
+      )
+    ).rows[0];
+    const userId = randomUUID();
+    await other.pool.query(`insert into auth.users (id, aud, role, email) values ($1, 'authenticated', 'authenticated', $2)`, [
+      userId,
+      `${userId}@test.invalid`,
+    ]);
+    await other.pool.query(`insert into profiles (id, full_name) values ($1, 'Entrant')`, [userId]);
+    await other.pool.query(`select app.register($1, $2, null, now())`, [userId, categoryId]);
+    // Dates that differ from what the seed would write.
+    await other.pool.query(
+      `update tournaments set starts_on = starts_on + 30, ends_on = ends_on + 30,
+         registration_deadline = registration_deadline + interval '30 days' where id = $1`,
+      [tournamentId],
+    );
+    const state = async () => ({
+      category: (await other.pool.query(`select kind, cap, fee, name_en from tournament_categories where id = $1`, [categoryId])).rows[0],
+      counted: (await other.pool.query(`select app.category_counted($1) as n`, [categoryId])).rows[0].n,
+      tournament: (
+        await other.pool.query(
+          `select starts_on::text, ends_on::text, registration_deadline, slots_filled from tournaments where id = $1`,
+          [tournamentId],
+        )
+      ).rows[0],
+    });
+    const before = await state();
+    assert.deepEqual(before.category, { kind: 'singles', cap: before.category.cap, fee: before.category.fee, name_en: 'Open' });
+    assert.equal(before.counted, 1);
+
+    await other.pool.query(seed);
+    assert.deepEqual(await state(), before);
+    // Tournaments nobody registered for are still re-dated and updated.
+    const fresh = await other.pool.query(
+      `select c.kind, c.name_en from tournaments t join tournament_categories c on c.tournament_id = t.id and c.sort_order = 0
+       where t.title_en = 'Almaty Open Tennis'`,
+    );
+    assert.deepEqual(fresh.rows, [{ kind: 'singles', name_en: 'Open singles' }]);
   } finally {
     await other.end();
   }

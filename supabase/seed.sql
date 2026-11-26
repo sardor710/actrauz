@@ -4,7 +4,8 @@
 --   cd app && dart run tool/gen_seed.dart
 --
 -- Safe to run again at any time; sample games and tournaments are re-dated
--- from today. Venues, people and banners are fictional.
+-- from today, except a tournament anyone has registered for, which keeps its
+-- dates and categories. Venues, people and banners are fictional.
 
 -- Cities
 insert into public.cities (id, name_uz, name_ru, name_en, country_code, currency, utc_offset_minutes) values
@@ -129,7 +130,8 @@ insert into public.tournaments (id, city_id, sport_id, venue_id, title_uz, title
   (md5('actra:t1')::uuid, 'tashkent', 'padel', md5('actra:v1')::uuid, 'Toshkent Padel Kubogi', 'Кубок Ташкента по паделу', 'Tashkent Padel Cup', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 12, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 13, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 10)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'tashkent'))),
   (md5('actra:t2')::uuid, 'tashkent', 'football', md5('actra:v2')::uuid, 'Havaskorlar ligasi 5×5', 'Любительская лига 5×5', 'Amateur 5-a-side League', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 20, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'tashkent') + 18)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'tashkent'))),
   (md5('actra:t3')::uuid, 'almaty', 'tennis', md5('actra:v4')::uuid, 'Olmaota ochiq tennis turniri', 'Открытый теннисный турнир Алматы', 'Almaty Open Tennis', (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 15, (select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 17, app.to_instant(((select app.to_local(now(), c.utc_offset_minutes)::date from public.cities c where c.id = 'almaty') + 13)::timestamp + interval '18 hours', (select c.utc_offset_minutes from public.cities c where c.id = 'almaty')))
-on conflict (id) do update set city_id = excluded.city_id, sport_id = excluded.sport_id, venue_id = excluded.venue_id, title_uz = excluded.title_uz, title_ru = excluded.title_ru, title_en = excluded.title_en, starts_on = excluded.starts_on, ends_on = excluded.ends_on, registration_deadline = excluded.registration_deadline;
+on conflict (id) do update set city_id = excluded.city_id, sport_id = excluded.sport_id, venue_id = excluded.venue_id, title_uz = excluded.title_uz, title_ru = excluded.title_ru, title_en = excluded.title_en, starts_on = excluded.starts_on, ends_on = excluded.ends_on, registration_deadline = excluded.registration_deadline
+  where not exists (select 1 from public.tournament_registrations r join public.tournament_categories c on c.id = r.category_id where c.tournament_id = excluded.id);
 
 -- Tournament categories (the first of each is the default category the migration made)
 insert into public.tournament_categories (id, tournament_id, name_uz, name_ru, name_en, kind, gender, min_level, max_level, fee, cap, waitlist_enabled, sort_order) values
@@ -139,7 +141,8 @@ insert into public.tournament_categories (id, tournament_id, name_uz, name_ru, n
   (md5('actra:default-category:' || md5('actra:t2')::uuid::text)::uuid, md5('actra:t2')::uuid, 'Ochiq', 'Открытая', 'Open', 'singles', 'open', 1, 5, 800000, 12, true, 0),
   (md5('actra:default-category:' || md5('actra:t3')::uuid::text)::uuid, md5('actra:t3')::uuid, 'Ochiq, yakkalik', 'Открытая, одиночный', 'Open singles', 'singles', 'open', 1, 5, 15000, 16, true, 0),
   (md5('actra:t3c2')::uuid, md5('actra:t3')::uuid, 'Erkaklar, yakkalik', 'Мужчины, одиночный', 'Men''s singles', 'singles', 'men', 3, 5, 25000, 8, true, 1)
-on conflict (id) do update set tournament_id = excluded.tournament_id, name_uz = excluded.name_uz, name_ru = excluded.name_ru, name_en = excluded.name_en, kind = excluded.kind, gender = excluded.gender, min_level = excluded.min_level, max_level = excluded.max_level, fee = excluded.fee, cap = excluded.cap, waitlist_enabled = excluded.waitlist_enabled, sort_order = excluded.sort_order;
+on conflict (id) do update set tournament_id = excluded.tournament_id, name_uz = excluded.name_uz, name_ru = excluded.name_ru, name_en = excluded.name_en, kind = excluded.kind, gender = excluded.gender, min_level = excluded.min_level, max_level = excluded.max_level, fee = excluded.fee, cap = excluded.cap, waitlist_enabled = excluded.waitlist_enabled, sort_order = excluded.sort_order
+  where not exists (select 1 from public.tournament_registrations r where r.category_id = excluded.id);
 
 -- Sample players. They have no password and an undeliverable address,
 -- so nobody can sign in as them.
