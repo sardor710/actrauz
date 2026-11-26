@@ -13,7 +13,7 @@ This is the whole-product plan: what gets built, in what order, on what technolo
 | Decision | Made by | Note |
 |---|---|---|
 | Phone app in **Flutter**, one codebase for Android and iOS | Founder, 2026-11-22 | |
-| Languages at launch: **Uzbek (Latin), Russian, English** | Founder, 2026-11-22 | The spec lists Kazakh as mandatory. The app is built so a fourth language is one translation file plus one column of content; decide before the Kazakhstan launch (M6). |
+| Languages: **Uzbek (Latin), Russian, Kazakh (Cyrillic), English** | Founder, 2026-11-22; Kazakh added 2026-11-26 | Kazakh built in M6 as a draft; a native speaker reviews it before the Kazakhstan launch. |
 | Markets: Uzbekistan and Kazakhstan (Tashkent, Almaty, Astana) | Founder (spec §3) | |
 | Backend on **Supabase** (Postgres, auth, realtime, storage, edge functions) | Design call, accepted 2026-11-22 | Self-hostable later if data-localisation law requires in-country storage (spec §15.6). |
 | App state with Riverpod, navigation with go_router, translations with Flutter's built-in ARB files | Design call | |
@@ -145,7 +145,7 @@ Running alongside from M2: crash reporting, analytics events, CI that runs tests
 
 1. **Apple sign-in rule.** If the iOS app offers Google sign-in, App Store review requires an equivalent option such as Sign in with Apple. Either add it or offer Telegram only on iOS. Decide in M2.
 2. **Personal-data localisation** in Uzbekistan and Kazakhstan may require in-country storage. Supabase can be self-hosted; get legal advice before M4 (spec §15.6).
-3. **Kazakh language:** spec says mandatory, current instruction is three languages. Decide before M6.
+3. **Kazakh language:** decided 2026-11-26: added as the fourth language (Cyrillic) in M6. Needs a native-speaker review before launch.
 4. **Pay-at-venue no-shows** can cost venue trust. Reliability rules arrive in M4, after the M3 pilot; during the pilot the three-active-bookings cap is the only guard.
 5. **Phase 1 venue fee, Phase 2 commission, final cancellation windows, website scope, tournament organisers** (spec §15) remain open business questions.
 6. **Telegram availability:** sign-in depends on one third-party service. Google sign-in is the fallback; SMS codes are a later option.
