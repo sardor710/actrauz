@@ -1893,4 +1893,197 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifTournamentMovedTo(String category, String title) {
     return 'You were moved to $category in $title';
   }
+
+  @override
+  String get adminTournaments => 'Tournaments';
+
+  @override
+  String get adminTournamentsHint => 'Categories and participants';
+
+  @override
+  String get adminDashboard => 'Dashboard';
+
+  @override
+  String get adminDashboardHint => 'Users, revenue and activity';
+
+  @override
+  String get addTournament => 'Add tournament';
+
+  @override
+  String get newTournament => 'New tournament';
+
+  @override
+  String get noAdminTournaments => 'No tournaments match';
+
+  @override
+  String tournamentCounts(int categories, int entries) {
+    return '$categories categories · $entries entries';
+  }
+
+  @override
+  String get tournamentDetails => 'Tournament details';
+
+  @override
+  String get noVenue => 'No venue';
+
+  @override
+  String get firstDayLabel => 'First day';
+
+  @override
+  String get lastDayLabel => 'Last day';
+
+  @override
+  String get deadlineLabel => 'Registration closes';
+
+  @override
+  String get coverUrlLabel => 'Cover image link (https://…)';
+
+  @override
+  String get participantsLabel => 'Participants';
+
+  @override
+  String get addCategory => 'Add category';
+
+  @override
+  String get newCategory => 'New category';
+
+  @override
+  String get editCategory => 'Edit category';
+
+  @override
+  String get deleteCategory => 'Delete category';
+
+  @override
+  String get addCategoryFirst => 'Add at least one category';
+
+  @override
+  String get categoriesHint =>
+      'Players register in a category. A tournament always keeps at least one.';
+
+  @override
+  String get capLabel => 'Places';
+
+  @override
+  String get typeLabel => 'Type';
+
+  @override
+  String get genderLabel => 'Gender';
+
+  @override
+  String get minLevelLabel => 'Lowest level';
+
+  @override
+  String get maxLevelLabel => 'Highest level';
+
+  @override
+  String get waitlistLabel => 'Waitlist';
+
+  @override
+  String get waitlistHint =>
+      'When a spot frees up, the next in line gets 24 hours to claim it';
+
+  @override
+  String capBelowFilled(int filled) {
+    return 'The places cannot be lower than the $filled entries already holding a spot';
+  }
+
+  @override
+  String get errHasRegistrations =>
+      'This category has registrations and cannot be deleted or changed to another type';
+
+  @override
+  String get errNotMarkable => 'Only registered entries can be marked paid';
+
+  @override
+  String get paidLabel => 'Paid';
+
+  @override
+  String get moveRegistration => 'Move to another category';
+
+  @override
+  String get removeEntry => 'Remove entry';
+
+  @override
+  String get addPlayer => 'Add player';
+
+  @override
+  String get addPlayerNote =>
+      'Added players skip the level check, never the places limit';
+
+  @override
+  String get offerNext => 'Offer next';
+
+  @override
+  String offerNextResult(int count) {
+    return 'Offers sent: $count';
+  }
+
+  @override
+  String get copyCsv => 'Copy CSV';
+
+  @override
+  String get csvCopied => 'Copied to the clipboard';
+
+  @override
+  String get noEntriesYet => 'No entries yet';
+
+  @override
+  String pastEntries(int count) {
+    return 'Past entries ($count)';
+  }
+
+  @override
+  String get periodCustom => 'Custom';
+
+  @override
+  String get usersTitle => 'Users';
+
+  @override
+  String get usersTotal => 'Total users';
+
+  @override
+  String get usersActive => 'Active in 30 days';
+
+  @override
+  String get usersNewToday => 'New today';
+
+  @override
+  String get usersNew7 => 'New in 7 days';
+
+  @override
+  String get usersNewMonth => 'New this month';
+
+  @override
+  String get revenueTitle => 'Revenue';
+
+  @override
+  String get revenueCurrency => 'Currency';
+
+  @override
+  String get revenueVenues => 'Venues';
+
+  @override
+  String get revenueTournaments => 'Tournaments';
+
+  @override
+  String get revenueNote =>
+      'Each currency has its own row. Amounts in different currencies are never added together.';
+
+  @override
+  String get noRevenue => 'No paid bookings or entry fees in this period';
+
+  @override
+  String get activityTitle => 'Activity';
+
+  @override
+  String get countBookings => 'Bookings created';
+
+  @override
+  String get countBookingsNote => 'including cancelled';
+
+  @override
+  String get countGames => 'Games created';
+
+  @override
+  String get countRegistrations => 'Tournament entries';
 }

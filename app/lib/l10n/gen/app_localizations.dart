@@ -3369,6 +3369,366 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You were moved to {category} in {title}'**
   String notifTournamentMovedTo(String category, String title);
+
+  /// No description provided for @adminTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournaments'**
+  String get adminTournaments;
+
+  /// No description provided for @adminTournamentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories and participants'**
+  String get adminTournamentsHint;
+
+  /// No description provided for @adminDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get adminDashboard;
+
+  /// No description provided for @adminDashboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Users, revenue and activity'**
+  String get adminDashboardHint;
+
+  /// No description provided for @addTournament.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tournament'**
+  String get addTournament;
+
+  /// No description provided for @newTournament.
+  ///
+  /// In en, this message translates to:
+  /// **'New tournament'**
+  String get newTournament;
+
+  /// No description provided for @noAdminTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'No tournaments match'**
+  String get noAdminTournaments;
+
+  /// No description provided for @tournamentCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{categories} categories · {entries} entries'**
+  String tournamentCounts(int categories, int entries);
+
+  /// No description provided for @tournamentDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournament details'**
+  String get tournamentDetails;
+
+  /// No description provided for @noVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'No venue'**
+  String get noVenue;
+
+  /// No description provided for @firstDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'First day'**
+  String get firstDayLabel;
+
+  /// No description provided for @lastDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day'**
+  String get lastDayLabel;
+
+  /// No description provided for @deadlineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration closes'**
+  String get deadlineLabel;
+
+  /// No description provided for @coverUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image link (https://…)'**
+  String get coverUrlLabel;
+
+  /// No description provided for @participantsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get participantsLabel;
+
+  /// No description provided for @addCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get addCategory;
+
+  /// No description provided for @newCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get newCategory;
+
+  /// No description provided for @editCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get editCategory;
+
+  /// No description provided for @deleteCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category'**
+  String get deleteCategory;
+
+  /// No description provided for @addCategoryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one category'**
+  String get addCategoryFirst;
+
+  /// No description provided for @categoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Players register in a category. A tournament always keeps at least one.'**
+  String get categoriesHint;
+
+  /// No description provided for @capLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Places'**
+  String get capLabel;
+
+  /// No description provided for @typeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get typeLabel;
+
+  /// No description provided for @genderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get genderLabel;
+
+  /// No description provided for @minLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowest level'**
+  String get minLevelLabel;
+
+  /// No description provided for @maxLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest level'**
+  String get maxLevelLabel;
+
+  /// No description provided for @waitlistLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Waitlist'**
+  String get waitlistLabel;
+
+  /// No description provided for @waitlistHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When a spot frees up, the next in line gets 24 hours to claim it'**
+  String get waitlistHint;
+
+  /// No description provided for @capBelowFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'The places cannot be lower than the {filled} entries already holding a spot'**
+  String capBelowFilled(int filled);
+
+  /// No description provided for @errHasRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'This category has registrations and cannot be deleted or changed to another type'**
+  String get errHasRegistrations;
+
+  /// No description provided for @errNotMarkable.
+  ///
+  /// In en, this message translates to:
+  /// **'Only registered entries can be marked paid'**
+  String get errNotMarkable;
+
+  /// No description provided for @paidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get paidLabel;
+
+  /// No description provided for @moveRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another category'**
+  String get moveRegistration;
+
+  /// No description provided for @removeEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove entry'**
+  String get removeEntry;
+
+  /// No description provided for @addPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add player'**
+  String get addPlayer;
+
+  /// No description provided for @addPlayerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Added players skip the level check, never the places limit'**
+  String get addPlayerNote;
+
+  /// No description provided for @offerNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer next'**
+  String get offerNext;
+
+  /// No description provided for @offerNextResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers sent: {count}'**
+  String offerNextResult(int count);
+
+  /// No description provided for @copyCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy CSV'**
+  String get copyCsv;
+
+  /// No description provided for @csvCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to the clipboard'**
+  String get csvCopied;
+
+  /// No description provided for @noEntriesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries yet'**
+  String get noEntriesYet;
+
+  /// No description provided for @pastEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Past entries ({count})'**
+  String pastEntries(int count);
+
+  /// No description provided for @periodCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get periodCustom;
+
+  /// No description provided for @usersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get usersTitle;
+
+  /// No description provided for @usersTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total users'**
+  String get usersTotal;
+
+  /// No description provided for @usersActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active in 30 days'**
+  String get usersActive;
+
+  /// No description provided for @usersNewToday.
+  ///
+  /// In en, this message translates to:
+  /// **'New today'**
+  String get usersNewToday;
+
+  /// No description provided for @usersNew7.
+  ///
+  /// In en, this message translates to:
+  /// **'New in 7 days'**
+  String get usersNew7;
+
+  /// No description provided for @usersNewMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'New this month'**
+  String get usersNewMonth;
+
+  /// No description provided for @revenueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get revenueTitle;
+
+  /// No description provided for @revenueCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get revenueCurrency;
+
+  /// No description provided for @revenueVenues.
+  ///
+  /// In en, this message translates to:
+  /// **'Venues'**
+  String get revenueVenues;
+
+  /// No description provided for @revenueTournaments.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournaments'**
+  String get revenueTournaments;
+
+  /// No description provided for @revenueNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Each currency has its own row. Amounts in different currencies are never added together.'**
+  String get revenueNote;
+
+  /// No description provided for @noRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'No paid bookings or entry fees in this period'**
+  String get noRevenue;
+
+  /// No description provided for @activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityTitle;
+
+  /// No description provided for @countBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings created'**
+  String get countBookings;
+
+  /// No description provided for @countBookingsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'including cancelled'**
+  String get countBookingsNote;
+
+  /// No description provided for @countGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Games created'**
+  String get countGames;
+
+  /// No description provided for @countRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournament entries'**
+  String get countRegistrations;
 }
 
 class _AppLocalizationsDelegate

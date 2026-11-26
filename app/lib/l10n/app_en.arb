@@ -1062,5 +1062,96 @@
         "type": "String"
       }
     }
-  }
+  },
+  "adminTournaments": "Tournaments",
+  "adminTournamentsHint": "Categories and participants",
+  "adminDashboard": "Dashboard",
+  "adminDashboardHint": "Users, revenue and activity",
+  "addTournament": "Add tournament",
+  "newTournament": "New tournament",
+  "noAdminTournaments": "No tournaments match",
+  "tournamentCounts": "{categories} categories · {entries} entries",
+  "@tournamentCounts": {
+    "placeholders": {
+      "categories": {
+        "type": "int"
+      },
+      "entries": {
+        "type": "int"
+      }
+    }
+  },
+  "tournamentDetails": "Tournament details",
+  "noVenue": "No venue",
+  "firstDayLabel": "First day",
+  "lastDayLabel": "Last day",
+  "deadlineLabel": "Registration closes",
+  "coverUrlLabel": "Cover image link (https://…)",
+  "participantsLabel": "Participants",
+  "addCategory": "Add category",
+  "newCategory": "New category",
+  "editCategory": "Edit category",
+  "deleteCategory": "Delete category",
+  "addCategoryFirst": "Add at least one category",
+  "categoriesHint": "Players register in a category. A tournament always keeps at least one.",
+  "capLabel": "Places",
+  "typeLabel": "Type",
+  "genderLabel": "Gender",
+  "minLevelLabel": "Lowest level",
+  "maxLevelLabel": "Highest level",
+  "waitlistLabel": "Waitlist",
+  "waitlistHint": "When a spot frees up, the next in line gets 24 hours to claim it",
+  "capBelowFilled": "The places cannot be lower than the {filled} entries already holding a spot",
+  "@capBelowFilled": {
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      }
+    }
+  },
+  "errHasRegistrations": "This category has registrations and cannot be deleted or changed to another type",
+  "errNotMarkable": "Only registered entries can be marked paid",
+  "paidLabel": "Paid",
+  "moveRegistration": "Move to another category",
+  "removeEntry": "Remove entry",
+  "addPlayer": "Add player",
+  "addPlayerNote": "Added players skip the level check, never the places limit",
+  "offerNext": "Offer next",
+  "offerNextResult": "Offers sent: {count}",
+  "@offerNextResult": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyCsv": "Copy CSV",
+  "csvCopied": "Copied to the clipboard",
+  "noEntriesYet": "No entries yet",
+  "pastEntries": "Past entries ({count})",
+  "@pastEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "periodCustom": "Custom",
+  "usersTitle": "Users",
+  "usersTotal": "Total users",
+  "usersActive": "Active in 30 days",
+  "usersNewToday": "New today",
+  "usersNew7": "New in 7 days",
+  "usersNewMonth": "New this month",
+  "revenueTitle": "Revenue",
+  "revenueCurrency": "Currency",
+  "revenueVenues": "Venues",
+  "revenueTournaments": "Tournaments",
+  "revenueNote": "Each currency has its own row. Amounts in different currencies are never added together.",
+  "noRevenue": "No paid bookings or entry fees in this period",
+  "activityTitle": "Activity",
+  "countBookings": "Bookings created",
+  "countBookingsNote": "including cancelled",
+  "countGames": "Games created",
+  "countRegistrations": "Tournament entries"
 }

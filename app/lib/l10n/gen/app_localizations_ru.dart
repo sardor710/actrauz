@@ -1918,4 +1918,198 @@ class AppLocalizationsRu extends AppLocalizations {
   String notifTournamentMovedTo(String category, String title) {
     return 'Вас перевели в категорию $category: $title';
   }
+
+  @override
+  String get adminTournaments => 'Турниры';
+
+  @override
+  String get adminTournamentsHint => 'Категории и участники';
+
+  @override
+  String get adminDashboard => 'Дашборд';
+
+  @override
+  String get adminDashboardHint => 'Пользователи, выручка и активность';
+
+  @override
+  String get addTournament => 'Добавить турнир';
+
+  @override
+  String get newTournament => 'Новый турнир';
+
+  @override
+  String get noAdminTournaments => 'Нет подходящих турниров';
+
+  @override
+  String tournamentCounts(int categories, int entries) {
+    return 'Категорий: $categories · заявок: $entries';
+  }
+
+  @override
+  String get tournamentDetails => 'О турнире';
+
+  @override
+  String get noVenue => 'Без площадки';
+
+  @override
+  String get firstDayLabel => 'Первый день';
+
+  @override
+  String get lastDayLabel => 'Последний день';
+
+  @override
+  String get deadlineLabel => 'Регистрация закрывается';
+
+  @override
+  String get coverUrlLabel => 'Ссылка на обложку (https://…)';
+
+  @override
+  String get participantsLabel => 'Участники';
+
+  @override
+  String get addCategory => 'Добавить категорию';
+
+  @override
+  String get newCategory => 'Новая категория';
+
+  @override
+  String get editCategory => 'Изменить категорию';
+
+  @override
+  String get deleteCategory => 'Удалить категорию';
+
+  @override
+  String get addCategoryFirst => 'Добавьте хотя бы одну категорию';
+
+  @override
+  String get categoriesHint =>
+      'Игроки регистрируются в категории. В турнире всегда остаётся хотя бы одна.';
+
+  @override
+  String get capLabel => 'Мест';
+
+  @override
+  String get typeLabel => 'Тип';
+
+  @override
+  String get genderLabel => 'Пол';
+
+  @override
+  String get minLevelLabel => 'Минимальный уровень';
+
+  @override
+  String get maxLevelLabel => 'Максимальный уровень';
+
+  @override
+  String get waitlistLabel => 'Лист ожидания';
+
+  @override
+  String get waitlistHint =>
+      'Когда место освобождается, следующий в очереди получает 24 часа, чтобы занять его';
+
+  @override
+  String capBelowFilled(int filled) {
+    return 'Мест не может быть меньше, чем уже занято: $filled';
+  }
+
+  @override
+  String get errHasRegistrations =>
+      'В этой категории есть заявки: её нельзя удалить или сменить её тип';
+
+  @override
+  String get errNotMarkable =>
+      'Оплату можно отметить только у зарегистрированных заявок';
+
+  @override
+  String get paidLabel => 'Оплачено';
+
+  @override
+  String get moveRegistration => 'Переместить в другую категорию';
+
+  @override
+  String get removeEntry => 'Убрать заявку';
+
+  @override
+  String get addPlayer => 'Добавить игрока';
+
+  @override
+  String get addPlayerNote =>
+      'Добавленные игроки не проверяются по уровню, но лимит мест действует';
+
+  @override
+  String get offerNext => 'Предложить следующему';
+
+  @override
+  String offerNextResult(int count) {
+    return 'Отправлено предложений: $count';
+  }
+
+  @override
+  String get copyCsv => 'Копировать CSV';
+
+  @override
+  String get csvCopied => 'Скопировано в буфер обмена';
+
+  @override
+  String get noEntriesYet => 'Заявок пока нет';
+
+  @override
+  String pastEntries(int count) {
+    return 'Прошлые заявки ($count)';
+  }
+
+  @override
+  String get periodCustom => 'Свой период';
+
+  @override
+  String get usersTitle => 'Пользователи';
+
+  @override
+  String get usersTotal => 'Всего пользователей';
+
+  @override
+  String get usersActive => 'Активны за 30 дней';
+
+  @override
+  String get usersNewToday => 'Новых сегодня';
+
+  @override
+  String get usersNew7 => 'Новых за 7 дней';
+
+  @override
+  String get usersNewMonth => 'Новых за месяц';
+
+  @override
+  String get revenueTitle => 'Выручка';
+
+  @override
+  String get revenueCurrency => 'Валюта';
+
+  @override
+  String get revenueVenues => 'Площадки';
+
+  @override
+  String get revenueTournaments => 'Турниры';
+
+  @override
+  String get revenueNote =>
+      'У каждой валюты своя строка. Суммы в разных валютах не складываются.';
+
+  @override
+  String get noRevenue => 'За этот период нет оплаченных броней и взносов';
+
+  @override
+  String get activityTitle => 'Активность';
+
+  @override
+  String get countBookings => 'Создано бронирований';
+
+  @override
+  String get countBookingsNote => 'включая отменённые';
+
+  @override
+  String get countGames => 'Создано игр';
+
+  @override
+  String get countRegistrations => 'Заявок на турниры';
 }

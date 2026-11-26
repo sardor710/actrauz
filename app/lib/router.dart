@@ -4,9 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import 'features/admin/admin_audit_screen.dart';
 import 'features/admin/admin_banners_screen.dart';
+import 'features/admin/admin_dashboard_screen.dart';
 import 'features/admin/admin_home_screen.dart';
 import 'features/admin/admin_sports_screen.dart';
+import 'features/admin/admin_tournaments_screen.dart';
 import 'features/admin/admin_venues_screen.dart';
+import 'features/admin/tournament_editor_screen.dart';
+import 'features/admin/tournament_participants_screen.dart';
 import 'features/admin/venue_editor_screen.dart';
 import 'features/booking/booking_screen.dart';
 import 'features/bookings/bookings_screen.dart';
@@ -102,6 +106,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'sports', builder: (context, state) => const AdminSportsScreen()),
           GoRoute(path: 'banners', builder: (context, state) => const AdminBannersScreen()),
           GoRoute(path: 'audit', builder: (context, state) => const AdminAuditScreen()),
+          GoRoute(
+            path: 'tournaments',
+            builder: (context, state) => const AdminTournamentsScreen(),
+            routes: [
+              GoRoute(path: 'new', builder: (context, state) => const TournamentEditorScreen()),
+              GoRoute(
+                path: ':tournamentId',
+                builder: (context, state) => TournamentEditorScreen(
+                  key: ValueKey(state.pathParameters['tournamentId']),
+                  tournamentId: state.pathParameters['tournamentId'],
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'participants',
+                    builder: (context, state) =>
+                        TournamentParticipantsScreen(
+                          key: ValueKey(state.pathParameters['tournamentId']),
+                          tournamentId: state.pathParameters['tournamentId']!,
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(path: 'dashboard', builder: (context, state) => const AdminDashboardScreen()),
         ],
       ),
       StatefulShellRoute.indexedStack(

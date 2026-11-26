@@ -31,7 +31,9 @@ String tournamentErrorText(AppLocalizations l, Object error) {
     TournamentError.reliabilityTooLow => l.reliabilityBlockedHint,
     TournamentError.rateLimited => l.errRateLimited,
     TournamentError.unavailable => l.errUnavailable,
-    TournamentError.hasRegistrations || TournamentError.notAllowed || TournamentError.notMarkable => l.errGeneric,
+    TournamentError.hasRegistrations => l.errHasRegistrations,
+    TournamentError.notAllowed => l.adminOnly,
+    TournamentError.notMarkable => l.errNotMarkable,
   };
 }
 

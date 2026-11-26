@@ -82,7 +82,7 @@ void main() {
     expect(find.text('My venues'), findsOneWidget);
     expect(find.text('Admin'), findsNothing);
 
-    for (final path in ['/admin', '/admin/venues', '/admin/venues/v1', '/admin/sports', '/admin/banners', '/admin/audit']) {
+    for (final path in ['/admin', '/admin/venues', '/admin/venues/v1', '/admin/sports', '/admin/banners', '/admin/audit', '/admin/tournaments', '/admin/tournaments/new', '/admin/tournaments/t1', '/admin/tournaments/t1/participants', '/admin/dashboard']) {
       await goTo(tester, path);
       expect(find.text('Only Actra administrators can open this page'), findsOneWidget, reason: path);
     }
@@ -327,7 +327,7 @@ void main() {
     await tap(tester, find.text('Duplicate'));
     await settleSnackbars(tester);
 
-    for (final path in ['/admin', '/admin/venues', '/admin/venues/new', '/admin/sports', '/admin/banners', '/admin/audit']) {
+    for (final path in ['/admin', '/admin/venues', '/admin/venues/new', '/admin/sports', '/admin/banners', '/admin/tournaments', '/admin/tournaments/new', '/admin/tournaments/t1', '/admin/tournaments/t1/participants', '/admin/dashboard', '/admin/audit']) {
       await goTo(tester, path);
     }
     await tap(tester, find.text('Court duplicated'));

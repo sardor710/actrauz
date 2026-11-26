@@ -10,19 +10,22 @@ import '../common/widgets.dart';
 /// Finds a user by name or phone to make them an owner (product spec §12.3).
 /// Returns the chosen user; people in [exclude] are already owners and are
 /// not offered.
-Future<OwnerRef?> showOwnerSearch(BuildContext context, {Set<String> exclude = const {}}) =>
+Future<OwnerRef?> showOwnerSearch(BuildContext context, {Set<String> exclude = const {}, String? title}) =>
     showModalBottomSheet<OwnerRef>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _OwnerSearchSheet(exclude: exclude),
+      builder: (context) => _OwnerSearchSheet(exclude: exclude, title: title),
     );
 
 class _OwnerSearchSheet extends ConsumerStatefulWidget {
-  const _OwnerSearchSheet({required this.exclude});
+  const _OwnerSearchSheet({required this.exclude, this.title});
 
   final Set<String> exclude;
+
+  /// Defaults to "Assign owner".
+  final String? title;
 
   @override
   ConsumerState<_OwnerSearchSheet> createState() => _OwnerSearchSheetState();
@@ -93,7 +96,7 @@ class _OwnerSearchSheetState extends ConsumerState<_OwnerSearchSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l.assignOwner, style: AppText.title),
+              Text(widget.title ?? l.assignOwner, style: AppText.title),
               const SizedBox(height: 16),
               TextField(
                 key: const ValueKey('owner-search'),

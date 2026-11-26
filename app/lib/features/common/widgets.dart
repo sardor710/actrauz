@@ -308,7 +308,10 @@ class FilterChipButton extends StatelessWidget {
               children: [
                 if (icon != null) Icon(icon, size: 20, color: fg),
                 if (icon != null && label != null) const SizedBox(width: 6),
-                if (label != null) Text(label!, style: manrope(14, 700, color: fg)),
+                if (label != null)
+                  Flexible(
+                    child: Text(label!, style: manrope(14, 700, color: fg), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
                 if (dropdown) ...[const SizedBox(width: 4), Icon(Icons.keyboard_arrow_down, size: 20, color: fg)],
               ],
             ),

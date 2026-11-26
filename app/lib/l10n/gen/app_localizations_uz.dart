@@ -1890,4 +1890,198 @@ class AppLocalizationsUz extends AppLocalizations {
   String notifTournamentMovedTo(String category, String title) {
     return 'Siz $category toifasiga oʻtkazildingiz: $title';
   }
+
+  @override
+  String get adminTournaments => 'Turnirlar';
+
+  @override
+  String get adminTournamentsHint => 'Kategoriyalar va ishtirokchilar';
+
+  @override
+  String get adminDashboard => 'Boshqaruv paneli';
+
+  @override
+  String get adminDashboardHint => 'Foydalanuvchilar, daromad va faollik';
+
+  @override
+  String get addTournament => 'Turnir qoʻshish';
+
+  @override
+  String get newTournament => 'Yangi turnir';
+
+  @override
+  String get noAdminTournaments => 'Mos turnirlar yoʻq';
+
+  @override
+  String tournamentCounts(int categories, int entries) {
+    return 'Kategoriyalar: $categories · arizalar: $entries';
+  }
+
+  @override
+  String get tournamentDetails => 'Turnir haqida';
+
+  @override
+  String get noVenue => 'Maydonsiz';
+
+  @override
+  String get firstDayLabel => 'Birinchi kun';
+
+  @override
+  String get lastDayLabel => 'Oxirgi kun';
+
+  @override
+  String get deadlineLabel => 'Roʻyxatdan oʻtish tugaydi';
+
+  @override
+  String get coverUrlLabel => 'Muqova rasmi havolasi (https://…)';
+
+  @override
+  String get participantsLabel => 'Ishtirokchilar';
+
+  @override
+  String get addCategory => 'Kategoriya qoʻshish';
+
+  @override
+  String get newCategory => 'Yangi kategoriya';
+
+  @override
+  String get editCategory => 'Kategoriyani tahrirlash';
+
+  @override
+  String get deleteCategory => 'Kategoriyani oʻchirish';
+
+  @override
+  String get addCategoryFirst => 'Kamida bitta kategoriya qoʻshing';
+
+  @override
+  String get categoriesHint =>
+      'Oʻyinchilar kategoriyaga roʻyxatdan oʻtadi. Turnirda kamida bitta kategoriya qoladi.';
+
+  @override
+  String get capLabel => 'Joylar soni';
+
+  @override
+  String get typeLabel => 'Turi';
+
+  @override
+  String get genderLabel => 'Jins';
+
+  @override
+  String get minLevelLabel => 'Eng past daraja';
+
+  @override
+  String get maxLevelLabel => 'Eng yuqori daraja';
+
+  @override
+  String get waitlistLabel => 'Kutish roʻyxati';
+
+  @override
+  String get waitlistHint =>
+      'Joy boʻshaganda navbatdagiga uni egallash uchun 24 soat beriladi';
+
+  @override
+  String capBelowFilled(int filled) {
+    return 'Joylar soni band boʻlgan $filled tadan kam boʻlishi mumkin emas';
+  }
+
+  @override
+  String get errHasRegistrations =>
+      'Bu kategoriyada arizalar bor: uni oʻchirib yoki turini oʻzgartirib boʻlmaydi';
+
+  @override
+  String get errNotMarkable =>
+      'Toʻlovni faqat roʻyxatdan oʻtgan arizalarda belgilash mumkin';
+
+  @override
+  String get paidLabel => 'Toʻlangan';
+
+  @override
+  String get moveRegistration => 'Boshqa kategoriyaga oʻtkazish';
+
+  @override
+  String get removeEntry => 'Arizani olib tashlash';
+
+  @override
+  String get addPlayer => 'Oʻyinchi qoʻshish';
+
+  @override
+  String get addPlayerNote =>
+      'Qoʻshilgan oʻyinchilar daraja tekshiruvidan oʻtmaydi, joylar limiti esa amal qiladi';
+
+  @override
+  String get offerNext => 'Navbatdagiga taklif qilish';
+
+  @override
+  String offerNextResult(int count) {
+    return 'Yuborilgan takliflar: $count';
+  }
+
+  @override
+  String get copyCsv => 'CSV nusxalash';
+
+  @override
+  String get csvCopied => 'Buferga nusxalandi';
+
+  @override
+  String get noEntriesYet => 'Hozircha arizalar yoʻq';
+
+  @override
+  String pastEntries(int count) {
+    return 'Oldingi arizalar ($count)';
+  }
+
+  @override
+  String get periodCustom => 'Oraliq tanlash';
+
+  @override
+  String get usersTitle => 'Foydalanuvchilar';
+
+  @override
+  String get usersTotal => 'Jami foydalanuvchilar';
+
+  @override
+  String get usersActive => '30 kunda faol';
+
+  @override
+  String get usersNewToday => 'Bugun yangi';
+
+  @override
+  String get usersNew7 => '7 kunda yangi';
+
+  @override
+  String get usersNewMonth => 'Bu oyda yangi';
+
+  @override
+  String get revenueTitle => 'Daromad';
+
+  @override
+  String get revenueCurrency => 'Valyuta';
+
+  @override
+  String get revenueVenues => 'Maydonlar';
+
+  @override
+  String get revenueTournaments => 'Turnirlar';
+
+  @override
+  String get revenueNote =>
+      'Har bir valyutaning oʻz qatori bor. Turli valyutadagi summalar qoʻshilmaydi.';
+
+  @override
+  String get noRevenue => 'Bu davrda toʻlangan bronlar va badallar yoʻq';
+
+  @override
+  String get activityTitle => 'Faollik';
+
+  @override
+  String get countBookings => 'Yaratilgan bronlar';
+
+  @override
+  String get countBookingsNote => 'bekor qilinganlar bilan';
+
+  @override
+  String get countGames => 'Yaratilgan oʻyinlar';
+
+  @override
+  String get countRegistrations => 'Turnir arizalari';
 }
