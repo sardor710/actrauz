@@ -22,6 +22,8 @@ verify_jwt = false
 verify_jwt = false
 
 # Called by a signed-in player with their session's access token (a JWT);
-# the function checks it again before deleting anything.
+# the function checks it again before deleting anything. If the gateway
+# refuses valid player tokens (401), set this to false: README.md, "How
+# account deletion works".
 [functions.delete-account]
 verify_jwt = true

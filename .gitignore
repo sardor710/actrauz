@@ -20,6 +20,8 @@ supabase/tests/.last-run.log
 node_modules/
 .npm-cache/
 .deno-cache/
+# Written by `deno test` / `deno check` runs; the functions pin their imports.
+deno.lock
 
 # OS and editor
 .DS_Store

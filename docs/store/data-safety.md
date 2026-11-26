@@ -23,7 +23,7 @@ Not collected: e-mail address, passwords, payment or card data, contacts, photos
 **Data collection and security**
 - Does the app collect or share any of the required user data types? **Yes**
 - Is all of the user data collected by the app encrypted in transit? **Yes** (HTTPS)
-- Do you provide a way for users to request that their data be deleted? **Yes** — in the app (Profile → Delete account) and on the web (`delete-account.html`, URL to be entered in Play Console).
+- Do you provide a way for users to request that their data be deleted? **Yes** — in the app (Profile → Delete account) and on the web (`delete-account.html`, URL to be entered in Play Console). Deletion removes the phone number, Telegram link, levels and the player's notifications, and removes the name from the profile and the player's own notes (booking notes, notes and meeting points of games they host, notes and areas of their game requests). Anonymous booking and game history stays for venues. Notifications already delivered to other people may still show the name (it is part of the message, written when the action happened); the privacy policy and the deletion page say so.
 - Data sharing: **Yes — name and phone number are declared as SHARED** with venue owners (independent businesses), purpose: app functionality (so the venue can confirm and honour the booking). The backend provider Supabase acts as a service provider on our behalf and is not declared as sharing. The privacy policy says the same. Legal check of this declaration is on the launch checklist.
 - Independent security review: No.
 

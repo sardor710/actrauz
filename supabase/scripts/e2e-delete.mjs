@@ -4,11 +4,15 @@
 //   1. A throw-away player signs in the way dev-login.mjs does (webhook
 //      updates in place of Telegram).
 //   2. delete-account is called with that player's access token: 200
-//      {"status":"deleted"}.
+//      {"status":"deleted"}. A second call with the same (old) token, as an
+//      app retrying after a lost answer would make, is reported with its real
+//      status: 200 or 401 are both fine (the app signs out on either), a 5xx
+//      fails the run.
 //   3. Signing in again with the same phone gives a different user id, and a
 //      new account.
 //   4. The old auth user (read with the admin API) has the e-mail
-//      deleted-<old id>@<sign-in domain> and is banned.
+//      deleted-<old id>@<sign-in domain>, is banned, and the phone's digits
+//      appear nowhere in it (app_metadata, identities).
 //   5. Both users are deleted again, even when an assertion fails.
 //
 //   node scripts/e2e-delete.mjs
@@ -52,6 +56,14 @@ try {
   assert.deepEqual(deleted.data, { status: 'deleted' });
   console.log('  200 {"status":"deleted"}');
 
+  step('A retry with the old token (an answer lost on the way back)');
+  const retry = await call('/functions/v1/delete-account', { body: {}, token: first.jwt });
+  console.log(`  ${retry.status} ${JSON.stringify(retry.data)}`);
+  assert.ok(retry.status < 500, `the retry failed on the server: ${retry.status} ${JSON.stringify(retry.data)}`);
+  if (retry.status !== 200 && retry.status !== 401) {
+    console.log(`  NOTE: expected 200 or 401; the app signs out only on those, ${retry.status} shows an error`);
+  }
+
   step('The same phone signs in as a new, empty account');
   const second = await signIn('same phone again', phone);
   assert.notEqual(second.userId, first.userId, 'a deleted account must not be signed back in');
@@ -65,8 +77,10 @@ try {
     new Date(old.banned_until).getTime() > Date.now() + 365 * 24 * 3600 * 1000,
     `ban ends too soon: ${old.banned_until}`,
   );
+  const digits = phone.replace(/\D/g, '');
+  assert.ok(!JSON.stringify(old).includes(digits), `the old auth user still carries the phone: ${JSON.stringify(old)}`);
   const fresh = await adminUser(second.userId);
-  assert.equal(fresh.email, `${phone.replace(/\D/g, '')}@${loginDomain}`);
+  assert.equal(fresh.email, `${digits}@${loginDomain}`);
   assert.ok(!fresh.banned_until || new Date(fresh.banned_until).getTime() < Date.now(), 'the new auth user is banned');
   console.log(`  ${old.email}, banned until ${old.banned_until}`);
 
