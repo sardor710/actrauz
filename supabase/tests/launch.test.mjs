@@ -176,6 +176,22 @@ test('deletes a busy account', async () => {
     [later(1)],
   );
   await pool.query(`insert into phone_lookups (user_id, at) values ($1, $2)`, [me, now]);
+  // (g) My own free text: a booking note, notes and meeting points on games I
+  // host (upcoming and over), a note and an area on my Game Request. The
+  // host's note on the game I joined is theirs and stays.
+  await pool.query(`update bookings set note = 'Gate code 1234' where id = $1`, [bookingId]);
+  await pool.query(`update games set note = 'Call me on 777' where id = any ($1)`, [[hosted, joined]]);
+  const meetingPoint = await openGame(me, null);
+  await pool.query(`update games set note = 'Near my house', meeting_point = 'My house, 5 Abai st' where id = $1`, [meetingPoint]);
+  const { id: pastMeetingPoint } = await one(
+    `insert into games (sport_id, city_id, host_id, kind, meeting_point, note, visibility, during, utc_offset_minutes, spots, completed_at)
+     values ('football', 'almaty', $1, 'map_point', 'My house, 5 Abai st', 'Ring twice', 'public',
+             tstzrange($2::timestamptz - interval '2 days', $2::timestamptz - interval '47 hours'), 300, 10,
+             $2::timestamptz - interval '47 hours')
+     returning id`,
+    [me, now],
+  );
+  await pool.query(`update game_requests set note = 'Text me', area = 'Near my office' where id = $1`, [myRequest]);
 
   await deleteAccount(me);
 
@@ -212,6 +228,18 @@ test('deletes a busy account', async () => {
   assert.equal(profile.full_name, null);
   assert.equal(profile.city_id, null);
   assert.equal(profile.deleted_at.toISOString(), new Date(now).toISOString());
+
+  // (g) My free text is gone from every row I wrote it on; the host's stays.
+  assert.equal((await one(`select note from bookings where id = $1`, [bookingId])).note, null);
+  for (const id of [hosted, meetingPoint, pastMeetingPoint]) {
+    assert.equal((await one(`select note from games where id = $1`, [id])).note, null, `game note ${id}`);
+    const { g } = await one(`select app.game_json(g, $2) as g from games g where g.id = $1`, [id, host]);
+    assert.equal(g.note, null);
+    assert.equal(g.meeting_point, null, 'no meeting point is shown');
+  }
+  assert.equal((await one(`select note from games where id = $1`, [joined])).note, 'Call me on 777');
+  const r = await one(`select note, area from game_requests where id = $1`, [myRequest]);
+  assert.deepEqual(r, { note: null, area: null });
 });
 
 test('deletion: held bookings, booked games, history and late deadlines', async () => {
@@ -253,6 +281,43 @@ test('deletion: held bookings, booked games, history and late deadlines', async 
   assert.equal(await isParticipant(past, me), true);
   assert.equal(await statusOf('tournament_registrations', late), 'cancelled');
   assert.equal((await notesOf(partner, 'tournament_partner_cancelled')).length, 1);
+});
+
+test('deletion keeps entries in started tournaments', async () => {
+  const me = await player('Leaving');
+  const partner = await player('Partner');
+  // In progress (started yesterday), and starting today in venue time: both
+  // have started, so their entries stay as history.
+  const running = await tournament({ starts: '2026-11-21', ends: '2026-11-23' });
+  const inProgress = await register(me, await category(running), partner, later(-72));
+  await acceptPartner(partner, inProgress, later(-71));
+  const today = await tournament({ starts: '2026-11-22' });
+  const startingToday = await register(me, await category(today), partner, later(-72));
+  await acceptPartner(partner, startingToday, later(-71));
+  // Starting tomorrow: not started, so it is cancelled.
+  const tomorrow = await tournament({ starts: '2026-11-23' });
+  const upcoming = await register(me, await category(tomorrow), partner, later(-72));
+  await acceptPartner(partner, upcoming, later(-71));
+
+  await deleteAccount(me);
+
+  assert.equal(await statusOf('tournament_registrations', inProgress), 'registered');
+  assert.equal(await statusOf('tournament_registrations', startingToday), 'registered');
+  assert.equal(await statusOf('tournament_registrations', upcoming), 'cancelled');
+  assert.equal((await notesOf(partner, 'tournament_partner_cancelled')).length, 1, 'only the upcoming one');
+});
+
+test('deleted account cannot edit its profile', async () => {
+  const me = await player('Leaving');
+  const rename = (user) =>
+    asUser(pool, user, (c) => c.query(`update profiles set full_name = 'Back again', city_id = 'almaty' where id = $1`, [user]));
+  const live = await player('Live');
+  assert.equal((await rename(live)).rowCount, 1, 'a live account still edits its own profile');
+
+  await deleteAccount(me);
+  assert.equal((await rename(me)).rowCount, 0);
+  const profile = await one(`select full_name, city_id from profiles where id = $1`, [me]);
+  assert.deepEqual(profile, { full_name: null, city_id: null });
 });
 
 test('delete is idempotent', async () => {

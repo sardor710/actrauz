@@ -156,8 +156,8 @@ test('a tournament created without categories gets one open singles category', a
   const cats = (await pool.query(`select * from tournament_categories where tournament_id = $1`, [t])).rows;
   assert.equal(cats.length, 1);
   assert.deepEqual(
-    [cats[0].name_en, cats[0].name_ru, cats[0].name_uz, cats[0].kind, cats[0].gender, cats[0].fee, cats[0].cap, cats[0].min_level, cats[0].max_level],
-    ['Open', 'Открытая', 'Ochiq', 'singles', 'open', 0, 16, 1, 5],
+    [cats[0].name_en, cats[0].name_ru, cats[0].name_uz, cats[0].name_kk, cats[0].kind, cats[0].gender, cats[0].fee, cats[0].cap, cats[0].min_level, cats[0].max_level],
+    ['Open', 'Открытая', 'Ochiq', 'Ашық', 'singles', 'open', 0, 16, 1, 5],
   );
   assert.deepEqual(await summary(t), { min_fee: 0, max_fee: 0, slots_total: 16, slots_filled: 0 });
   const row = await one(`select * from tournaments where id = $1`, [t]);

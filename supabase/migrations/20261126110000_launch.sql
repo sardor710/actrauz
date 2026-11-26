@@ -63,6 +63,12 @@ alter table public.profiles add column deleted_at timestamptz;
 -- the private settings columns stay private.
 grant select (deleted_at) on table public.profiles to authenticated;
 
+-- Redefined from 20261122100100_profiles.sql: a deleted account's session,
+-- still valid until it expires, cannot write a name or a city back.
+alter policy "players edit their own profile" on public.profiles
+  using (id = (select auth.uid()) and deleted_at is null)
+  with check (id = (select auth.uid()) and deleted_at is null);
+
 -- Redefined from 20261124100000_community_core.sql: a deleted account gets
 -- no notifications.
 create or replace function app.notify(p_user uuid, p_kind text, p_category text, p_payload jsonb, p_now timestamptz)
@@ -181,7 +187,8 @@ end $$;
 -- the whole call, and the client retries). Where a timing rule would refuse
 -- (a registration after its deadline, or an entry the player is only invited
 -- to) the same change is made directly, with the same notifications. What has started or
--- ended (bookings, games, past tournaments) stays as anonymous history.
+-- ended (bookings, games, tournaments that have started) stays as anonymous
+-- history, without the player's own notes.
 create or replace function app.delete_account(p_user uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -259,7 +266,8 @@ begin
   end loop;
 
   -- Live entries, as registrant or named partner, in tournaments that have
-  -- not ended. Every category involved is locked first, in id order, before
+  -- not started yet (a tournament starting today in venue time has started;
+  -- its entries stay as history). Every category involved is locked first, in id order, before
   -- any tournament row (as expire_tournament_entries does), so this never
   -- deadlocks with a player's call in one of them.
   perform 1 from public.tournament_categories c
@@ -274,7 +282,7 @@ begin
     join public.tournaments t on t.id = c.tournament_id
     where (r.user_id = p_user or r.partner_id = p_user)
       and r.status = any (c_live)
-      and t.ends_on >= app.to_local(p_now, app.tournament_offset(t))::date
+      and t.starts_on > app.to_local(p_now, app.tournament_offset(t))::date
     order by r.category_id, r.id
   loop
     v_reg := app.lock_registration(v_id);
@@ -323,6 +331,20 @@ begin
   delete from public.notifications n where n.user_id = p_user;
   delete from public.phone_lookups l where l.user_id = p_user;
 
+  -- The player's own free text, on every row they wrote it on, past and
+  -- future: booking notes (owners see them), notes and meeting points on the
+  -- games they host, notes and areas on their Game Requests. A meeting-point
+  -- game must keep a meeting point (games_meeting_point_for_map_point), so it
+  -- gets '' there, which game_json shows as null.
+  update public.bookings b set note = null
+  where b.user_id = p_user and b.source = 'app' and b.note is not null;
+  update public.games g
+  set note = null,
+      meeting_point = case when g.kind = 'map_point' then '' end
+  where g.host_id = p_user and (g.note is not null or g.meeting_point is not null);
+  update public.game_requests r set note = null, area = null
+  where r.host_id = p_user and (r.note is not null or r.area is not null);
+
   -- Last, so the notifications above still carry the player's name.
   update public.profiles p
   set full_name = null,
@@ -367,7 +389,7 @@ as $$
 $$;
 
 -- Redefined from 20261124110000_games_v2.sql: participants and join
--- requests carry `deleted`.
+-- requests carry `deleted`, and a scrubbed meeting point ('') is null.
 create or replace function app.game_json(g public.games, p_user uuid) returns jsonb
 language sql
 set search_path = ''
@@ -389,7 +411,8 @@ as $$
     'price_per_player', g.price_per_player,
     'booking_id', g.booking_id,
     'note', g.note,
-    'meeting_point', g.meeting_point,
+    -- '' only for a deleted host's meeting point (delete_account).
+    'meeting_point', nullif(g.meeting_point, ''),
     'meeting_lat', g.meeting_lat,
     'meeting_lng', g.meeting_lng,
     'distance_km', g.distance_km,
@@ -593,3 +616,129 @@ as $$
     'admin_override', r.admin_override,
     'waitlist_position', r.waitlist_position)
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Redefined from 20261126100000_kazakh.sql: the default "Open" category a
+-- tournament gets when it is created without categories has its Kazakh name.
+-- ---------------------------------------------------------------------------
+
+create or replace function app.admin_save_tournament(p_user uuid, p_tournament jsonb, p_now timestamptz) returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  c_spec constant jsonb := '{
+    "id": "uuid", "city_id": "string", "sport_id": "string", "venue_id": "text",
+    "title_uz": "text", "title_ru": "text", "title_kk": "text", "title_en": "text",
+    "description_uz": "long_text", "description_ru": "long_text", "description_kk": "long_text", "description_en": "long_text",
+    "starts_on": "string", "ends_on": "string", "registration_deadline_local": "text",
+    "cover_url": "long_text", "color_seed": "int", "active": "bool"}';
+  v_categories jsonb := p_tournament -> 'categories';
+  v_patch jsonb;
+  v_creating boolean;
+  v_row public.tournaments;
+  v_before public.tournaments;
+  v_offset integer;
+  v_deadline_local timestamp;
+  v_category public.tournament_categories;
+  v_item jsonb;
+  v_index integer := 0;
+  v_after jsonb;
+begin
+  perform app.require_admin(p_user);
+  v_patch := app.clean_payload(p_tournament - 'categories', c_spec);
+  v_creating := not (v_patch ? 'id');
+
+  if v_creating then
+    if not (v_patch ?& array['city_id', 'sport_id', 'starts_on', 'ends_on']) then raise exception 'invalid_argument'; end if;
+    if v_categories is not null
+       and (jsonb_typeof(v_categories) <> 'array' or jsonb_array_length(v_categories) = 0) then
+      raise exception 'invalid_argument';
+    end if;
+    v_row.id := gen_random_uuid();
+    v_row.color_seed := abs(hashtext(v_row.id::text)) % 1000;
+    v_row.active := true;
+    v_row.min_fee := 0;
+    v_row.max_fee := 0;
+    v_row.slots_total := 0;
+    v_row.slots_filled := 0;
+  else
+    if p_tournament ? 'categories' then raise exception 'invalid_argument'; end if;
+    select t.* into v_row from public.tournaments t where t.id = (v_patch ->> 'id')::uuid for update;
+    if not found then raise exception 'not_found'; end if;
+    v_before := v_row;
+    -- Kept as wall-clock time, so a city change keeps the local deadline.
+    v_deadline_local := app.to_local(app.tournament_deadline(v_row), app.tournament_offset(v_row));
+  end if;
+
+  if v_patch ->> 'venue_id' is not null
+     and (v_patch ->> 'venue_id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    raise exception 'invalid_argument';
+  end if;
+  if v_patch ? 'starts_on' then perform app.admin_date(v_patch ->> 'starts_on'); end if;
+  if v_patch ? 'ends_on' then perform app.admin_date(v_patch ->> 'ends_on'); end if;
+  if v_patch ? 'registration_deadline_local' then
+    v_deadline_local := case when v_patch ->> 'registration_deadline_local' is null then null
+                             else app.admin_timestamp(v_patch ->> 'registration_deadline_local') end;
+  end if;
+  v_row := jsonb_populate_record(v_row, v_patch - 'id' - 'registration_deadline_local');
+
+  select ci.utc_offset_minutes into v_offset from public.cities ci where ci.id = v_row.city_id;
+  if not found then raise exception 'invalid_argument'; end if;
+  if not exists (select 1 from public.sports s where s.id = v_row.sport_id) then raise exception 'invalid_argument'; end if;
+  if v_row.venue_id is not null
+     and not exists (select 1 from public.venues v where v.id = v_row.venue_id and v.city_id = v_row.city_id) then
+    raise exception 'invalid_argument';
+  end if;
+  if coalesce(v_row.title_uz, v_row.title_ru, v_row.title_en, v_row.title_kk) is null then raise exception 'invalid_argument'; end if;
+  if v_row.ends_on < v_row.starts_on then raise exception 'invalid_argument'; end if;
+  if v_row.cover_url is not null and v_row.cover_url !~ '^https://[^[:space:]]+$' then raise exception 'invalid_argument'; end if;
+  v_row.registration_deadline := app.to_instant(coalesce(v_deadline_local, v_row.starts_on::timestamp), v_offset);
+  if v_row.registration_deadline > app.to_instant((v_row.ends_on + 1)::timestamp, v_offset) then
+    raise exception 'invalid_argument';
+  end if;
+
+  if v_creating then
+    insert into public.tournaments select (v_row).*;
+    if v_categories is null then
+      insert into public.tournament_categories (
+        tournament_id, name_uz, name_ru, name_kk, name_en, kind, gender, min_level, max_level, fee, cap, created_at)
+      values (v_row.id, 'Ochiq', 'Открытая', 'Ашық', 'Open', 'singles', 'open', 1, 5, 0, 16, p_now);
+    else
+      for v_item in select e from jsonb_array_elements(v_categories) e loop
+        v_category := app.apply_category(
+          app.new_category(v_row.id, v_index, p_now),
+          app.clean_payload(v_item, app.category_spec() - 'id' - 'tournament_id'));
+        insert into public.tournament_categories select (v_category).*;
+        v_index := v_index + 1;
+      end loop;
+    end if;
+    perform app.sync_tournament_summary(v_row.id);
+    select t.* into v_row from public.tournaments t where t.id = v_row.id;
+    v_after := to_jsonb(v_row) || jsonb_build_object('categories',
+      (select jsonb_agg(to_jsonb(c) order by c.sort_order, c.created_at, c.id)
+       from public.tournament_categories c where c.tournament_id = v_row.id));
+  else
+    -- Fees already taken are in the old city's currency.
+    if v_row.city_id <> v_before.city_id and exists (
+      select 1 from public.tournament_registrations r
+      join public.tournament_categories c on c.id = r.category_id
+      where c.tournament_id = v_row.id
+        and r.status in ('pending_partner', 'registered', 'waitlisted', 'offered')) then
+      raise exception 'has_registrations';
+    end if;
+    update public.tournaments t set
+      city_id = v_row.city_id, sport_id = v_row.sport_id, venue_id = v_row.venue_id,
+      title_uz = v_row.title_uz, title_ru = v_row.title_ru, title_kk = v_row.title_kk, title_en = v_row.title_en,
+      description_uz = v_row.description_uz, description_ru = v_row.description_ru, description_kk = v_row.description_kk, description_en = v_row.description_en,
+      starts_on = v_row.starts_on, ends_on = v_row.ends_on, registration_deadline = v_row.registration_deadline,
+      cover_url = v_row.cover_url, color_seed = v_row.color_seed, active = v_row.active
+    where t.id = v_row.id
+    returning * into v_row;
+    v_after := to_jsonb(v_row);
+  end if;
+
+  perform app.audit(p_user, case when v_creating then 'create_tournament' else 'update_tournament' end, 'tournament',
+    v_row.id::text, case when v_creating then null else to_jsonb(v_before) end, v_after, p_now);
+  return v_row.id;
+end $$;
