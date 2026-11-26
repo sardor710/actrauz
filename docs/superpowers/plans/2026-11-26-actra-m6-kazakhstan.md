@@ -258,12 +258,14 @@ Both stores require in-app account deletion. Bookings and games reference profil
 
 ## Status
 
-**2026-11-27: built and reviewed, not deployed, not merged.** Worktree `D:\actra\.worktrees\m6-kazakhstan`, branch `m6-kazakhstan` from `main` ba3ad17.
+**2026-11-27: deployed to the hosted project at the founder's request; not merged or pushed.** Applied `20261126100000_kazakh` and `20261126110000_launch`; deployed `telegram-login`, `telegram-webhook` and the new `delete-account`. Live checks passed: `e2e-kz.mjs` (KZT 12 000, 18:00 Almaty = 13:00 UTC, language kk), `e2e-delete.mjs` (200 deleted; retry with the old token 401; same phone gets a new account; old user renamed `deleted-<id>@<project host>` and banned for 100 years; `verify_jwt = true` works with this project's keys), `e2e-community.mjs`. Two script bugs found live and fixed (e2e-delete read a response twice; hide-samples needed `null::uuid`). A management-API 502 interrupted one cleanup; the four leftover throw-away users were removed by hand. `hide-samples.mjs --apply` hid Alatau Padel & Tennis, Zhetisu Arena, Esil Sport Hub and the Almaty Open Tennis tournament (4 audit rows); Tashkent's 3 venues untouched.
+
+Before that: built and reviewed. Worktree `D:\actra\.worktrees\m6-kazakhstan`, branch `m6-kazakhstan` from `main` ba3ad17.
 
 - Tasks 1–10 and Task 11 Steps 1, 1b, 2, 3 done. Every task passed its own review (fix rounds on Tasks 5, 7, 8, 10, 11); the whole-branch review said "with fixes", and its single fix wave was re-reviewed with all 11 findings addressed.
 - Tests: supabase `npm test` 358 pass; app `flutter test` 454 pass; `flutter analyze` clean.
 - Target API 36 builds on Flutter 3.32.6 (no Flutter upgrade needed). Upload key at `D:\actra-keys` (outside the repo).
 - Browser walkthrough in sample mode: Kazakh onboarding → Almaty → home, profile and delete-account dialog work. Kazakh bottom-tab labels (Турнирлер, Қауымдастық) are cut off on narrow screens: native review should shorten them. Sample banners have no Kazakh text and fall back to Russian (admin content).
-- Not yet done (Step 4, needs the founder's go-ahead): `deploy.mjs migrations`, `deploy.mjs functions`, `e2e-kz.mjs`, `e2e-delete.mjs`, `e2e-community.mjs`, `hide-samples.mjs --apply`. Real geolocation not exercised (sample mode uses the fixed locator); check on a phone.
-- Open before deploy (small): clear `meeting_lat`/`meeting_lng` with the meeting point on deletion; launch checklist to list `e2e-delete.mjs` and the `verify_jwt` fallback. Before the first store build: a timeout on the delete-account call.
+- Done before deploy: deletion clears `meeting_lat`/`meeting_lng`; the launch checklist lists the live checks and the `verify_jwt` fallback.
+- Still open: real geolocation on a phone; before the first store build, a timeout on the delete-account call and a fresh release bundle (the one in app/build predates the final fixes).
 - Founder-owned items: [docs/store/launch-checklist.md](../../store/launch-checklist.md).

@@ -56,9 +56,9 @@ const applyQuery = `
     returning t.id
   )
   insert into public.audit_log (actor_id, action, entity, entity_id, before, after, created_at)
-  select null, 'hide_sample', 'venue', id::text, '{"active": true}'::jsonb, '{"active": false}'::jsonb, now() from hidden_venues
+  select null::uuid, 'hide_sample', 'venue', id::text, '{"active": true}'::jsonb, '{"active": false}'::jsonb, now() from hidden_venues
   union all
-  select null, 'hide_sample', 'tournament', id::text, '{"active": true}'::jsonb, '{"active": false}'::jsonb, now() from hidden_tournaments
+  select null::uuid, 'hide_sample', 'tournament', id::text, '{"active": true}'::jsonb, '{"active": false}'::jsonb, now() from hidden_tournaments
   returning entity, entity_id`;
 
 const show = (rows) => {

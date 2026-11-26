@@ -34,8 +34,9 @@ async function adminUser(id) {
     // A new-style sb_secret_ key is not a JWT: it goes in apikey alone.
     headers: key.startsWith('sb_secret_') ? { apikey: key } : { apikey: key, Authorization: `Bearer ${key}` },
   });
-  assert.equal(res.status, 200, `admin read of ${id} failed: ${res.status} ${await res.text()}`);
-  return res.json();
+  const body = await res.text();
+  assert.equal(res.status, 200, `admin read of ${id} failed: ${res.status} ${body}`);
+  return JSON.parse(body);
 }
 
 let failed = false;
