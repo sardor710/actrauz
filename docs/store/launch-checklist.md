@@ -49,6 +49,7 @@ Kazakh was drafted without a native review. Have a native speaker (polite regist
 
 **Legal**
 - [ ] Legal advice on personal-data localisation in Kazakhstan and Uzbekistan. The Supabase project is in ap-south-1 (Mumbai, India), and spec §15.6 lists this as an open question; it may force a change of storage location.
+- [ ] Legal check of the data-safety declaration that name and phone number are SHARED with venue owners (Play Data safety, purpose app functionality; the Apple label and privacy text must say the same).
 - [ ] Legal review of `site/privacy.html`; then remove the "draft" marking. Also terms of service (the app asks users to accept "Terms of use and Privacy policy"; the terms text does not exist yet).
 - [ ] Fill every placeholder: contact e-mail, legal entity name, postal address, last-updated date, backup / retention wording. Search the repo for `<founder` to find them all. Use a business address, not a personal one.
 

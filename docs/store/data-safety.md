@@ -24,15 +24,15 @@ Not collected: e-mail address, passwords, payment or card data, contacts, photos
 - Does the app collect or share any of the required user data types? **Yes**
 - Is all of the user data collected by the app encrypted in transit? **Yes** (HTTPS)
 - Do you provide a way for users to request that their data be deleted? **Yes** — in the app (Profile → Delete account) and on the web (`delete-account.html`, URL to be entered in Play Console).
-- Data sharing: **No data shared with third parties** in the Play sense (the backend provider Supabase acts as a service provider on our behalf; venue owners and players seeing a name is a feature of the app, disclosed in the privacy policy). Confirm this reading with legal advice.
+- Data sharing: **Yes — name and phone number are declared as SHARED** with venue owners (independent businesses), purpose: app functionality (so the venue can confirm and honour the booking). The backend provider Supabase acts as a service provider on our behalf and is not declared as sharing. The privacy policy says the same. Legal check of this declaration is on the launch checklist.
 - Independent security review: No.
 
-**Data types collected** (all "collected", none "shared", none optional except where noted)
+**Data types collected** (all "collected"; name and phone number also "shared" with venue owners)
 
 | Play category | Data type | Collected | Purpose | Required or optional |
 |---|---|---|---|---|
-| Personal info | Name | Yes | App functionality, account management | Required |
-| Personal info | Phone number | Yes | Account management, app functionality | Required |
+| Personal info | Name | Yes, and **shared** with venue owners | App functionality, account management | Required |
+| Personal info | Phone number | Yes, and **shared** with venue owners | Account management, app functionality | Required |
 | Personal info | User IDs (Telegram user id, account id) | Yes | Account management | Required |
 | App activity | Other user-generated content / in-app actions (bookings, games, game requests, tournament registrations, levels, reliability) | Yes | App functionality | Required for those features |
 | Location | Approximate location | **No** (processed on the device only to suggest a city; never leaves the phone, so it is not "collected" under Play's definition) | n/a | Optional |
@@ -51,7 +51,7 @@ Other Play declarations
 ## Apple — App Privacy ("nutrition label") and review notes
 
 Data **linked to the user**, used for **App Functionality** only (none used for tracking):
-- Contact Info: Name, Phone Number
+- Contact Info: Name, Phone Number (both visible to the owner of a venue you book at; Apple's label has no separate "shared" flag, so state it in the privacy policy and review notes)
 - Identifiers: User ID
 - User Content / Usage Data: app activity (bookings, games, game requests, tournament registrations)
 
