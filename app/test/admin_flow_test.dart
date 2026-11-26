@@ -1,7 +1,10 @@
 import 'package:actra/app.dart';
 import 'package:actra/data/admin_repository.dart';
+import 'package:actra/domain/admin.dart';
+import 'package:actra/features/admin/admin_audit_screen.dart';
 import 'package:actra/features/admin/admin_home_screen.dart';
 import 'package:actra/features/common/widgets.dart';
+import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/state/admin_providers.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
@@ -266,6 +269,17 @@ void main() {
     await tap(tester, find.widgetWithText(FilledButton, 'Delete'));
     expect(find.text('Spring Cup'), findsNothing);
     await settleSnackbars(tester);
+  });
+
+  test('account deletion and hidden samples read as text in the audit log', () {
+    AuditEntry entry(String action, String entity) =>
+        AuditEntry(id: action, action: action, entity: entity, at: DateTime.utc(2026, 11, 26));
+    for (final code in ['en', 'ru', 'uz', 'kk']) {
+      final l = lookupAppLocalizations(Locale(code));
+      expect(auditActionText(l, entry('owner_account_deleted', 'venue')), l.auditOwnerAccountDeleted, reason: code);
+      expect(auditActionText(l, entry('hide_sample', 'venue')), l.auditHideSample, reason: code);
+      expect(auditActionText(l, entry('hide_sample', 'tournament')), l.auditHideSample, reason: code);
+    }
   });
 
   testWidgets('the audit log lists the changes, newest first, with their values', (tester) async {

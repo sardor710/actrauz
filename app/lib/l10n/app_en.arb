@@ -529,6 +529,8 @@
   "auditWalkIn": "Walk-in booking added",
   "auditBlock": "Time blocked",
   "auditMarkBooking": "Booking marked",
+  "auditOwnerAccountDeleted": "Owner deleted their account",
+  "auditHideSample": "Sample data hidden",
   "entityVenue": "Venue",
   "entityBanner": "Banner",
   "entityBooking": "Booking",

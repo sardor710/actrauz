@@ -2046,6 +2046,18 @@ abstract class AppLocalizations {
   /// **'Booking marked'**
   String get auditMarkBooking;
 
+  /// No description provided for @auditOwnerAccountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner deleted their account'**
+  String get auditOwnerAccountDeleted;
+
+  /// No description provided for @auditHideSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample data hidden'**
+  String get auditHideSample;
+
   /// No description provided for @entityVenue.
   ///
   /// In en, this message translates to:

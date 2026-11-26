@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:actra/data/auth/auth_repository.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
@@ -8,6 +10,7 @@ import 'package:actra/features/common/widgets.dart';
 import 'package:actra/features/games/game_screen.dart';
 import 'package:actra/features/owner/booking_details_sheet.dart';
 import 'package:actra/l10n/gen/app_localizations.dart';
+import 'package:actra/router.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,6 +102,66 @@ void main() {
 
     expect(find.text(ru.errUnavailable), findsOneWidget);
     expect(find.text(ru.deleteAccount), findsOneWidget);
+    expect(auth.signOuts, 0);
+  });
+
+  testWidgets('a 401 after a lost answer signs out as a deletion does', (tester) async {
+    // The first call deleted the account but its answer never arrived; the
+    // retry's token is refused, and the app must not stay signed in.
+    final auth = await openDeleteDialog(tester, error: const SessionInvalidException());
+    await tap(tester, find.widgetWithText(FilledButton, ru.deleteAccountConfirm));
+
+    expect(auth.deletes, 1);
+    expect(auth.signOuts, 1);
+    expect(find.text(ru.signInTitle), findsOneWidget);
+    expect(find.text('Oʻzbekcha'), findsNothing);
+    expect(find.text(ru.errUnavailable), findsNothing);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('user_name'), isNull);
+    expect(prefs.getString('lang'), 'ru');
+    expect(prefs.getString('city'), 'tashkent');
+  });
+
+  testWidgets('a second confirm while deleting starts nothing', (tester) async {
+    final auth = await openDeleteDialog(tester);
+    final gate = auth.deleteGate = Completer<void>();
+    await tester.tap(find.widgetWithText(FilledButton, ru.deleteAccountConfirm));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Progress shows over the profile until the call settles; the menu
+    // underneath cannot be reached.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.tap(find.text(ru.deleteAccount), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(ru.deleteAccountTitle), findsNothing);
+    // Nor does a second call reach the backend while one is running.
+    final second = containerOf(tester).read(sessionProvider.notifier).deleteAccount();
+    expect(auth.deletes, 1);
+
+    gate.complete();
+    await second;
+    await tester.pumpAndSettle();
+    expect(auth.deletes, 1);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(ru.signInTitle), findsOneWidget);
+  });
+
+  testWidgets('a failure is still shown after leaving the profile', (tester) async {
+    final auth = await openDeleteDialog(tester, error: Exception('offline'));
+    final gate = auth.deleteGate = Completer<void>();
+    await tester.tap(find.widgetWithText(FilledButton, ru.deleteAccountConfirm));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    containerOf(tester).read(routerProvider).go('/games');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(ru.errUnavailable), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(auth.signOuts, 0);
   });
 
@@ -203,6 +266,23 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text(en.deletedPlayer), findsOneWidget);
+    });
+
+    testWidgets('on their profile, which offers no invite', (tester) async {
+      await sample.pumpApp(tester, prefs: sample.signedIn, utcNow: sample.sundayMorning);
+      final router = containerOf(tester).read(routerProvider);
+      router.go('/players/p5');
+      await tester.pumpAndSettle();
+      expect(find.text(en.inviteToGame), findsOneWidget, reason: 'a live player can be invited');
+
+      backendOf(tester).markDeleted('p5');
+      router.go('/games');
+      await tester.pumpAndSettle();
+      containerOf(tester).invalidate(playerProfileProvider('p5'));
+      router.go('/players/p5');
+      await tester.pumpAndSettle();
+      expect(find.text(en.deletedPlayer), findsWidgets);
+      expect(find.text(en.inviteToGame), findsNothing);
     });
 
     testWidgets('in a tournament\'s participant list', (tester) async {

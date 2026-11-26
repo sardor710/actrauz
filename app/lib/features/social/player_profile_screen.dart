@@ -91,7 +91,8 @@ class PlayerProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (!isMe)
+              // A deleted player cannot be invited.
+              if (!isMe && !player.deleted)
                 DecoratedBox(
                   decoration: const BoxDecoration(
                     color: AppColors.card,

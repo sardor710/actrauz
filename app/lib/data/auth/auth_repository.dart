@@ -60,13 +60,23 @@ abstract class AuthRepository {
 
   /// Deletes the signed-in player's account (both app stores require it in
   /// the app), then signs out. Throws [AdminAccountException] for an Actra
-  /// admin; any other failure leaves the account and the session as they were.
+  /// admin and [SessionInvalidException] when the backend no longer accepts
+  /// this device's session; any other failure leaves the account and the
+  /// session as they were.
   Future<void> deleteAccount();
 }
 
 /// An admin account cannot delete itself: another admin removes the role first.
 class AdminAccountException implements Exception {
   const AdminAccountException();
+}
+
+/// The backend refused the session (401). Usually an earlier deletion went
+/// through and only its answer was lost, so the account is already closed;
+/// either way nothing more can be done with this session, and the app signs
+/// out exactly as after a deletion.
+class SessionInvalidException implements Exception {
+  const SessionInvalidException();
 }
 
 /// Sample mode: there is nothing to sign in to.

@@ -72,7 +72,14 @@ List<PlayerProfile> searchPlayers(
 }
 
 PlayerProfile profileOf(Player p, {Reliability reliability = Reliability.fresh, int gamesPlayed = 0}) =>
-    PlayerProfile(id: p.id, name: p.name, levels: p.levels, reliability: reliability, gamesPlayed: gamesPlayed);
+    PlayerProfile(
+      id: p.id,
+      name: p.name,
+      levels: p.levels,
+      reliability: reliability,
+      gamesPlayed: gamesPlayed,
+      deleted: p.deleted,
+    );
 
 class SampleSocialRepository implements SocialRepository {
   const SampleSocialRepository();

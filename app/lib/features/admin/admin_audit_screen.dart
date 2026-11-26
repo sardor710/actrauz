@@ -56,6 +56,9 @@ String auditActionText(AppLocalizations l, AuditEntry entry) {
     'block_slots' => l.auditBlock,
     'cancel_booking' => l.bookingCancelled,
     'mark_booking' => l.auditMarkBooking,
+    // owner_account_deleted, with its prefix stripped above.
+    'account_deleted' => l.auditOwnerAccountDeleted,
+    'hide_sample' => l.auditHideSample,
     _ => entry.action,
   };
 }

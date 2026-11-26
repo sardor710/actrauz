@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/languages.dart';
+import '../data/auth/auth_repository.dart';
 import 'providers.dart';
 
 class SessionState {
@@ -63,17 +64,28 @@ class SessionController extends Notifier<SessionState> {
     await ref.read(authRepositoryProvider).signOut();
   }
 
+  /// The deletion under way, if any.
+  Future<void>? _deleting;
+
   /// Deletes the account on the backend, then forgets the player exactly as
   /// [signOut] does (language and city kept). Onboarding then opens at the
-  /// sign-in step. On any failure (an admin account, no connection) the
-  /// player stays signed in and the error is rethrown.
-  Future<void> deleteAccount() async {
+  /// sign-in step. A session the backend no longer accepts (an earlier call
+  /// deleted the account but its answer was lost) ends the same way. On any
+  /// other failure (an admin account, no connection) the player stays signed
+  /// in and the error is rethrown. A call made while one is running gets that
+  /// one's result instead of a second request.
+  Future<void> deleteAccount() => _deleting ??= _deleteAccount().whenComplete(() => _deleting = null);
+
+  Future<void> _deleteAccount() async {
     // Set first: the backend's own sign-out may end the session (sessionLost)
     // before deleteAccount returns.
     final atSignIn = ref.read(onboardingAtSignInProvider.notifier);
     atSignIn.state = true;
+    final auth = ref.read(authRepositoryProvider);
     try {
-      await ref.read(authRepositoryProvider).deleteAccount();
+      await auth.deleteAccount();
+    } on SessionInvalidException {
+      await auth.signOut();
     } catch (_) {
       atSignIn.state = false;
       rethrow;

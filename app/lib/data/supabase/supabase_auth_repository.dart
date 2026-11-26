@@ -85,7 +85,8 @@ class SupabaseAuthRepository implements AuthRepository {
 
   /// The `delete-account` edge function scrubs and closes the account, then
   /// bans the auth user; only then is the local session ended. A refusal or a
-  /// failed call signs nobody out.
+  /// failed call signs nobody out here; a 401 surfaces as
+  /// [SessionInvalidException], and SessionController signs out for it.
   @override
   Future<void> deleteAccount() async {
     try {

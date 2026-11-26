@@ -86,9 +86,13 @@ class FakeAuth implements AuthRepository {
   Object? deleteError;
   int deletes = 0;
 
+  /// When set, `deleteAccount` waits for it before answering.
+  Completer<void>? deleteGate;
+
   @override
   Future<void> deleteAccount() async {
     deletes++;
+    if (deleteGate case final gate?) await gate.future;
     if (deleteError case final error?) throw error;
     // Deleted, then signed out, like the real implementation: its sign-out
     // reports the session as ended before deleteAccount returns.

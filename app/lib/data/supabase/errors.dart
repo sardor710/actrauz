@@ -88,9 +88,11 @@ TournamentException tournamentExceptionFor(Object error) {
 }
 
 /// What a failed `delete-account` call means to the app: 403
-/// `{"error": "admin_account"}` is an [AdminAccountException]; anything else
-/// is returned as it is.
+/// `{"error": "admin_account"}` is an [AdminAccountException]; 401 (from the
+/// function or the gateway) is a [SessionInvalidException]; anything else is
+/// returned as it is.
 Object deleteAccountErrorFor(Object error) {
+  if (error is FunctionException && error.status == 401) return const SessionInvalidException();
   if (error is FunctionException && error.status == 403) {
     var details = error.details;
     if (details is String) {

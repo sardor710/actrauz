@@ -997,7 +997,8 @@ class SampleBackend
 
   @override
   Future<PlayerProfile> profile(String userId) async => profileOf(
-    _playerOf(userId),
+    // As the backend returns it: a deleted account has no name or levels.
+    await player(userId),
     reliability: _reliability(userId),
     gamesPlayed: (_reliabilityEvents[userId] ?? const []).where((e) => e.kind == ReliabilityKind.gameCompleted).length,
   );

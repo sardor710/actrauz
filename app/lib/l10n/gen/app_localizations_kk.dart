@@ -128,7 +128,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get searchVenues => 'Нысандарды іздеу';
 
   @override
-  String get allSports => 'Барлық спорт түрі';
+  String get allSports => 'Барлық спорт түрлері';
 
   @override
   String get noVenues => 'Нысандар табылмады';
@@ -460,7 +460,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get sortPrice => 'Алдымен арзандары';
 
   @override
-  String get priceStartingFrom => 'Бағасы бастап';
+  String get priceStartingFrom => 'Бастапқы баға';
 
   @override
   String get registrationOpen => 'Тіркеу ашық';
@@ -769,7 +769,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String metricSplit(int app, int walkIn) {
-    return 'Қосымша $app · келгендер $walkIn';
+    return 'Қолданба $app · келгендер $walkIn';
   }
 
   @override
@@ -1125,6 +1125,12 @@ class AppLocalizationsKk extends AppLocalizations {
   String get auditMarkBooking => 'Брондау белгіленді';
 
   @override
+  String get auditOwnerAccountDeleted => 'Ие аккаунтын жойды';
+
+  @override
+  String get auditHideSample => 'Үлгі деректер жасырылды';
+
+  @override
   String get entityVenue => 'Нысан';
 
   @override
@@ -1301,7 +1307,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get reliabilityBlockedHint =>
-      'Бұрынғы өткізіп алған ойындарға 90 күн өткенше брондауға, ойынға қосылуға және жариялауға болмайды.';
+      'Өткізіп алған ойындарыңыздан 90 күн өткенше брондауға, ойынға қосылуға және жариялауға болмайды.';
 
   @override
   String get gameSportLabel => 'Спорт түрі';
@@ -1413,7 +1419,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get acceptInvite => 'Қабылдау';
 
   @override
-  String get declineLabel => 'Бас тарту';
+  String get declineLabel => 'Қабылдамау';
 
   @override
   String get approveLabel => 'Мақұлдау';
@@ -1787,7 +1793,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get statusOffered => 'Орын ұсынылды';
 
   @override
-  String get statusDeclined => 'Бас тартылды';
+  String get statusDeclined => 'Қабылданбады';
 
   @override
   String get statusExpired => 'Мерзімі өтті';

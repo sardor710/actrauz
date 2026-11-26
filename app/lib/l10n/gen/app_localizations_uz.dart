@@ -1116,6 +1116,12 @@ class AppLocalizationsUz extends AppLocalizations {
   String get auditMarkBooking => 'Bron belgilandi';
 
   @override
+  String get auditOwnerAccountDeleted => 'Egasi akkauntini oʻchirdi';
+
+  @override
+  String get auditHideSample => 'Namunaviy maʼlumot yashirildi';
+
+  @override
   String get entityVenue => 'Maydon';
 
   @override

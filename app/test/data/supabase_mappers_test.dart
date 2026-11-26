@@ -417,7 +417,7 @@ void main() {
       expect(await guardBooking(() async => 7), 7);
     });
 
-    test('delete-account: an admin account is refused, anything else passes through', () {
+    test('delete-account: an admin account is refused, a 401 ends the session, anything else passes through', () {
       // The client decodes a JSON body into a map, or keeps the text.
       for (final details in [
         {'error': 'admin_account'},
@@ -425,8 +425,11 @@ void main() {
       ]) {
         expect(deleteAccountErrorFor(FunctionException(status: 403, details: details)), isA<AdminAccountException>());
       }
+      // The function's own refusal and the gateway's (plain text, or nothing).
+      for (final details in <Object?>[{'error': 'unauthorized'}, 'Invalid JWT', null]) {
+        expect(deleteAccountErrorFor(FunctionException(status: 401, details: details)), isA<SessionInvalidException>());
+      }
       for (final error in <Object>[
-        const FunctionException(status: 401, details: {'error': 'not_authenticated'}),
         const FunctionException(status: 403, details: 'forbidden'),
         const FunctionException(status: 500, details: null),
         Exception('offline'),

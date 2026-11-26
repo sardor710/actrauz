@@ -1120,6 +1120,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auditMarkBooking => 'Booking marked';
 
   @override
+  String get auditOwnerAccountDeleted => 'Owner deleted their account';
+
+  @override
+  String get auditHideSample => 'Sample data hidden';
+
+  @override
   String get entityVenue => 'Venue';
 
   @override

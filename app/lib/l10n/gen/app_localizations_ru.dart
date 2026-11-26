@@ -1144,6 +1144,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get auditMarkBooking => 'Бронь отмечена';
 
   @override
+  String get auditOwnerAccountDeleted => 'Владелец удалил аккаунт';
+
+  @override
+  String get auditHideSample => 'Скрыт пример данных';
+
+  @override
   String get entityVenue => 'Площадка';
 
   @override
