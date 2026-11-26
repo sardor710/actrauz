@@ -398,6 +398,35 @@ void main() {
       expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.cancelled);
     });
 
+    test('cancelling a pair tells the other player, confirmed or only invited', () async {
+      // The confirmed partner cancels a registered pair: I, the registrant, am told.
+      final cat = await makeCategory(cap: 2, kind: CategoryKind.pairs);
+      final mine = await backend.tournament.register(cat, partnerId: 'p1');
+      await backend.respondPartnerAs('p1', mine.id, accept: true);
+      await backend.cancelRegistrationAs('p1', mine.id);
+      final note = (await inboxOf('tournament_partner_cancelled')).single;
+      expect(note.category, 'tournaments');
+      expect(note.payload['actor_name'], 'Aziz');
+      expect(note.payload['registration_id'], mine.id);
+      expect(note.payload['tournament_id'], 't1');
+      expect(note.payload['category_id'], cat);
+      expect(note.route, '/tournaments/t1');
+
+      // A registrant cancels a pending pair: I, the invited partner, am told.
+      final other = await makeCategory(cap: 2, kind: CategoryKind.pairs);
+      final invite = await backend.registerAs('p5', other, partnerId: kMeId);
+      await backend.cancelRegistrationAs('p5', invite.id);
+      final notes = await inboxOf('tournament_partner_cancelled');
+      expect(notes, hasLength(2));
+      expect(notes.map((n) => n.payload['registration_id']), contains(invite.id));
+
+      // My own cancel of a singles entry tells nobody (and not me).
+      final single = await makeCategory(cap: 2);
+      final s = await backend.tournament.register(single);
+      await backend.tournament.cancel(s.id);
+      expect(await inboxOf('tournament_partner_cancelled'), hasLength(2));
+    });
+
     test('nobody acts on someone else\'s entry', () async {
       final cat = await makeCategory(cap: 2);
       final theirs = await backend.registerAs('p1', cat);
@@ -422,6 +451,19 @@ void main() {
       expect(entries.map((r) => r.role), [RegistrationRole.partner, RegistrationRole.registrant]);
       expect(entries.first.tournament?.id, 't1');
       expect(entries.first.tournament?.title.en, 'Tashkent Padel Cup');
+    });
+
+    test('my registrations say whether registration is open, and leave out inactive tournaments', () async {
+      final cat = await makeCategory(cap: 2);
+      await backend.tournament.register(cat);
+      expect((await backend.tournament.myRegistrations()).single.tournament?.registrationOpen, isTrue);
+
+      final draft = TournamentDraft.from(await backend.tournament.get('t1'))..registrationDeadline = DateTime.utc(2026, 11, 20);
+      await backend.admin.saveTournament(draft);
+      expect((await backend.tournament.myRegistrations()).single.tournament?.registrationOpen, isFalse);
+
+      await backend.admin.saveTournament(draft..active = false);
+      expect(await backend.tournament.myRegistrations(), isEmpty);
     });
   });
 
@@ -758,6 +800,7 @@ void main() {
         'tournament_partner_invite',
         'tournament_partner_accepted',
         'tournament_partner_declined',
+        'tournament_partner_cancelled',
         'tournament_partner_expired',
         'tournament_spot_offered',
         'tournament_deadline_reminder',

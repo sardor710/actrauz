@@ -1862,6 +1862,11 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String notifTournamentPartnerCancelled(String actor, String title) {
+    return '$actor juftlik arizangizni bekor qildi: $title';
+  }
+
+  @override
   String notifTournamentPartnerExpired(String title) {
     return 'Sherik oʻz vaqtida javob bermadi: $title';
   }

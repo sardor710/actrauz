@@ -271,6 +271,7 @@ class SampleTournaments {
               venueId: t.venueId,
               colorSeed: t.colorSeed,
               coverUrl: t.coverUrl,
+              registrationOpen: t.active && _now(t).isBefore(t.deadline),
             )
           : null,
     );
@@ -522,6 +523,12 @@ class SampleTournaments {
 
     final held = e.status.counted;
     e.status = RegistrationStatus.cancelled;
+    // On a pair the other player is told: the partner (confirmed or only
+    // invited) when the registrant cancels, the registrant when the partner does.
+    final other = e.userId == userId ? e.partnerId : e.userId;
+    if (other != null) {
+      notify(other, 'tournament_partner_cancelled', 'tournaments', {..._note(e), 'actor_name': nameOf(userId)});
+    }
     if (held) _offerSpots(c, admin: false);
     return _view(e, userId);
   }
@@ -565,6 +572,7 @@ class SampleTournaments {
     for (final e in _entries.reversed) {
       if (e.userId != userId && e.partnerId != userId) continue;
       final t = _tournaments[_categories[e.categoryId]!.tournamentId]!;
+      if (!t.active) continue;
       if (t.end.isBefore(dateOnly(_now(t)))) continue;
       rows.add(e);
     }

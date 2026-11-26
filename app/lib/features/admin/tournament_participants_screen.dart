@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/tournaments.dart';
 import '../../state/admin_providers.dart';
@@ -58,6 +59,7 @@ class _Participants extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: _CategorySection(
               category: category,
+              cityId: tournament.cityId,
               siblings: tournament.categories,
               entries: [for (final e in list) if (e.registration.categoryId == category.id) e],
             ),
@@ -68,9 +70,12 @@ class _Participants extends ConsumerWidget {
 }
 
 class _CategorySection extends ConsumerWidget {
-  const _CategorySection({required this.category, required this.siblings, required this.entries});
+  const _CategorySection({required this.category, required this.cityId, required this.siblings, required this.entries});
 
   final TournamentCategory category;
+
+  /// The tournament's city: the CSV shows its local time.
+  final String cityId;
   final List<TournamentCategory> siblings;
   final List<AdminRegistration> entries;
 
@@ -119,7 +124,11 @@ class _CategorySection extends ConsumerWidget {
   }
 
   Future<void> _copyCsv(BuildContext context) async {
-    final csv = registrationsCsv([for (final e in entries) if (e.registration.status.live) e], context.lang);
+    final csv = registrationsCsv(
+      [for (final e in entries) if (e.registration.status.live) e],
+      context.lang,
+      utcOffsetMinutes: cityById(cityId).utcOffsetMinutes,
+    );
     await Clipboard.setData(ClipboardData(text: csv));
     if (context.mounted) showMessage(context, context.l.csvCopied);
   }
@@ -351,12 +360,13 @@ String _cell(String value, {bool text = true}) {
 String _two(int n) => n.toString().padLeft(2, '0');
 
 /// The category's entries as CSV: [kCsvHeader] and one line per entry.
-/// Phones are in it: only admins ever see this list.
-String registrationsCsv(List<AdminRegistration> entries, String lang) {
+/// Phones are in it: only admins ever see this list. `created` is the
+/// tournament city's wall-clock time ([utcOffsetMinutes] from UTC).
+String registrationsCsv(List<AdminRegistration> entries, String lang, {required int utcOffsetMinutes}) {
   final lines = [kCsvHeader];
   for (final e in entries) {
     final r = e.registration;
-    final c = r.createdAt;
+    final c = r.createdAt.toUtc().add(Duration(minutes: utcOffsetMinutes));
     lines.add(
       [
         _cell(r.categoryName.resolve(lang)),

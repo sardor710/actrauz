@@ -3334,6 +3334,12 @@ abstract class AppLocalizations {
   /// **'{actor} declined your invitation for {title}'**
   String notifTournamentPartnerDeclined(String actor, String title);
 
+  /// No description provided for @notifTournamentPartnerCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} cancelled your pair entry for {title}'**
+  String notifTournamentPartnerCancelled(String actor, String title);
+
   /// No description provided for @notifTournamentPartnerExpired.
   ///
   /// In en, this message translates to:

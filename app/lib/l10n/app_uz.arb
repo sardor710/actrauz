@@ -539,6 +539,7 @@
   "notifTournamentPartnerInvite": "{actor} sizni juftlikka taklif qildi: {title}",
   "notifTournamentPartnerAccepted": "{actor} taklifingizni qabul qildi: {title}",
   "notifTournamentPartnerDeclined": "{actor} taklifingizni rad etdi: {title}",
+  "notifTournamentPartnerCancelled": "{actor} juftlik arizangizni bekor qildi: {title}",
   "notifTournamentPartnerExpired": "Sherik oʻz vaqtida javob bermadi: {title}",
   "notifTournamentSpotOffered": "Siz uchun joy boʻshadi: {title}. Boshqaga ketmasidan egallang",
   "notifTournamentDeadlineReminder": "Roʻyxatdan oʻtish tez orada tugaydi, sherik esa javob bermadi: {title}",

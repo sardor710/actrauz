@@ -1865,6 +1865,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String notifTournamentPartnerCancelled(String actor, String title) {
+    return '$actor cancelled your pair entry for $title';
+  }
+
+  @override
   String notifTournamentPartnerExpired(String title) {
     return 'Your partner did not answer in time for $title';
   }

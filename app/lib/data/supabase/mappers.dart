@@ -694,6 +694,7 @@ TournamentSummary tournamentSummaryFromJson(Row json) => TournamentSummary(
   venueId: json['venue_id'] as String?,
   colorSeed: json['color_seed'] as int? ?? 0,
   coverUrl: json['cover_url'] as String?,
+  registrationOpen: json['registration_open'] as bool? ?? false,
 );
 
 /// The JSON returned by `register_tournament`, `respond_partner`,

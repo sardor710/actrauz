@@ -293,6 +293,7 @@ class AppNotification {
           'tournament_partner_invite' ||
           'tournament_partner_accepted' ||
           'tournament_partner_declined' ||
+          'tournament_partner_cancelled' ||
           'tournament_partner_expired' ||
           'tournament_spot_offered' ||
           'tournament_deadline_reminder' ||

@@ -1,5 +1,6 @@
 import 'package:actra/core/money.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
+import 'package:actra/domain/tournaments.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,6 +83,25 @@ void main() {
     expect(after.tournament.title.en, 'Tashkent Padel Cup 2');
     expect(after.tournament.registrationDeadline, before.tournament.registrationDeadline);
     expect(after.categoryCount, before.categoryCount);
+  });
+
+  testWidgets('the date pickers open on a tournament dated more than a year ago', (tester) async {
+    await openAdmin(tester);
+    final backend = backendOf(tester);
+    final t1 = (await backend.admin.tournaments()).firstWhere((t) => t.tournament.id == 't1').tournament;
+    await backend.admin.saveTournament(
+      TournamentDraft.from(t1)
+        ..start = DateTime.utc(2024, 3, 1)
+        ..end = DateTime.utc(2024, 3, 2)
+        ..registrationDeadline = DateTime.utc(2024, 2, 28, 18),
+    );
+    await goTo(tester, '/admin/tournaments/t1');
+    for (final field in ['tournament-start', 'tournament-end', 'tournament-deadline']) {
+      await tap(tester, key(field));
+      expect(tester.takeException(), isNull, reason: field);
+      expect(find.byType(DatePickerDialog), findsOneWidget, reason: field);
+      await tap(tester, find.text('Cancel'));
+    }
   });
 
   testWidgets('lowering a cap below the entries holding a spot shows the error', (tester) async {

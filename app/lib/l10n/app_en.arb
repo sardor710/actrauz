@@ -1012,6 +1012,17 @@
       }
     }
   },
+  "notifTournamentPartnerCancelled": "{actor} cancelled your pair entry for {title}",
+  "@notifTournamentPartnerCancelled": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "notifTournamentPartnerExpired": "Your partner did not answer in time for {title}",
   "@notifTournamentPartnerExpired": {
     "placeholders": {

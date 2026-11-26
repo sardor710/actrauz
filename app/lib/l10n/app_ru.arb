@@ -539,6 +539,7 @@
   "notifTournamentPartnerInvite": "{actor} приглашает вас в пару: {title}",
   "notifTournamentPartnerAccepted": "{actor} принимает ваше приглашение: {title}",
   "notifTournamentPartnerDeclined": "{actor} отклоняет ваше приглашение: {title}",
+  "notifTournamentPartnerCancelled": "{actor} отменяет вашу парную заявку: {title}",
   "notifTournamentPartnerExpired": "Партнёр не ответил вовремя: {title}",
   "notifTournamentSpotOffered": "Для вас освободилось место: {title}. Займите его, пока оно не ушло",
   "notifTournamentDeadlineReminder": "Скоро конец регистрации, а партнёр не ответил: {title}",

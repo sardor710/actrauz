@@ -956,6 +956,7 @@ void main() {
               'ends_on': '2026-12-05',
               'color_seed': 7,
               'cover_url': null,
+              'registration_open': true,
             },
           },
         ),
@@ -965,6 +966,17 @@ void main() {
       expect((t.id, t.cityId, t.sportId, t.venueId, t.colorSeed), ('tour-1', 'tashkent', 'padel', null, 7));
       expect(t.title.en, 'Cup');
       expect((t.start, t.end), (DateTime.utc(2026, 12, 4), DateTime.utc(2026, 12, 5)));
+      expect(t.registrationOpen, isTrue);
+      // An older server without the field: nothing is offered.
+      final old = registrationFromJson(
+        entry(
+          extra: {
+            'tournament': {'id': 't', 'city_id': 'tashkent', 'sport_id': 'padel', 'starts_on': '2026-12-04', 'ends_on': '2026-12-05'},
+          },
+        ),
+        myUserId: me,
+      );
+      expect(old.tournament!.registrationOpen, isFalse);
     });
 
     test('the admin\'s entry has phones, the paid time and the override flag', () {

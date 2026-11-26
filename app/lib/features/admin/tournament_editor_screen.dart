@@ -15,6 +15,15 @@ import 'admin_tournaments_screen.dart';
 import 'category_sheet.dart';
 import 'localized_field.dart';
 
+/// The days a date picker offers: from [first] (default a year before
+/// [today]) to two years after [today], widened to take in [initial] so that
+/// editing an old tournament never opens the picker outside its own range.
+({DateTime first, DateTime last}) pickerRange(DateTime initial, DateTime today, {DateTime? first}) {
+  final from = first ?? today.subtract(const Duration(days: 365));
+  final to = today.add(const Duration(days: 365 * 2));
+  return (first: initial.isBefore(from) ? initial : from, last: initial.isAfter(to) ? initial : to);
+}
+
 /// Creates or edits a tournament and its categories (product spec §10.1).
 /// A new tournament collects its categories in the form and saves them
 /// together; an existing one saves each category on its own.
@@ -61,13 +70,8 @@ class _TournamentEditorScreenState extends ConsumerState<TournamentEditorScreen>
   }
 
   Future<DateTime?> _pickDay(DateTime initial, {DateTime? first}) {
-    final today = _today(_draft!.cityId);
-    return showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: first ?? today.subtract(const Duration(days: 365)),
-      lastDate: today.add(const Duration(days: 365 * 2)),
-    );
+    final range = pickerRange(initial, _today(_draft!.cityId), first: first);
+    return showDatePicker(context: context, initialDate: initial, firstDate: range.first, lastDate: range.last);
   }
 
   Future<void> _pickStart() async {

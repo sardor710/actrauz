@@ -60,9 +60,9 @@ class _EntryCard extends ConsumerWidget {
     final l = context.l;
     final lang = context.lang;
     final summary = entry.tournament;
-    // The deadline decides what the entry can still do; until the tournament
-    // loads, nothing is offered.
-    final open = ref.watch(tournamentProvider(entry.tournamentId)).valueOrNull?.registrationOpen ?? false;
+    // The deadline decides what the entry can still do; my_registrations
+    // says whether it has passed.
+    final open = summary?.registrationOpen ?? false;
     final cityId = summary?.cityId ?? ref.watch(currentCityProvider).id;
     final now = tournamentNow(ref, cityId);
 

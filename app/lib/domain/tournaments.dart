@@ -113,6 +113,7 @@ class TournamentSummary {
     this.venueId,
     this.colorSeed = 0,
     this.coverUrl,
+    this.registrationOpen = false,
   });
 
   final String id;
@@ -124,6 +125,10 @@ class TournamentSummary {
   final String? venueId;
   final int colorSeed;
   final String? coverUrl;
+
+  /// Registration has not closed: what the entry can still do (cancel,
+  /// answer an invite, claim an offer) depends on it.
+  final bool registrationOpen;
 }
 
 /// One entry: a player (singles) or a pair, registrant first.

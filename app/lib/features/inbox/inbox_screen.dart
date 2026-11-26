@@ -54,6 +54,7 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'tournament_partner_invite' => l.notifTournamentPartnerInvite(actor, tournament),
     'tournament_partner_accepted' => l.notifTournamentPartnerAccepted(actor, tournament),
     'tournament_partner_declined' => l.notifTournamentPartnerDeclined(actor, tournament),
+    'tournament_partner_cancelled' => l.notifTournamentPartnerCancelled(actor, tournament),
     'tournament_partner_expired' => l.notifTournamentPartnerExpired(tournament),
     'tournament_spot_offered' => l.notifTournamentSpotOffered(tournament),
     'tournament_deadline_reminder' => l.notifTournamentDeadlineReminder(tournament),

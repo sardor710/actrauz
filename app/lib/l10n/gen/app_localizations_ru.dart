@@ -1890,6 +1890,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String notifTournamentPartnerCancelled(String actor, String title) {
+    return '$actor отменяет вашу парную заявку: $title';
+  }
+
+  @override
   String notifTournamentPartnerExpired(String title) {
     return 'Партнёр не ответил вовремя: $title';
   }
