@@ -1,10 +1,12 @@
-// The HTTP edges of the two functions. Standard Request/Response only, so
-// they run under Deno and under `node --test` alike.
+// The HTTP edges of the functions. Standard Request/Response only, so they
+// run under Deno and under `node --test` alike.
 
+import { deleteAccount } from './delete_account_core.ts';
+import type { DeleteDeps } from './delete_account_core.ts';
 import { claimLogin, handleUpdate, startLogin } from './login_core.ts';
 import type { Deps, TelegramUpdate } from './login_core.ts';
 
-// The web build of the app calls telegram-login from a browser.
+// The web build of the app calls telegram-login and delete-account from a browser.
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -41,6 +43,26 @@ export async function handleLoginRequest(deps: Deps, req: Request): Promise<Resp
     return json({ error: 'bad_request' }, 400);
   } catch (e) {
     console.error('telegram-login failed:', e);
+    return json({ error: 'server_error' }, 500);
+  }
+}
+
+/**
+ * POST with the player's JWT (Authorization: Bearer ...) -> 200 {status:
+ * "deleted"}, 403 {error: "admin_account"}, 401 {error: "unauthorized"}.
+ * The gateway checks the JWT too (verify_jwt in config.toml).
+ */
+export async function handleDeleteRequest(deps: DeleteDeps, req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+
+  const token = req.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? '';
+  try {
+    const result = await deleteAccount(deps, token);
+    if ('status' in result) return json(result);
+    return json(result, result.error === 'admin_account' ? 403 : 401);
+  } catch (e) {
+    console.error('delete-account failed:', e);
     return json({ error: 'server_error' }, 500);
   }
 }

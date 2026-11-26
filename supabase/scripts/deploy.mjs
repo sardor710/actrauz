@@ -120,8 +120,9 @@ if (wants('functions')) {
   }
 
   step('Deploying edge functions');
-  // verify_jwt per function comes from config.toml (off for the webhook).
-  await supabase(env, ['functions', 'deploy', 'telegram-login', 'telegram-webhook', '--use-api', '--yes']);
+  // verify_jwt per function comes from config.toml (off for sign-in and the
+  // webhook, on for delete-account).
+  await supabase(env, ['functions', 'deploy', 'telegram-login', 'telegram-webhook', 'delete-account', '--use-api', '--yes']);
 }
 
 if (wants('telegram')) {

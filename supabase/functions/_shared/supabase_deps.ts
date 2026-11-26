@@ -1,9 +1,14 @@
 // Connects the sign-in logic to the real world: the database and auth
 // through supabase-js with the service role, and the Telegram Bot API.
-// Deno-only; the logic it serves is in login_core.ts.
+// Deno-only; the logic it serves is in login_core.ts and
+// delete_account_core.ts.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import type { Deps, LoginToken, TokenStatus } from './login_core.ts';
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { authUserFor } from './login_core.ts';
+import type { AuthAccounts, Deps, LoginToken, TokenStatus } from './login_core.ts';
+import { closedAuthUser } from './delete_account_core.ts';
+import type { DeleteDeps } from './delete_account_core.ts';
 import type { Language } from './bot_texts.ts';
 
 const env = (name: string): string => {
@@ -25,18 +30,43 @@ const base64url = (bytes: Uint8Array) =>
 const loginEmail = (phone: string) =>
   `${phone.replace(/\D/g, '')}@${Deno.env.get('LOGIN_EMAIL_DOMAIN') || new URL(env('SUPABASE_URL')).hostname}`;
 
-export function makeDeps(): Deps {
+const must = <T>(result: { data: T; error: { message: string } | null }): T => {
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+};
+
+function adminClient(): SupabaseClient {
   // The project's secret key when it was set as a function secret (new-style
   // sb_secret_ keys), else the service-role key every function is given.
   const adminKey = Deno.env.get('ACTRA_SECRET_KEY') || env('SUPABASE_SERVICE_ROLE_KEY');
-  const admin = createClient(env('SUPABASE_URL'), adminKey, {
+  return createClient(env('SUPABASE_URL'), adminKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+/** Renames and bans the auth user (delete_account_core.ts). */
+const closeAuthUser = (admin: SupabaseClient) => async (userId: string) => {
+  const { error } = await admin.auth.admin.updateUserById(userId, closedAuthUser(userId));
+  if (error) throw new Error(error.message);
+};
+
+export function makeDeps(): Deps {
+  const admin = adminClient();
   const botToken = env('TELEGRAM_BOT_TOKEN');
 
-  const must = <T>(result: { data: T; error: { message: string } | null }): T => {
-    if (result.error) throw new Error(result.error.message);
-    return result.data;
+  const authAccounts: AuthAccounts = {
+    create: async (email, phone) => {
+      const created = await admin.auth.admin.createUser({ email, email_confirm: true, app_metadata: { phone } });
+      return { userId: created.data?.user?.id, error: created.error?.message };
+    },
+    findByEmail: async (email) => {
+      const existing = await admin.auth.admin.generateLink({ type: 'magiclink', email });
+      return { userId: existing.data?.user?.id, error: existing.error?.message };
+    },
+    isDeleted: async (userId) =>
+      (must(await admin.from('profiles').select('deleted_at').eq('id', userId).maybeSingle()) as { deleted_at: string | null } | null)
+        ?.deleted_at != null,
+    close: closeAuthUser(admin),
   };
 
   /** A Telegram account points at one Actra account at a time. */
@@ -84,20 +114,9 @@ export function makeDeps(): Deps {
       },
 
       create: async (phone: string, telegramUserId: number | null, language: Language) => {
-        const email = loginEmail(phone);
-        const created = await admin.auth.admin.createUser({
-          email,
-          email_confirm: true,
-          app_metadata: { phone },
-        });
-        let userId = created.data?.user?.id;
-        if (!userId) {
-          // An earlier attempt created the auth user and stopped before the
-          // rows below; pick that user up instead of failing forever.
-          const existing = await admin.auth.admin.generateLink({ type: 'magiclink', email });
-          userId = existing.data?.user?.id;
-          if (!userId) throw new Error(created.error?.message ?? existing.error?.message ?? 'could not create the account');
-        }
+        // Picks up an auth user an earlier attempt left behind, unless its
+        // account was deleted (login_core.ts authUserFor).
+        const userId = await authUserFor(authAccounts, loginEmail(phone), phone);
         must(await admin.from('profiles').upsert({ id: userId, language }, { onConflict: 'id', ignoreDuplicates: true }));
         must(await admin.from('profile_contacts').upsert({ user_id: userId, phone }, { onConflict: 'user_id' }));
         if (telegramUserId !== null) await linkTelegram(userId, telegramUserId);
@@ -128,5 +147,19 @@ export function makeDeps(): Deps {
         if (!res.ok) throw new Error(`Telegram sendMessage failed: ${res.status} ${await res.text()}`);
       },
     },
+  };
+}
+
+/** The delete-account function's deps: the database and auth with the service role. */
+export function makeDeleteDeps(): DeleteDeps {
+  const admin = adminClient();
+  return {
+    userIdFromToken: async (token) => {
+      const { data, error } = await admin.auth.getUser(token);
+      return error ? null : (data.user?.id ?? null);
+    },
+    // A refusal arrives as the exception's message ('admin_account').
+    scrub: async (userId) => void must(await admin.rpc('delete_account_service', { p_user: userId })),
+    closeAuthUser: closeAuthUser(admin),
   };
 }

@@ -20,3 +20,8 @@ verify_jwt = false
 # secret header registered with setWebhook instead.
 [functions.telegram-webhook]
 verify_jwt = false
+
+# Called by a signed-in player with their session's access token (a JWT);
+# the function checks it again before deleting anything.
+[functions.delete-account]
+verify_jwt = true

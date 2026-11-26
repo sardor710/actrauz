@@ -6,7 +6,7 @@ Everything the phone app talks to: the database schema and rules, the sample con
 supabase/
   migrations/     schema, row-level security, booking and game functions
   seed.sql        sample content, GENERATED from app/lib/data/sample/sample_data.dart
-  functions/      telegram-login, telegram-webhook (Deno edge functions)
+  functions/      telegram-login, telegram-webhook, delete-account (Deno edge functions)
   scripts/        deploy.mjs, e2e.mjs, e2e-owner.mjs, e2e-community.mjs
   tests/          database tests (Node + a throw-away Postgres, no Docker)
   .env            your secrets (git-ignored); .env.example is the template
@@ -115,6 +115,12 @@ A token lasts 10 minutes and works once. The webhook only accepts calls carrying
 The project uses Supabase's new-style keys (`sb_publishable_…`, `sb_secret_…`), which are not JWTs. So `telegram-login` is deployed without the gateway's JWT check (see `config.toml`), and the secret key is passed to the functions as the function secret `ACTRA_SECRET_KEY`.
 
 Supabase issues sessions for an e-mail or an SMS-verified phone. Since the phone is verified by Telegram instead, each account gets a private placeholder address (`<digits>@<project-ref>.supabase.co`, changeable with `LOGIN_EMAIL_DOMAIN` in `.env`). No mail is ever sent to it.
+
+## How account deletion works
+
+The app calls `delete-account` with the player's session (the gateway checks the JWT). The function calls `public.delete_account_service` (service role only), which runs `app.delete_account`. Everything still to come is cancelled through the usual functions, so the other people get their usual notifications: bookings, hosted and joined games, join requests and invites, Game Requests and tournament entries. An entry past its deadline, or one only waiting on the player as partner, is cancelled directly with the same notice. The phone, levels, venue ownerships, notifications and phone lookups are deleted, and the profile keeps only its id, its history and `deleted_at`. A venue left without an owner stays and gets an `owner_account_deleted` audit row. Admins are refused (`admin_account`).
+
+Then the auth user is renamed to `deleted-<id>@deleted.actra.invalid` and banned, so the same phone signs up again as a new, empty account. If that step fails the app retries the call (both steps are idempotent); if the person signs in before that, sign-in closes the scrubbed auth user and creates a fresh one.
 
 ## Changing the sample content
 

@@ -45,6 +45,39 @@ export interface UserStore {
   issueSessionToken(userId: string, phone: string): Promise<string>;
 }
 
+/** The auth admin calls account creation needs (supabase_deps wires them to supabase-js). */
+export interface AuthAccounts {
+  /** Creates the auth user; an error (no userId) when the address is taken. */
+  create(email: string, phone: string): Promise<{ userId?: string; error?: string }>;
+  /** The auth user with this address. */
+  findByEmail(email: string): Promise<{ userId?: string; error?: string }>;
+  /** True once the account's profile has been deleted (profiles.deleted_at). */
+  isDeleted(userId: string): Promise<boolean>;
+  /** Renames and bans the auth user, as account deletion does. */
+  close(userId: string): Promise<void>;
+}
+
+/**
+ * The auth user for a new account at `email`. An earlier attempt may have
+ * created the auth user and stopped before the profile rows; that user is
+ * picked up instead of failing forever. Unless its profile was deleted: a
+ * deletion that scrubbed the account but failed to close the auth user, then
+ * the person signed in again before retrying. That user is closed now and a
+ * fresh one created, so the scrubbed account is never revived.
+ */
+export async function authUserFor(auth: AuthAccounts, email: string, phone: string): Promise<string> {
+  const created = await auth.create(email, phone);
+  if (created.userId) return created.userId;
+  const existing = await auth.findByEmail(email);
+  if (!existing.userId) throw new Error(created.error ?? existing.error ?? 'could not create the account');
+  if (!(await auth.isDeleted(existing.userId))) return existing.userId;
+
+  await auth.close(existing.userId);
+  const fresh = await auth.create(email, phone);
+  if (!fresh.userId) throw new Error(fresh.error ?? 'could not create the account');
+  return fresh.userId;
+}
+
 export interface Telegram {
   sendMessage(chatId: number, text: string, replyMarkup?: unknown): Promise<void>;
 }

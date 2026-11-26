@@ -6,8 +6,10 @@ import { createHash } from 'node:crypto';
 import { beforeEach, test } from 'node:test';
 import { botTexts, pickLanguage } from './bot_texts.ts';
 import { handleLoginRequest, handleWebhookRequest } from './http.ts';
-import { claimLogin, handleUpdate, normalizePhone, startLogin } from './login_core.ts';
-import type { Deps, LoginToken, TelegramUpdate } from './login_core.ts';
+import { authUserFor, claimLogin, handleUpdate, normalizePhone, startLogin } from './login_core.ts';
+import type { AuthAccounts, Deps, LoginToken, TelegramUpdate } from './login_core.ts';
+import { closedAuthUser, deleteAccount } from './delete_account_core.ts';
+import type { DeleteDeps } from './delete_account_core.ts';
 
 let clock: Date;
 let tokens: Map<string, LoginToken & { created: number }>;
@@ -305,4 +307,106 @@ test('login endpoint: start and claim over HTTP, with CORS for the web app', asy
   assert.equal((await handleLoginRequest(deps, post('not json'))).status, 400);
   assert.equal((await handleLoginRequest(deps, new Request('https://example.test/fn'))).status, 405);
   assert.deepEqual(await (await handleLoginRequest(deps, post({ action: 'claim' }))).json(), { status: 'expired' });
+});
+
+// ---- Auth users and account deletion ----
+
+/**
+ * Supabase auth faked: one user per address, as auth.admin.createUser
+ * enforces; `deleted` stands for profiles.deleted_at.
+ */
+function fakeAuth() {
+  const users = new Map<string, { email: string; deleted: boolean; banned: boolean }>();
+  let created = 0;
+  const auth: AuthAccounts = {
+    create: async (email) => {
+      if ([...users.values()].some((u) => u.email === email)) return { error: 'already registered' };
+      const userId = `auth-${++created}`;
+      users.set(userId, { email, deleted: false, banned: false });
+      return { userId };
+    },
+    findByEmail: async (email) => {
+      const hit = [...users].find(([, u]) => u.email === email);
+      return hit ? { userId: hit[0] } : { error: 'user not found' };
+    },
+    isDeleted: async (userId) => users.get(userId)?.deleted ?? false,
+    close: async (userId) => {
+      const user = users.get(userId)!;
+      user.email = closedAuthUser(userId).email;
+      user.banned = true;
+    },
+  };
+  return { users, auth };
+}
+
+/** The fake deps, with accounts created through authUserFor and a deletion that scrubs and closes. */
+function withAuth() {
+  const world = fakeAuth();
+  deps.users.create = async (phone, telegramUserId) => {
+    const userId = await authUserFor(world.auth, `${phone.replace(/\D/g, '')}@login.test`, phone);
+    accounts.set(phone, { userId, telegramUserId });
+    return { userId };
+  };
+  const deleteDeps: DeleteDeps = {
+    userIdFromToken: async (token) => token.match(/^session-for-(.+)-\+\d+$/)?.[1] ?? null,
+    scrub: async (userId) => {
+      world.users.get(userId)!.deleted = true;
+      // profile_contacts goes with the scrub.
+      for (const [phone, account] of accounts) if (account.userId === userId) accounts.delete(phone);
+    },
+    closeAuthUser: (userId) => world.auth.close(userId),
+  };
+  return { world, deleteDeps };
+}
+
+async function signIn(telegramId: number, phone: string) {
+  const login = await startLogin(deps, { language: 'ru' });
+  await handleUpdate(deps, start(telegramId, login.token));
+  await handleUpdate(deps, contact(telegramId, phone));
+  const claimed = await claimLogin(deps, { token: login.token, pollSecret: login.poll_secret });
+  assert.equal(claimed.status, 'ok');
+  return claimed as { status: 'ok'; token_hash: string; is_new: boolean };
+}
+
+test('an auth user left behind by an interrupted sign-up is picked up, not replaced', async () => {
+  const { world } = withAuth();
+  // The auth user exists, its profile rows were never written.
+  const { userId: orphan } = (await world.auth.create('77010000001@login.test', '+77010000001')) as { userId: string };
+  const first = await signIn(777, '+77010000001');
+  assert.equal(first.token_hash, `session-for-${orphan}-+77010000001`);
+  assert.equal(first.is_new, true);
+  assert.equal(world.users.size, 1);
+  assert.equal(world.users.get(orphan)!.banned, false);
+});
+
+test('same phone after deletion gets a new account', async () => {
+  const { world, deleteDeps } = withAuth();
+  const first = await signIn(777, '+77010000001');
+  const oldId = (await deleteDeps.userIdFromToken(first.token_hash))!;
+  assert.deepEqual(await deleteAccount(deleteDeps, first.token_hash), { status: 'deleted' });
+
+  const again = await signIn(777, '+77010000001');
+  assert.equal(again.is_new, true);
+  const newId = (await deleteDeps.userIdFromToken(again.token_hash))!;
+  assert.notEqual(newId, oldId);
+  assert.equal(world.users.get(newId)!.deleted, false);
+  assert.equal(world.users.get(oldId)!.banned, true);
+});
+
+test('a deletion that stopped before closing the auth user: signing in again closes it and starts fresh', async () => {
+  const { world, deleteDeps } = withAuth();
+  const first = await signIn(777, '+77010000001');
+  const oldId = (await deleteDeps.userIdFromToken(first.token_hash))!;
+  const failing = { ...deleteDeps, closeAuthUser: async () => Promise.reject(new Error('auth is down')) };
+  await assert.rejects(deleteAccount(failing, first.token_hash), /auth is down/);
+  assert.equal(world.users.get(oldId)!.banned, false, 'the scrubbed user is still open');
+
+  // Before the app retries, the same phone signs in again.
+  const again = await signIn(777, '+77010000001');
+  const newId = (await deleteDeps.userIdFromToken(again.token_hash))!;
+  assert.notEqual(newId, oldId, 'the scrubbed account is not revived');
+  assert.equal(again.is_new, true);
+  assert.equal(world.users.get(oldId)!.banned, true);
+  assert.equal(world.users.get(oldId)!.email, `deleted-${oldId}@deleted.actra.invalid`);
+  assert.equal(world.users.get(newId)!.email, '77010000001@login.test');
 });
