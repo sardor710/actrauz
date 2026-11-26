@@ -71,7 +71,7 @@ void main() {
   ]) {
     testWidgets('detection failure leaves manual choice ($name)', (tester) async {
       await pumpToCityStep(tester, locator);
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(Duration(seconds: name == 'hangs' ? 31 : 9));
       await tester.pumpAndSettle();
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -85,4 +85,54 @@ void main() {
       expect(find.text(en.signInTitle), findsOneWidget);
     });
   }
+
+  testWidgets('re-entering the city step does not detect again', (tester) async {
+    final locator = _CountingLocator();
+    await pumpToCityStep(tester, locator);
+    await tester.pumpAndSettle();
+    expect(locator.calls, 1);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.chooseCity), findsOneWidget);
+    expect(locator.calls, 1);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('a late detection result keeps the player\'s choice', (tester) async {
+    final locator = _CompleterLocator();
+    await pumpToCityStep(tester, locator);
+    expect(find.text(en.detectingCity), findsOneWidget);
+
+    await tester.tap(find.text('Astana'));
+    await tester.pumpAndSettle();
+    expect(find.text(en.signInTitle), findsOneWidget);
+
+    locator.done.complete('almaty');
+    await tester.pumpAndSettle();
+    expect(find.text(en.signInTitle), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(tileIcon('Astana', Icons.check_circle), findsOneWidget);
+    expect(tileIcon('Almaty', Icons.check_circle), findsNothing);
+  });
+}
+
+class _CountingLocator implements CityLocator {
+  int calls = 0;
+  @override
+  Future<String?> detectCityId() async {
+    calls++;
+    return null;
+  }
+}
+
+class _CompleterLocator implements CityLocator {
+  final done = Completer<String?>();
+  @override
+  Future<String?> detectCityId() => done.future;
 }

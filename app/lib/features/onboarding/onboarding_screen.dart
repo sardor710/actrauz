@@ -423,7 +423,9 @@ class _CityStep extends ConsumerStatefulWidget {
 }
 
 class _CityStepState extends ConsumerState<_CityStep> {
-  static const _detectTimeout = Duration(seconds: 8);
+  /// Safety bound only: the locator times the position fix itself (8 s) and
+  /// the permission prompt must not count against it.
+  static const _detectTimeout = Duration(seconds: 30);
 
   bool _detecting = false;
   String? _detectedId;
@@ -431,7 +433,13 @@ class _CityStepState extends ConsumerState<_CityStep> {
   @override
   void initState() {
     super.initState();
-    if (ref.read(sessionProvider).cityId == null) _detect();
+    if (ref.read(sessionProvider).cityId == null && !ref.read(cityDetectionAttemptedProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(cityDetectionAttemptedProvider.notifier).state = true;
+        _detect();
+      });
+    }
   }
 
   Future<void> _detect() async {

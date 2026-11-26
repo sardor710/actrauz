@@ -273,3 +273,7 @@ void refreshTournaments(WidgetRef ref) {
 final cityLocatorProvider = Provider<CityLocator>(
   (ref) => ref.watch(backendEnabledProvider) ? const GeolocatorCityLocator() : const FixedCityLocator(null),
 );
+
+/// Whether this run of the app has already tried to detect the city, so a
+/// denial (or a hang) is never asked about again. Not persisted.
+final cityDetectionAttemptedProvider = StateProvider<bool>((ref) => false);
