@@ -53,4 +53,11 @@ void main() {
       }
     }
   });
+
+  test('nearestCity picks the city within range', () {
+    expect(nearestCity(41.31, 69.28)?.id, 'tashkent');
+    expect(nearestCity(43.22, 76.85)?.id, 'almaty');
+    expect(nearestCity(51.13, 71.43)?.id, 'astana');
+    expect(nearestCity(39.65, 66.96), isNull); // Samarkand
+  });
 }

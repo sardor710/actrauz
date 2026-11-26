@@ -42,6 +42,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chooseCityHint => 'Город можно изменить в профиле в любой момент';
 
   @override
+  String get detectingCity => 'Определяем ваш город…';
+
+  @override
+  String cityDetected(String city) {
+    return 'Найден город: $city';
+  }
+
+  @override
   String get signInTitle => 'Вход';
 
   @override

@@ -43,6 +43,14 @@ class AppLocalizationsUz extends AppLocalizations {
       'Shaharni istalgan vaqtda profilda oʻzgartirish mumkin';
 
   @override
+  String get detectingCity => 'Shahringiz aniqlanmoqda…';
+
+  @override
+  String cityDetected(String city) {
+    return 'Aniqlandi: $city';
+  }
+
+  @override
   String get signInTitle => 'Kirish';
 
   @override

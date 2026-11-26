@@ -11,6 +11,13 @@
   "chooseLanguage": "Choose your language",
   "chooseCity": "Choose your city",
   "chooseCityHint": "You can change it any time in your profile",
+  "detectingCity": "Finding your city…",
+  "cityDetected": "Found: {city}",
+  "@cityDetected": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
   "signInTitle": "Sign in",
   "signInTelegram": "Continue with Telegram",
   "demoNotice": "Demo mode: Telegram sign-in is connected in the next release. Enter a name to continue. Venues, games and tournaments shown are sample data.",

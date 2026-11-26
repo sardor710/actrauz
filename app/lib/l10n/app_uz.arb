@@ -11,6 +11,8 @@
   "chooseLanguage": "Tilni tanlang",
   "chooseCity": "Shaharni tanlang",
   "chooseCityHint": "Shaharni istalgan vaqtda profilda oʻzgartirish mumkin",
+  "detectingCity": "Shahringiz aniqlanmoqda…",
+  "cityDetected": "Aniqlandi: {city}",
   "signInTitle": "Kirish",
   "signInTelegram": "Telegram orqali davom etish",
   "demoNotice": "Demo rejim: Telegram orqali kirish keyingi versiyada ulanadi. Davom etish uchun ismingizni kiriting. Koʻrsatilgan maydonlar, oʻyinlar va turnirlar namunaviy maʼlumotlar.",

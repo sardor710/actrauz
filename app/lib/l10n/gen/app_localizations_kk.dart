@@ -43,6 +43,14 @@ class AppLocalizationsKk extends AppLocalizations {
       'Қаланы профильде кез келген уақытта өзгертуге болады';
 
   @override
+  String get detectingCity => 'Қалаңыз анықталуда…';
+
+  @override
+  String cityDetected(String city) {
+    return 'Анықталды: $city';
+  }
+
+  @override
   String get signInTitle => 'Кіру';
 
   @override

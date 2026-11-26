@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/app_config.dart';
 import '../core/markets.dart';
 import '../data/auth/auth_repository.dart';
+import '../data/location/city_locator.dart';
 import '../data/repositories.dart';
 import '../data/sample/sample_repositories.dart';
 import '../data/social.dart';
@@ -266,3 +267,9 @@ void refreshTournaments(WidgetRef ref) {
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }
+
+/// Detects the player's city during onboarding. Sample mode and tests never
+/// touch the device's location.
+final cityLocatorProvider = Provider<CityLocator>(
+  (ref) => ref.watch(backendEnabledProvider) ? const GeolocatorCityLocator() : const FixedCityLocator(null),
+);

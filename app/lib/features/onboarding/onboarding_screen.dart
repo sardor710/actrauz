@@ -47,22 +47,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       1 => (
         l.chooseCity,
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final city in kCities)
-              _ChoiceTile(
-                label: city.name.resolve(context.lang),
-                selected: session.cityId == city.id,
-                onTap: () async {
-                  await controller.setCity(city.id);
-                  setState(() => _step = 2);
-                },
-              ),
-            const SizedBox(height: 8),
-            Text(l.chooseCityHint, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
+        _CityStep(onChosen: () => setState(() => _step = 2)),
       ),
       _ => (l.signInTitle, isDemo ? const _DemoSignIn() : const _TelegramSignIn()),
     };
@@ -422,6 +407,88 @@ class _ChoiceTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The city list, with the player's location (when it can be had) preselecting
+/// one. Never blocks: the list is tappable from the first frame.
+class _CityStep extends ConsumerStatefulWidget {
+  const _CityStep({required this.onChosen});
+
+  final VoidCallback onChosen;
+
+  @override
+  ConsumerState<_CityStep> createState() => _CityStepState();
+}
+
+class _CityStepState extends ConsumerState<_CityStep> {
+  static const _detectTimeout = Duration(seconds: 8);
+
+  bool _detecting = false;
+  String? _detectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (ref.read(sessionProvider).cityId == null) _detect();
+  }
+
+  Future<void> _detect() async {
+    setState(() => _detecting = true);
+    String? id;
+    try {
+      id = await ref.read(cityLocatorProvider).detectCityId().timeout(_detectTimeout);
+    } catch (_) {
+      id = null; // Denied, off, failed or hung: the manual list stays.
+    }
+    if (!mounted) return;
+    setState(() {
+      _detecting = false;
+      _detectedId = kCities.any((c) => c.id == id) ? id : null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final theme = Theme.of(context);
+    final chosen = ref.watch(sessionProvider.select((s) => s.cityId));
+    final lang = context.lang;
+    final detected = _detectedId == null ? null : cityById(_detectedId!);
+    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_detecting)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 12),
+                Expanded(child: Text(l.detectingCity, style: muted)),
+              ],
+            ),
+          )
+        else if (detected != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _Notice(text: l.cityDetected(detected.name.resolve(lang))),
+          ),
+        for (final city in kCities)
+          _ChoiceTile(
+            label: city.name.resolve(lang),
+            selected: chosen == city.id || (chosen == null && _detectedId == city.id),
+            onTap: () async {
+              await ref.read(sessionProvider.notifier).setCity(city.id);
+              widget.onChosen();
+            },
+          ),
+        const SizedBox(height: 8),
+        Text(l.chooseCityHint, style: muted),
+      ],
     );
   }
 }

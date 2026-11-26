@@ -42,6 +42,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseCityHint => 'You can change it any time in your profile';
 
   @override
+  String get detectingCity => 'Finding your city…';
+
+  @override
+  String cityDetected(String city) {
+    return 'Found: $city';
+  }
+
+  @override
   String get signInTitle => 'Sign in';
 
   @override

@@ -168,6 +168,18 @@ abstract class AppLocalizations {
   /// **'You can change it any time in your profile'**
   String get chooseCityHint;
 
+  /// No description provided for @detectingCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding your city…'**
+  String get detectingCity;
+
+  /// No description provided for @cityDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Found: {city}'**
+  String cityDetected(String city);
+
   /// No description provided for @signInTitle.
   ///
   /// In en, this message translates to:
