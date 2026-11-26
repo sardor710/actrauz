@@ -258,18 +258,12 @@ Both stores require in-app account deletion. Bookings and games reference profil
 
 ## Status
 
-**2026-11-27: built and reviewed, not deployed, not merged.** Worktree , branch  from  ba3ad17.
+**2026-11-27: built and reviewed, not deployed, not merged.** Worktree `D:\actra\.worktrees\m6-kazakhstan`, branch `m6-kazakhstan` from `main` ba3ad17.
 
 - Tasks 1–10 and Task 11 Steps 1, 1b, 2, 3 done. Every task passed its own review (fix rounds on Tasks 5, 7, 8, 10, 11); the whole-branch review said "with fixes", and its single fix wave was re-reviewed with all 11 findings addressed.
-- Tests: supabase Unknown command: "test"
-
-
-Did you mean this?
-  npm test # Test a package
-To see a list of supported npm commands, run:
-  npm help 358 pass; app  454 pass;  clean.
-- Target API 36 builds on Flutter 3.32.6 (no Flutter upgrade needed). Upload key at  (outside the repo).
+- Tests: supabase `npm test` 358 pass; app `flutter test` 454 pass; `flutter analyze` clean.
+- Target API 36 builds on Flutter 3.32.6 (no Flutter upgrade needed). Upload key at `D:\actra-keys` (outside the repo).
 - Browser walkthrough in sample mode: Kazakh onboarding → Almaty → home, profile and delete-account dialog work. Kazakh bottom-tab labels (Турнирлер, Қауымдастық) are cut off on narrow screens: native review should shorten them. Sample banners have no Kazakh text and fall back to Russian (admin content).
-- Not yet done (Step 4, needs the founder's go-ahead): , , , , , . Real geolocation not exercised (sample mode uses the fixed locator); check on a phone.
-- Open before deploy (small): clear / with the meeting point on deletion; launch checklist to list  and the  fallback. Before the first store build: a timeout on the delete-account call.
+- Not yet done (Step 4, needs the founder's go-ahead): `deploy.mjs migrations`, `deploy.mjs functions`, `e2e-kz.mjs`, `e2e-delete.mjs`, `e2e-community.mjs`, `hide-samples.mjs --apply`. Real geolocation not exercised (sample mode uses the fixed locator); check on a phone.
+- Open before deploy (small): clear `meeting_lat`/`meeting_lng` with the meeting point on deletion; launch checklist to list `e2e-delete.mjs` and the `verify_jwt` fallback. Before the first store build: a timeout on the delete-account call.
 - Founder-owned items: [docs/store/launch-checklist.md](../../store/launch-checklist.md).
