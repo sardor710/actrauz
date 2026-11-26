@@ -360,7 +360,17 @@ class SampleBackend
           orElse: () => Player(id: id, name: id),
         );
 
-  String _nameOf(String id) => id == kMeId ? meName : _playerOf(id).name;
+  /// The session name for the demo player, the sample name for anyone else;
+  /// empty once deleted, as the backend scrubs it.
+  String _nameOf(String id) => _deleted.contains(id) ? '' : (id == kMeId ? meName : _playerOf(id).name);
+
+  /// Sample players whose account was deleted ([markDeleted]).
+  final Set<String> _deleted = {};
+
+  /// Marks a sample player's account as deleted, so tests can see how their
+  /// history reads to everyone else. (The demo player's own deletion is a
+  /// sign-out: this backend goes with the name.)
+  void markDeleted(String userId) => _deleted.add(userId);
 
   bool _exists(String userId) => userId == kMeId || kSamplePlayers.any((p) => p.id == userId);
 
@@ -369,6 +379,7 @@ class SampleBackend
     name: _nameOf(userId),
     level: _playerOf(userId).levelFor(sportId),
     reliability: _reliability(userId),
+    deleted: _deleted.contains(userId),
   );
 
   /// Sample players live in Tashkent, like the demo player until they choose a city.
@@ -1050,6 +1061,7 @@ class SampleBackend
     userExists: _exists,
     isBlocked: (userId) => _reliability(userId).isBlocked,
     notify: _notify,
+    isDeleted: _deleted.contains,
   );
 
   /// The tournament calls for any player, so tests can fill a category, have a
@@ -1154,17 +1166,8 @@ class _SampleOwnerRepository implements OwnerRepository {
 
   DateTime _now(String venueId) => _backend._nowAt(_backend._venue(venueId));
 
-  /// The session name for the demo player, the sample name for anyone else.
-  String _nameOf(String userId) => userId == kMeId
-      ? _backend.meName
-      : kSamplePlayers
-            .firstWhere(
-              (p) => p.id == userId,
-              orElse: () => Player(id: userId, name: userId),
-            )
-            .name;
-
-  OwnerBooking _view(Booking booking) => OwnerBooking.fromBooking(booking, nameOf: _nameOf);
+  OwnerBooking _view(Booking booking) =>
+      OwnerBooking.fromBooking(booking, nameOf: _backend._nameOf, isDeleted: _backend._deleted.contains);
 
   @override
   Future<List<Venue>> myVenues() async => [
@@ -1175,7 +1178,15 @@ class _SampleOwnerRepository implements OwnerRepository {
   @override
   Future<OwnerCalendar> calendar(String venueId, String courtId, DateTime from, int days) async {
     _owned(venueId);
-    return _engine.ownerCalendar(venueId, courtId, from, days, now: _now(venueId), nameOf: _nameOf);
+    return _engine.ownerCalendar(
+      venueId,
+      courtId,
+      from,
+      days,
+      now: _now(venueId),
+      nameOf: _backend._nameOf,
+      isDeleted: _backend._deleted.contains,
+    );
   }
 
   @override

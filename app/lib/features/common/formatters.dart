@@ -24,6 +24,10 @@ String money(AppLocalizations l, int amount, Currency currency) {
   return '${groupThousands(amount)} $label';
 }
 
+/// Another player's name as the screens show it: "Deleted player" once
+/// their account is gone (the name is empty by then).
+String playerName(AppLocalizations l, String name, {required bool deleted}) => deleted ? l.deletedPlayer : name;
+
 String _two(int n) => n.toString().padLeft(2, '0');
 
 /// 24-hour clock in every language.

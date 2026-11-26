@@ -69,6 +69,7 @@ class JoinRequestsSection extends ConsumerWidget {
     final l = context.l;
     if (game.joinRequests.isEmpty) return const SizedBox.shrink();
     final repo = ref.read(gameRepositoryProvider);
+    String nameOf(GameMember m) => playerName(l, m.name, deleted: m.deleted);
 
     return SectionCard(
       title: '${l.requestsTitle} · ${game.joinRequests.length}',
@@ -82,13 +83,13 @@ class JoinRequestsSection extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      InitialAvatar(name: request.member.name, size: 42),
+                      InitialAvatar(name: nameOf(request.member), size: 42),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(request.member.name, style: manrope(15.5, 700)),
+                            Text(nameOf(request.member), style: manrope(15.5, 700)),
                             const SizedBox(height: 4),
                             Wrap(
                               spacing: 6,

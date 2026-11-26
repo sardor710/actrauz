@@ -379,6 +379,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountBody =>
+      'Your upcoming bookings and tournament entries will be cancelled and you will leave your games. Your name and phone number will be removed. This cannot be undone.';
+
+  @override
+  String get deleteAccountConfirm => 'Delete';
+
+  @override
+  String get deleteAccountAdmin =>
+      'An admin account cannot be deleted. Ask another admin to remove your admin role first.';
+
+  @override
+  String get deletedPlayer => 'Deleted player';
+
+  @override
   String get currencyUzs => 'UZS';
 
   @override

@@ -27,6 +27,7 @@ class SampleTournaments {
     required this.userExists,
     required this.isBlocked,
     required this.notify,
+    this.isDeleted = _alive,
   }) {
     for (final seed in kTournamentSeeds) {
       final cityId = venueCity(seed.venueId)!;
@@ -74,6 +75,11 @@ class SampleTournaments {
   final int Function(String userId, String sportId) levelOf;
   final bool Function(String userId) userExists;
   final bool Function(String userId) isBlocked;
+
+  /// Whether a player deleted their account: their entries stay as history,
+  /// and their phone no longer finds them.
+  final bool Function(String userId) isDeleted;
+  static bool _alive(String userId) => false;
 
   /// Writes to a player's inbox (only the demo player has one).
   final void Function(String userId, String kind, String category, Map<String, Object?> payload) notify;
@@ -245,8 +251,10 @@ class SampleTournaments {
       categoryName: c.name,
       kind: c.kind,
       status: e.status,
-      registrant: PlayerRef(id: e.userId, name: nameOf(e.userId)),
-      partner: e.partnerId == null ? null : PlayerRef(id: e.partnerId!, name: nameOf(e.partnerId!)),
+      registrant: PlayerRef(id: e.userId, name: nameOf(e.userId), deleted: isDeleted(e.userId)),
+      partner: e.partnerId == null
+          ? null
+          : PlayerRef(id: e.partnerId!, name: nameOf(e.partnerId!), deleted: isDeleted(e.partnerId!)),
       partnerConfirmed: e.partnerConfirmed,
       fee: e.fee,
       currency: cityById(t.cityId).currency,
@@ -593,7 +601,9 @@ class SampleTournaments {
     final wanted = normalize(phone);
     if (!RegExp(r'^\+[0-9]{7,15}$').hasMatch(wanted)) return null;
     for (final entry in kSamplePlayerPhones.entries) {
-      if (normalize(entry.value) == wanted) return PlayerRef(id: entry.key, name: nameOf(entry.key));
+      if (normalize(entry.value) == wanted && !isDeleted(entry.key)) {
+        return PlayerRef(id: entry.key, name: nameOf(entry.key));
+      }
     }
     return null;
   }

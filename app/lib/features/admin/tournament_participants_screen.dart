@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/tournaments.dart';
+import '../../l10n/gen/app_localizations.dart';
 import '../../state/admin_providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
@@ -214,9 +215,12 @@ class _CategorySection extends ConsumerWidget {
   }
 }
 
-String _names(AdminRegistration e) {
+/// A player on an entry: "Deleted player" once their account is gone.
+String _player(AppLocalizations l, PlayerRef p) => playerName(l, p.name, deleted: p.deleted);
+
+String _names(AppLocalizations l, AdminRegistration e) {
   final r = e.registration;
-  return r.partner == null ? r.registrant.name : '${r.registrant.name} + ${r.partner!.name}';
+  return r.partner == null ? _player(l, r.registrant) : '${_player(l, r.registrant)} + ${_player(l, r.partner!)}';
 }
 
 class _EntryRow extends ConsumerWidget {
@@ -246,7 +250,7 @@ class _EntryRow extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l.removePlayerTitle(_names(entry))),
+        title: Text(l.removePlayerTitle(_names(l, entry))),
         content: Text(l.removePlayerMsg),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.cancel)),
@@ -280,8 +284,8 @@ class _EntryRow extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(r.registrant.name, style: AppText.bodyStrong),
-                if (r.partner != null) Text(l.pairedWith(r.partner!.name), style: AppText.body),
+                Text(_player(l, r.registrant), style: AppText.bodyStrong),
+                if (r.partner != null) Text(l.pairedWith(_player(l, r.partner!)), style: AppText.body),
                 if (phones.isNotEmpty) Text(phones, style: AppText.muted),
                 const SizedBox(height: 6),
                 Wrap(
@@ -334,7 +338,7 @@ class _PastRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
-        Expanded(child: Text(_names(entry), style: AppText.body)),
+        Expanded(child: Text(_names(context.l, entry), style: AppText.body)),
         RegistrationStatusPill(registration: entry.registration),
       ],
     ),
@@ -363,6 +367,7 @@ String _two(int n) => n.toString().padLeft(2, '0');
 /// Phones are in it: only admins ever see this list. `created` is the
 /// tournament city's wall-clock time ([utcOffsetMinutes] from UTC).
 String registrationsCsv(List<AdminRegistration> entries, String lang, {required int utcOffsetMinutes}) {
+  final l = lookupAppLocalizations(Locale(lang));
   final lines = [kCsvHeader];
   for (final e in entries) {
     final r = e.registration;
@@ -371,9 +376,9 @@ String registrationsCsv(List<AdminRegistration> entries, String lang, {required 
       [
         _cell(r.categoryName.resolve(lang)),
         _statusCode(r.status),
-        _cell(r.registrant.name),
+        _cell(_player(l, r.registrant)),
         _cell(e.registrantPhone ?? '', text: false),
-        _cell(r.partner?.name ?? ''),
+        _cell(r.partner == null ? '' : _player(l, r.partner!)),
         _cell(e.partnerPhone ?? '', text: false),
         '${r.fee}',
         r.currency.name.toUpperCase(),

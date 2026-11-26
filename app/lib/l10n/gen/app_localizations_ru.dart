@@ -383,6 +383,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get signOut => 'Выйти';
 
   @override
+  String get deleteAccount => 'Удалить аккаунт';
+
+  @override
+  String get deleteAccountTitle => 'Удалить аккаунт?';
+
+  @override
+  String get deleteAccountBody =>
+      'Ваши предстоящие бронирования и заявки на турниры будут отменены, а вы выйдете из своих игр. Ваше имя и номер телефона будут удалены. Это действие нельзя отменить.';
+
+  @override
+  String get deleteAccountConfirm => 'Удалить';
+
+  @override
+  String get deleteAccountAdmin =>
+      'Аккаунт администратора нельзя удалить. Сначала попросите другого администратора снять с вас роль администратора.';
+
+  @override
+  String get deletedPlayer => 'Удалённый игрок';
+
+  @override
   String get currencyUzs => 'сум';
 
   @override

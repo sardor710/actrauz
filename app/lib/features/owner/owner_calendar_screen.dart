@@ -441,7 +441,7 @@ class _Cell extends StatelessWidget {
           BookingStatus.noShow => AppColors.error,
           _ => AppColors.ink,
         };
-        label = booking?.customerName ?? l.slotBooked;
+        label = (booking?.customerDeleted ?? false) ? l.deletedPlayer : booking?.customerName ?? l.slotBooked;
         content = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5),
           child: Text(

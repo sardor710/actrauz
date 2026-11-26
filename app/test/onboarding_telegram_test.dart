@@ -81,6 +81,18 @@ class FakeAuth implements AuthRepository {
     signOuts++;
     session = false;
   }
+
+  /// What `deleteAccount` throws, if anything.
+  Object? deleteError;
+  int deletes = 0;
+
+  @override
+  Future<void> deleteAccount() async {
+    deletes++;
+    if (deleteError case final error?) throw error;
+    // Deleted, then signed out, like the real implementation.
+    session = false;
+  }
 }
 
 Future<List<Uri>> pumpApp(WidgetTester tester, FakeAuth auth, {Map<String, Object> prefs = const {}}) async {

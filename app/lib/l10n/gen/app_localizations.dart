@@ -750,6 +750,42 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get signOut;
 
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your upcoming bookings and tournament entries will be cancelled and you will leave your games. Your name and phone number will be removed. This cannot be undone.'**
+  String get deleteAccountBody;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'An admin account cannot be deleted. Ask another admin to remove your admin role first.'**
+  String get deleteAccountAdmin;
+
+  /// Shown instead of the name of a player who deleted their account (past games, bookings, tournament lists).
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted player'**
+  String get deletedPlayer;
+
   /// No description provided for @currencyUzs.
   ///
   /// In en, this message translates to:

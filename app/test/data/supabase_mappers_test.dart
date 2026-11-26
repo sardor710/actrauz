@@ -1,5 +1,6 @@
 import 'package:actra/core/localized_text.dart';
 import 'package:actra/core/markets.dart';
+import 'package:actra/data/auth/auth_repository.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/supabase/errors.dart';
 import 'package:actra/data/supabase/mappers.dart';
@@ -401,6 +402,24 @@ void main() {
       );
       expect(await guardBooking(() async => 7), 7);
     });
+
+    test('delete-account: an admin account is refused, anything else passes through', () {
+      // The client decodes a JSON body into a map, or keeps the text.
+      for (final details in [
+        {'error': 'admin_account'},
+        '{"error":"admin_account"}',
+      ]) {
+        expect(deleteAccountErrorFor(FunctionException(status: 403, details: details)), isA<AdminAccountException>());
+      }
+      for (final error in <Object>[
+        const FunctionException(status: 401, details: {'error': 'not_authenticated'}),
+        const FunctionException(status: 403, details: 'forbidden'),
+        const FunctionException(status: 500, details: null),
+        Exception('offline'),
+      ]) {
+        expect(deleteAccountErrorFor(error), same(error));
+      }
+    });
   });
 
   group('community', () {
@@ -581,6 +600,77 @@ void main() {
       expect(profile.levelFor('tennis'), 1);
       expect(profile.reliability.badge, ReliabilityBadge.blocked);
       expect(profile.gamesPlayed, 7);
+      expect(profile.deleted, isFalse);
+    });
+
+    // `deleted` (and `customer_deleted` / `host_deleted`) is the signal; a
+    // null name alone is a sign-up that was never finished.
+    test('deleted player shows a placeholder name: the deleted flags are read', () {
+      final gone = {...member(other, 'x'), 'name': null, 'deleted': true};
+      final unfinished = {...member('33333333-3333-3333-3333-333333333333', 'x'), 'name': null};
+      final game = gameFromJson({
+        'id': 'game-9',
+        'sport_id': 'football',
+        'city_id': 'tashkent',
+        'host_id': me,
+        'status': 'open',
+        'starts_local': '2026-11-20T18:00:00',
+        'ends_local': '2026-11-20T19:00:00',
+        'spots': 10,
+        'participant_ids': [me, other],
+        'participants': [member(me, 'Sardor'), gone, unfinished],
+        'join_requests': [
+          {...gone, 'id': 'req-1', 'user_id': other, 'created_at': '2026-11-19T05:30:00+00:00'},
+        ],
+      }, myUserId: me);
+      expect([for (final m in game.participants) m.deleted], [false, true, false]);
+      expect(game.participants[1].name, '');
+      expect(game.joinRequests.single.member.deleted, isTrue);
+
+      final requestJson = <String, dynamic>{
+        'id': 'r9',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'host_id': other,
+        'host_name': null,
+        'host_deleted': true,
+        'starts_local': '2026-11-24T18:00:00',
+        'ends_local': '2026-11-24T21:00:00',
+        'players_needed': 3,
+        'status': 'cancelled',
+        'created_at': '2026-11-22T05:00:00+00:00',
+        'interested': [gone, member(me, 'Sardor')],
+      };
+      final request = gameRequestFromJson(requestJson, myUserId: me);
+      expect(request.hostDeleted, isTrue);
+      expect([for (final m in request.interested) m.deleted], [true, false]);
+      final liveHost = {...requestJson, 'host_name': 'Aziz'}..remove('host_deleted');
+      expect(gameRequestFromJson(liveHost, myUserId: me).hostDeleted, isFalse);
+
+      final profile = playerProfileFromJson({'id': other, 'name': null, 'deleted': true}, myUserId: me);
+      expect(profile.deleted, isTrue);
+      expect(profile.name, '');
+
+      final bookingJson = <String, dynamic>{
+        'id': 'booking-1',
+        'user_id': other,
+        'venue_id': 'venue-1',
+        'court_id': 'court-a',
+        'starts_local': '2026-11-20T17:30:00',
+        'ends_local': '2026-11-20T19:00:00',
+        'slot_count': 1,
+        'total_price': 180000,
+        'status': 'paid',
+        'source': 'app',
+        'customer_name': null,
+        'customer_phone': null,
+        'customer_deleted': true,
+      };
+      final booking = ownerBookingFromJson(bookingJson);
+      expect(booking.customerDeleted, isTrue);
+      expect(booking.customerName, isNull);
+      final liveCustomer = {...bookingJson, 'customer_name': 'Aziz'}..remove('customer_deleted');
+      expect(ownerBookingFromJson(liveCustomer).customerDeleted, isFalse);
     });
 
     test('every reliability badge maps', () {
@@ -995,6 +1085,33 @@ void main() {
         myUserId: me,
       );
       expect(old.tournament!.registrationOpen, isFalse);
+    });
+
+    test('deleted player shows a placeholder name: an entry\'s players carry the flag', () {
+      final r = registrationFromJson(
+        entry(
+          registrant: other,
+          partner: me,
+          extra: {
+            'registrant': {'id': other, 'name': null, 'deleted': true},
+          },
+        ),
+        myUserId: me,
+      );
+      expect(r.registrant, const PlayerRef(id: other, name: '', deleted: true));
+      expect(r.partner!.deleted, isFalse);
+      expect(r.registrant == const PlayerRef(id: other, name: ''), isFalse);
+
+      final admin = adminRegistrationFromJson(
+        entry(
+          extra: {
+            'partner': {'id': other, 'name': null, 'phone': null, 'deleted': true},
+          },
+        ),
+        myUserId: me,
+      );
+      expect(admin.registration.partner!.deleted, isTrue);
+      expect(admin.registration.registrant.deleted, isFalse);
     });
 
     test('the admin\'s entry has phones, the paid time and the override flag', () {

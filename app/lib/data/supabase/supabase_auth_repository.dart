@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_repository.dart';
+import 'errors.dart';
 
 /// Telegram sign-in against the `telegram-login` edge function.
 class SupabaseAuthRepository implements AuthRepository {
@@ -80,5 +81,18 @@ class SupabaseAuthRepository implements AuthRepository {
     } catch (_) {
       // Offline: the local session is cleared regardless.
     }
+  }
+
+  /// The `delete-account` edge function scrubs and closes the account, then
+  /// bans the auth user; only then is the local session ended. A refusal or a
+  /// failed call signs nobody out.
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      await _client.functions.invoke('delete-account');
+    } catch (e) {
+      throw deleteAccountErrorFor(e);
+    }
+    await signOut();
   }
 }

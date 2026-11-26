@@ -45,7 +45,8 @@ class GameScreen extends ConsumerWidget {
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref, GameMember member) async {
-    if (!await confirmRemovePlayer(context, member.name) || !context.mounted) return;
+    final name = playerName(context.l, member.name, deleted: member.deleted);
+    if (!await confirmRemovePlayer(context, name) || !context.mounted) return;
     await runGameAction(context, ref, () => ref.read(gameRepositoryProvider).removeParticipant(gameId, member.id));
   }
 
@@ -311,8 +312,13 @@ class _PlayerTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
-    // A game that came without names: look the player up.
-    final known = member.name.isNotEmpty ? member.name : ref.watch(playerProvider(member.id)).valueOrNull?.name ?? '';
+    // A game that came without names: look the player up. A deleted
+    // player's name is gone for good.
+    final known = member.deleted
+        ? l.deletedPlayer
+        : member.name.isNotEmpty
+        ? member.name
+        : ref.watch(playerProvider(member.id)).valueOrNull?.name ?? '';
     final name = member.id == kMeId ? l.you : known;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),

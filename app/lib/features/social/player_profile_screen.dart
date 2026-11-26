@@ -38,6 +38,7 @@ class PlayerProfileScreen extends ConsumerWidget {
         value: ref.watch(playerProfileProvider(playerId)),
         builder: (player) {
           final isMe = player.id == kMeId;
+          final name = playerName(l, player.name, deleted: player.deleted);
           final hint = reliabilityHint(l, player.reliability.badge);
           return Column(
             children: [
@@ -52,9 +53,9 @@ class PlayerProfileScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              InitialAvatar(name: player.name, size: 72),
+                              InitialAvatar(name: name, size: 72),
                               const SizedBox(height: 12),
-                              Text(player.name, style: manrope(22, 800), textAlign: TextAlign.center),
+                              Text(name, style: manrope(22, 800), textAlign: TextAlign.center),
                               const SizedBox(height: 10),
                               ReliabilityPill(reliability: player.reliability, large: true),
                               const SizedBox(height: 8),

@@ -31,14 +31,20 @@ class OwnerBooking {
     this.walkInPayment,
     this.customerName,
     this.customerPhone,
+    this.customerDeleted = false,
     this.note,
     this.reason,
     this.players,
   });
 
   /// The owner's view of an engine [booking]. [nameOf] names the player of
-  /// an app booking; walk-ins carry their guest's name, blocks have none.
-  factory OwnerBooking.fromBooking(Booking booking, {String Function(String userId)? nameOf}) {
+  /// an app booking and [isDeleted] says whether their account is gone;
+  /// walk-ins carry their guest's name, blocks have none.
+  factory OwnerBooking.fromBooking(
+    Booking booking, {
+    String Function(String userId)? nameOf,
+    bool Function(String userId)? isDeleted,
+  }) {
     final isApp = booking.source == BookingSource.app;
     return OwnerBooking(
       id: booking.id,
@@ -54,6 +60,7 @@ class OwnerBooking {
       walkInPayment: booking.walkInPayment,
       customerName: isApp ? nameOf?.call(booking.userId) : booking.guestName,
       customerPhone: isApp ? null : booking.guestPhone,
+      customerDeleted: isApp && (isDeleted?.call(booking.userId) ?? false),
       note: booking.note,
       reason: booking.blockReason,
       players: booking.players,
@@ -78,6 +85,10 @@ class OwnerBooking {
   /// a block.
   final String? customerName;
   final String? customerPhone;
+
+  /// An app booking whose player deleted their account: the screens show
+  /// "Deleted player" (name and phone are gone by then).
+  final bool customerDeleted;
   final String? note;
 
   /// Blocks only.

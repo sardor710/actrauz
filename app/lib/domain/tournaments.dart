@@ -42,16 +42,20 @@ enum TournamentSort { date, az }
 
 /// A player named on an entry. Never carries a phone number.
 class PlayerRef {
-  const PlayerRef({required this.id, required this.name});
+  const PlayerRef({required this.id, required this.name, this.deleted = false});
 
   final String id;
   final String name;
 
-  @override
-  bool operator ==(Object other) => other is PlayerRef && other.id == id && other.name == name;
+  /// The account was deleted: the screens show "Deleted player".
+  final bool deleted;
 
   @override
-  int get hashCode => Object.hash(id, name);
+  bool operator ==(Object other) =>
+      other is PlayerRef && other.id == id && other.name == name && other.deleted == deleted;
+
+  @override
+  int get hashCode => Object.hash(id, name, deleted);
 }
 
 class TournamentCategory {

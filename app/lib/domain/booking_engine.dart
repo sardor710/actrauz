@@ -330,7 +330,8 @@ class BookingEngine {
   // manages a venue.
 
   /// Every slot of [courtId] on [days] days from [from], with the row
-  /// covering it. [nameOf] names the player of an app booking.
+  /// covering it. [nameOf] names the player of an app booking; [isDeleted]
+  /// says whether their account is gone.
   OwnerCalendar ownerCalendar(
     String venueId,
     String courtId,
@@ -338,6 +339,7 @@ class BookingEngine {
     int days, {
     required DateTime now,
     String Function(String userId)? nameOf,
+    bool Function(String userId)? isDeleted,
   }) {
     final venue = venueById(venueId);
     final court = venue.court(courtId);
@@ -350,7 +352,7 @@ class BookingEngine {
         final OwnerSlotState state;
         if (row != null) {
           state = row.source == BookingSource.block ? OwnerSlotState.blocked : OwnerSlotState.booked;
-          bookings.putIfAbsent(row.id, () => OwnerBooking.fromBooking(row, nameOf: nameOf));
+          bookings.putIfAbsent(row.id, () => OwnerBooking.fromBooking(row, nameOf: nameOf, isDeleted: isDeleted));
         } else {
           state = slot.end.isAfter(now) ? OwnerSlotState.free : OwnerSlotState.past;
         }

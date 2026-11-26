@@ -381,6 +381,26 @@ class AppLocalizationsKk extends AppLocalizations {
   String get signOut => 'Шығу';
 
   @override
+  String get deleteAccount => 'Аккаунтты жою';
+
+  @override
+  String get deleteAccountTitle => 'Аккаунтыңызды жоясыз ба?';
+
+  @override
+  String get deleteAccountBody =>
+      'Алдағы брондауларыңыздан және турнирлерге өтінімдеріңізден бас тартылады, ал сіз ойындарыңыздан шығасыз. Атыңыз бен телефон нөміріңіз жойылады. Бұл әрекетті қайтару мүмкін емес.';
+
+  @override
+  String get deleteAccountConfirm => 'Жою';
+
+  @override
+  String get deleteAccountAdmin =>
+      'Әкімші аккаунтын жоюға болмайды. Алдымен басқа әкімшіден әкімші рөлін алып тастауын сұраңыз.';
+
+  @override
+  String get deletedPlayer => 'Жойылған ойыншы';
+
+  @override
   String get currencyUzs => 'сум';
 
   @override

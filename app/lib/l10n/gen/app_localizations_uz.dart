@@ -379,6 +379,26 @@ class AppLocalizationsUz extends AppLocalizations {
   String get signOut => 'Chiqish';
 
   @override
+  String get deleteAccount => 'Akkauntni oʻchirish';
+
+  @override
+  String get deleteAccountTitle => 'Akkauntingiz oʻchirilsinmi?';
+
+  @override
+  String get deleteAccountBody =>
+      'Kelgusi bronlaringiz va turnirlardagi arizalaringiz bekor qilinadi, oʻyinlaringizdan chiqasiz. Ismingiz va telefon raqamingiz oʻchiriladi. Buni ortga qaytarib boʻlmaydi.';
+
+  @override
+  String get deleteAccountConfirm => 'Oʻchirish';
+
+  @override
+  String get deleteAccountAdmin =>
+      'Administrator akkauntini oʻchirib boʻlmaydi. Avval boshqa administratordan administrator huquqingizni olib tashlashni soʻrang.';
+
+  @override
+  String get deletedPlayer => 'Oʻchirilgan oʻyinchi';
+
+  @override
   String get currencyUzs => 'soʻm';
 
   @override

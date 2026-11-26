@@ -7,6 +7,7 @@ import '../../core/languages.dart';
 import '../../core/markets.dart';
 import '../../data/auth/auth_repository.dart';
 import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../common/formatters.dart';
 
 /// Language → city → sign-in.
@@ -19,6 +20,20 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Just after deleting the account: language and city are known, so the
+    // next sign-in starts at its own step. Once only.
+    if (ref.read(onboardingAtSignInProvider)) {
+      final session = ref.read(sessionProvider);
+      if (session.languageCode != null && session.cityId != null) _step = 2;
+      Future.microtask(() {
+        if (mounted) ref.read(onboardingAtSignInProvider.notifier).state = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -203,6 +203,15 @@
   "language": "Language",
   "city": "City",
   "signOut": "Sign out",
+  "deleteAccount": "Delete account",
+  "deleteAccountTitle": "Delete your account?",
+  "deleteAccountBody": "Your upcoming bookings and tournament entries will be cancelled and you will leave your games. Your name and phone number will be removed. This cannot be undone.",
+  "deleteAccountConfirm": "Delete",
+  "deleteAccountAdmin": "An admin account cannot be deleted. Ask another admin to remove your admin role first.",
+  "deletedPlayer": "Deleted player",
+  "@deletedPlayer": {
+    "description": "Shown instead of the name of a player who deleted their account (past games, bookings, tournament lists)."
+  },
   "currencyUzs": "UZS",
   "currencyKzt": "₸",
   "searchHint": "Search venues and sports",

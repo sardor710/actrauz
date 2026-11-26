@@ -344,3 +344,252 @@ as $$ select app.delete_account(p_user, now()) $$;
 
 revoke all on function public.delete_account_service(uuid) from public, anon, authenticated;
 grant execute on function public.delete_account_service(uuid) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- A deleted player in someone else's history (past games, an owner's
+-- bookings, tournament lists) shows as "Deleted player" in the app. Their
+-- name is null by then, but a null name alone means a sign-up that was never
+-- finished, so the JSON that names other players says it outright: a person
+-- object gets `deleted: true`, and the two flat rows get `customer_deleted`
+-- (an owner's booking) and `host_deleted` (a Game Request). The key is there
+-- only when true, so every existing shape is unchanged for live players.
+-- Notification payloads need nothing: their actor_name is written when the
+-- actor acts, and a deleted account no longer acts.
+-- ---------------------------------------------------------------------------
+
+-- `{p_key: true}` for a deleted account, `{}` otherwise (also for null).
+create function app.deleted_json(p_user uuid, p_key text default 'deleted') returns jsonb
+language sql stable
+set search_path = ''
+as $$
+  select case when exists (select 1 from public.profiles p where p.id = p_user and p.deleted_at is not null)
+    then jsonb_build_object(p_key, true) else '{}'::jsonb end
+$$;
+
+-- Redefined from 20261124110000_games_v2.sql: participants and join
+-- requests carry `deleted`.
+create or replace function app.game_json(g public.games, p_user uuid) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', g.id,
+    'sport_id', g.sport_id,
+    'city_id', g.city_id,
+    'venue_id', g.venue_id,
+    'host_id', g.host_id,
+    'kind', g.kind,
+    'visibility', g.visibility,
+    'status', g.status,
+    'starts_local', app.to_local(lower(g.during), g.utc_offset_minutes),
+    'ends_local', app.to_local(upper(g.during), g.utc_offset_minutes),
+    'spots', g.spots,
+    'min_level', g.min_level,
+    'max_level', g.max_level,
+    'price_per_player', g.price_per_player,
+    'booking_id', g.booking_id,
+    'note', g.note,
+    'meeting_point', g.meeting_point,
+    'meeting_lat', g.meeting_lat,
+    'meeting_lng', g.meeting_lng,
+    'distance_km', g.distance_km,
+    'pace', g.pace,
+    'my_status', case
+      when p_user is null then null
+      when g.host_id = p_user then 'host'
+      when exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user) then 'participant'
+      when exists (select 1 from public.game_invites i
+                   where i.game_id = g.id and i.user_id = p_user and i.status = 'pending') then 'invited'
+      when exists (select 1 from public.game_join_requests r
+                   where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') then 'requested'
+    end,
+    -- What a requester needs to withdraw: their own pending request.
+    'my_request_id', case when p_user is null then null else
+      (select r.id from public.game_join_requests r
+       where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') end,
+    'participant_ids', coalesce(
+      (select jsonb_agg(p.user_id order by (p.user_id = g.host_id) desc, p.joined_at, p.user_id)
+       from public.game_participants p where p.game_id = g.id),
+      '[]'::jsonb),
+    'participants', coalesce(
+      (select jsonb_agg(
+                jsonb_build_object(
+                  'id', p.user_id,
+                  'name', pr.full_name,
+                  'level', l.level,
+                  'reliability', app.reliability(p.user_id, now()))
+                || app.deleted_json(p.user_id)
+                order by (p.user_id = g.host_id) desc, p.joined_at, p.user_id)
+       from public.game_participants p
+       join public.profiles pr on pr.id = p.user_id
+       left join public.player_levels l on l.user_id = p.user_id and l.sport_id = g.sport_id
+       where p.game_id = g.id),
+      '[]'::jsonb))
+  || case when p_user is not null and p_user = g.host_id then
+       jsonb_build_object('join_requests', coalesce(
+         (select jsonb_agg(
+                   jsonb_build_object(
+                     'id', r.id,
+                     'user_id', r.user_id,
+                     'name', pr.full_name,
+                     'level', l.level,
+                     'reliability', app.reliability(r.user_id, now()),
+                     'created_at', r.created_at)
+                   || app.deleted_json(r.user_id)
+                   order by r.created_at, r.id)
+          from public.game_join_requests r
+          join public.profiles pr on pr.id = r.user_id
+          left join public.player_levels l on l.user_id = r.user_id and l.sport_id = g.sport_id
+          where r.game_id = g.id and r.status = 'pending'),
+         '[]'::jsonb))
+     else '{}'::jsonb end
+$$;
+
+-- Redefined from 20261124120000_game_requests.sql: interested players carry
+-- `deleted`, the request `host_deleted`.
+create or replace function app.game_request_json(r public.game_requests, p_user uuid) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', r.id,
+    'sport_id', r.sport_id,
+    'city_id', r.city_id,
+    'host_id', r.host_id,
+    'host_name', (select h.full_name from public.profiles h where h.id = r.host_id),
+    'venue_id', r.venue_id,
+    'area', r.area,
+    'starts_local', app.to_local(lower(r.during), r.utc_offset_minutes),
+    'ends_local', app.to_local(upper(r.during), r.utc_offset_minutes),
+    'players_needed', r.players_needed,
+    'min_level', r.min_level,
+    'max_level', r.max_level,
+    'note', r.note,
+    'status', r.status,
+    'game_id', r.game_id,
+    'created_at', r.created_at,
+    'interested', coalesce(
+      (select jsonb_agg(
+                jsonb_build_object(
+                  'id', i.user_id,
+                  'name', pr.full_name,
+                  'level', l.level,
+                  'reliability', app.reliability(i.user_id, now()))
+                || app.deleted_json(i.user_id)
+                order by i.created_at, i.user_id)
+       from public.game_request_interest i
+       join public.profiles pr on pr.id = i.user_id
+       left join public.player_levels l on l.user_id = i.user_id and l.sport_id = r.sport_id
+       where i.request_id = r.id),
+      '[]'::jsonb),
+    'interested_count', (select count(*) from public.game_request_interest i where i.request_id = r.id),
+    'my_status', case
+      when p_user is null then null
+      when r.host_id = p_user then 'host'
+      when exists (select 1 from public.game_request_interest i where i.request_id = r.id and i.user_id = p_user)
+        then 'interested'
+    end)
+  || app.deleted_json(r.host_id, 'host_deleted')
+$$;
+
+-- Redefined from 20261124120000_game_requests.sql: carries `deleted`.
+create or replace function app.player_json(pr public.profiles) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', pr.id,
+    'name', pr.full_name,
+    'city_id', pr.city_id,
+    'levels', coalesce(
+      (select jsonb_object_agg(l.sport_id, l.level) from public.player_levels l where l.user_id = pr.id),
+      '{}'::jsonb),
+    'reliability', app.reliability(pr.id, now()),
+    'games_played', (
+      select count(*) from public.game_participants gp
+      join public.games g on g.id = gp.game_id
+      where gp.user_id = pr.id and g.completed_at is not null))
+  || case when pr.deleted_at is not null then jsonb_build_object('deleted', true) else '{}'::jsonb end
+$$;
+
+-- Redefined from 20261123100000_owner.sql: an app booking by a deleted
+-- player carries `customer_deleted` (walk-ins and blocks never do).
+create or replace function app.owner_booking_json(b public.bookings) returns jsonb
+language sql stable
+set search_path = ''
+as $$
+  select app.booking_json(b) || jsonb_build_object(
+    -- Never say whether a walk-in's phone matched an account.
+    'user_id', case when b.source = 'walk_in' then null else b.user_id end,
+    'source', b.source,
+    'walk_in_payment', b.walk_in_payment,
+    'customer_name', case b.source
+      when 'walk_in' then b.guest_name
+      when 'app' then (select p.full_name from public.profiles p where p.id = b.user_id)
+    end,
+    'customer_phone', case b.source
+      when 'walk_in' then b.guest_phone
+      when 'app' then (select c.phone from public.profile_contacts c where c.user_id = b.user_id)
+    end,
+    'reason', case when b.source = 'block' then b.block_reason end)
+  || case when b.source = 'app' then app.deleted_json(b.user_id, 'customer_deleted') else '{}'::jsonb end
+$$;
+
+-- Redefined from 20261126100000_kazakh.sql: registrant and partner carry
+-- `deleted`.
+create or replace function app.registration_json(r public.tournament_registrations) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', r.id,
+    'tournament_id', c.tournament_id,
+    'category_id', r.category_id,
+    'category_name', jsonb_build_object('uz', c.name_uz, 'ru', c.name_ru, 'kk', c.name_kk, 'en', c.name_en),
+    'kind', c.kind,
+    'status', r.status,
+    'registrant', jsonb_build_object('id', r.user_id, 'name', (select p.full_name from public.profiles p where p.id = r.user_id))
+      || app.deleted_json(r.user_id),
+    'partner', case when r.partner_id is null then null else
+      jsonb_build_object('id', r.partner_id, 'name', (select p.full_name from public.profiles p where p.id = r.partner_id))
+      || app.deleted_json(r.partner_id) end,
+    'partner_confirmed', r.partner_confirmed,
+    'fee', r.fee,
+    'currency', r.currency,
+    'paid', r.paid_at is not null,
+    'partner_expires_local', app.to_local(r.partner_expires_at, app.tournament_offset(t)),
+    'offer_expires_local', app.to_local(r.offer_expires_at, app.tournament_offset(t)),
+    -- 1 = next in line, among entries that can be offered a spot (singles,
+    -- and pairs whose partner confirmed); null for a pair still waiting on
+    -- its partner.
+    'waitlist_place', case when r.status = 'waitlisted' and r.partner_confirmed then
+      (select count(*) from public.tournament_registrations w
+       where w.category_id = r.category_id and w.status = 'waitlisted' and w.partner_confirmed
+         and (w.waitlist_position, w.id) <= (r.waitlist_position, r.id)) end,
+    'created_at', r.created_at)
+  from public.tournament_categories c
+  join public.tournaments t on t.id = c.tournament_id
+  where c.id = r.category_id
+$$;
+
+-- Redefined from 20261125110000_admin_tournaments.sql: it replaces
+-- registrant and partner with its own objects, so they carry `deleted` here
+-- too.
+create or replace function app.admin_registration_json(r public.tournament_registrations) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select app.registration_json(r) || jsonb_build_object(
+    'registrant', (select jsonb_build_object('id', p.id, 'name', p.full_name, 'phone', pc.phone)
+                          || app.deleted_json(p.id)
+                   from public.profiles p left join public.profile_contacts pc on pc.user_id = p.id
+                   where p.id = r.user_id),
+    'partner', case when r.partner_id is null then null else
+      (select jsonb_build_object('id', p.id, 'name', p.full_name, 'phone', pc.phone)
+              || app.deleted_json(p.id)
+       from public.profiles p left join public.profile_contacts pc on pc.user_id = p.id
+       where p.id = r.partner_id) end,
+    'paid_at', r.paid_at,
+    'admin_override', r.admin_override,
+    'waitlist_position', r.waitlist_position)
+$$;

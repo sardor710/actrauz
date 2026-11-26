@@ -56,7 +56,7 @@ class GameRequestCard extends ConsumerWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  AvatarStack(names: [for (final m in request.interested) m.name]),
+                  AvatarStack(names: [for (final m in request.interested) playerName(l, m.name, deleted: m.deleted)]),
                   if (request.interested.isNotEmpty) const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -68,7 +68,10 @@ class GameRequestCard extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                l.requestTitle(request.hostName, sport?.name.resolve(context.lang) ?? ''),
+                l.requestTitle(
+                  playerName(l, request.hostName, deleted: request.hostDeleted),
+                  sport?.name.resolve(context.lang) ?? '',
+                ),
                 style: AppText.cardTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

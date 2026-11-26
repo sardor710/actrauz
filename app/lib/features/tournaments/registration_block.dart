@@ -70,8 +70,8 @@ class RegistrationBlock extends ConsumerWidget {
     final line = other == null
         ? null
         : answerable
-        ? l.partnerInvitedYou(other.name)
-        : l.pairedWith(other.name);
+        ? l.partnerInvitedYou(playerName(l, other.name, deleted: other.deleted))
+        : l.pairedWith(playerName(l, other.name, deleted: other.deleted));
     final waitingForPartner =
         r.status == RegistrationStatus.waitlisted &&
         r.kind == CategoryKind.pairs &&

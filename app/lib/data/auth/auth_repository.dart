@@ -57,6 +57,16 @@ abstract class AuthRepository {
   Future<void> saveProfile({required String fullName, required String cityId, required String languageCode});
 
   Future<void> signOut();
+
+  /// Deletes the signed-in player's account (both app stores require it in
+  /// the app), then signs out. Throws [AdminAccountException] for an Actra
+  /// admin; any other failure leaves the account and the session as they were.
+  Future<void> deleteAccount();
+}
+
+/// An admin account cannot delete itself: another admin removes the role first.
+class AdminAccountException implements Exception {
+  const AdminAccountException();
 }
 
 /// Sample mode: there is nothing to sign in to.
@@ -88,4 +98,9 @@ class DemoAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {}
+
+  /// The sample data belongs to this app run and goes with the name, so
+  /// deleting is signing out.
+  @override
+  Future<void> deleteAccount() => signOut();
 }

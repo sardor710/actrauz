@@ -41,7 +41,7 @@ class GameRequestScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l.removePlayerTitle(member.name)),
+        title: Text(l.removePlayerTitle(playerName(l, member.name, deleted: member.deleted))),
         content: Text(l.removeInterestedMsg),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.cancel)),
@@ -163,7 +163,10 @@ class GameRequestScreen extends ConsumerWidget {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      l.requestTitle(request.hostName, sport?.name.resolve(context.lang) ?? ''),
+                                      l.requestTitle(
+                                        playerName(l, request.hostName, deleted: request.hostDeleted),
+                                        sport?.name.resolve(context.lang) ?? '',
+                                      ),
                                       style: manrope(19, 800, height: 1.2),
                                     ),
                                   ),
@@ -296,7 +299,7 @@ class _MemberTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l;
     final isMe = member.id == kMeId;
-    final name = isMe ? l.you : member.name;
+    final name = isMe ? l.you : playerName(l, member.name, deleted: member.deleted);
     return InkWell(
       onTap: isMe ? null : () => context.push('/players/${member.id}'),
       child: Padding(

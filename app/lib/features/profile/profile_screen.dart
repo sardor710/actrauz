@@ -15,6 +15,7 @@ import '../common/app_header.dart';
 import '../common/formatters.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
+import 'delete_account.dart';
 
 /// The player's card, their sports, and the settings menu.
 class ProfileScreen extends ConsumerWidget {
@@ -198,6 +199,16 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(indent: 60),
                 _MenuRow(icon: Icons.logout_rounded, title: l.signOut, danger: true, onTap: controller.signOut),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Last, on its own: both app stores require deletion in the app.
+          Card(
+            child: _MenuRow(
+              icon: Icons.delete_forever_outlined,
+              title: l.deleteAccount,
+              danger: true,
+              onTap: () => confirmDeleteAccount(context, ref),
             ),
           ),
         ],

@@ -13,6 +13,10 @@ class SessionState {
   bool get onboarded => languageCode != null && cityId != null && userName != null;
 }
 
+/// Set by [SessionController.deleteAccount]: the onboarding screen that
+/// follows opens at the sign-in step (language and city are known), once.
+final onboardingAtSignInProvider = StateProvider<bool>((ref) => false);
+
 /// Language, city and signed-in user, kept across app restarts.
 class SessionController extends Notifier<SessionState> {
   static const _lang = 'lang';
@@ -57,6 +61,24 @@ class SessionController extends Notifier<SessionState> {
   Future<void> signOut() async {
     await _forgetUser();
     await ref.read(authRepositoryProvider).signOut();
+  }
+
+  /// Deletes the account on the backend, then forgets the player exactly as
+  /// [signOut] does (language and city kept). Onboarding then opens at the
+  /// sign-in step. On any failure (an admin account, no connection) the
+  /// player stays signed in and the error is rethrown.
+  Future<void> deleteAccount() async {
+    // Set first: the backend's own sign-out may end the session (sessionLost)
+    // before deleteAccount returns.
+    final atSignIn = ref.read(onboardingAtSignInProvider.notifier);
+    atSignIn.state = true;
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+    } catch (_) {
+      atSignIn.state = false;
+      rethrow;
+    }
+    await _forgetUser();
   }
 
   Future<void> _forgetUser() async {

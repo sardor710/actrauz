@@ -84,10 +84,20 @@ Reliability reliabilityFrom(Iterable<ReliabilityEvent> events, {required DateTim
 /// Someone in a game, a join request or a Game Request, as the others see
 /// them. The signed-in player has id `kMeId`.
 class GameMember {
-  const GameMember({required this.id, required this.name, this.level = 1, this.reliability = Reliability.fresh});
+  const GameMember({
+    required this.id,
+    required this.name,
+    this.level = 1,
+    this.reliability = Reliability.fresh,
+    this.deleted = false,
+  });
 
   final String id;
   final String name;
+
+  /// The account was deleted: the screens show "Deleted player" (the name is
+  /// empty by then).
+  final bool deleted;
 
   /// Level 1–5 in the game's sport; 1 when they have not set one.
   final int level;
@@ -103,11 +113,15 @@ class PlayerProfile {
     this.levels = const {},
     this.reliability = Reliability.fresh,
     this.gamesPlayed = 0,
+    this.deleted = false,
   });
 
   final String id;
   final String name;
   final String? cityId;
+
+  /// The account was deleted.
+  final bool deleted;
 
   /// Self-selected level 1–5 per sport id.
   final Map<String, int> levels;
@@ -146,6 +160,7 @@ class GameRequest {
     this.interested = const [],
     int? interestedCount,
     this.myStatus,
+    this.hostDeleted = false,
   }) : interestedCount = interestedCount ?? interested.length;
 
   final String id;
@@ -153,6 +168,9 @@ class GameRequest {
   final String cityId;
   final String hostId;
   final String hostName;
+
+  /// The poster's account was deleted (the name is empty by then).
+  final bool hostDeleted;
   final String? venueId;
 
   /// Free text: the part of town the poster can play in.
@@ -194,6 +212,7 @@ class GameRequest {
     cityId: cityId,
     hostId: hostId,
     hostName: hostName,
+    hostDeleted: hostDeleted,
     start: start,
     end: end,
     playersNeeded: playersNeeded,

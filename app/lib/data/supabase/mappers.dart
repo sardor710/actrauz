@@ -199,7 +199,8 @@ String bookingOutcomeCode(BookingOutcome outcome) => switch (outcome) {
 
 /// The JSON returned by the `owner_*` functions and embedded in
 /// `owner_calendar`: a player booking's keys plus `source`,
-/// `walk_in_payment`, `customer_name`, `customer_phone` and `reason`.
+/// `walk_in_payment`, `customer_name`, `customer_phone`, `reason`, and
+/// `customer_deleted` (only there, as true, for a deleted player).
 OwnerBooking ownerBookingFromJson(Row json) => OwnerBooking(
   id: json['id'] as String,
   venueId: json['venue_id'] as String,
@@ -214,6 +215,7 @@ OwnerBooking ownerBookingFromJson(Row json) => OwnerBooking(
   walkInPayment: walkInPaymentOf(json['walk_in_payment'] as String?),
   customerName: json['customer_name'] as String?,
   customerPhone: json['customer_phone'] as String?,
+  customerDeleted: json['customer_deleted'] == true,
   note: json['note'] as String?,
   reason: json['reason'] as String?,
   players: json['players'] as int?,
@@ -441,12 +443,15 @@ Reliability _reliabilityOf(Object? value) =>
     value == null ? Reliability.fresh : reliabilityFromJson(Map<String, dynamic>.from(value as Map));
 
 /// `{ id, name, level, reliability }` of a game's participants and of a
-/// request's interested players. [idKey] is `user_id` in a join request.
+/// request's interested players, plus `deleted: true` for a deleted account
+/// (a null name alone is a sign-up never finished). [idKey] is `user_id` in a
+/// join request.
 GameMember gameMemberFromJson(Row json, {required String? myUserId, String idKey = 'id'}) => GameMember(
   id: _userId(json[idKey], myUserId),
   name: json['name'] as String? ?? '',
   level: json['level'] as int? ?? 1,
   reliability: _reliabilityOf(json['reliability']),
+  deleted: json['deleted'] == true,
 );
 
 MyGameStatus? _myGameStatus(Object? value) => switch (value) {
@@ -512,6 +517,7 @@ GameRequest gameRequestFromJson(Row json, {required String? myUserId}) {
     cityId: json['city_id'] as String,
     hostId: _userId(json['host_id'], myUserId),
     hostName: json['host_name'] as String? ?? '',
+    hostDeleted: json['host_deleted'] == true,
     venueId: json['venue_id'] as String?,
     area: json['area'] as String?,
     start: wallClock(json['starts_local'] as String),
@@ -548,6 +554,7 @@ PlayerProfile playerProfileFromJson(Row json, {required String? myUserId}) => Pl
   levels: {for (final e in (json['levels'] as Map? ?? const {}).entries) e.key as String: e.value as int},
   reliability: _reliabilityOf(json['reliability']),
   gamesPlayed: json['games_played'] as int? ?? 0,
+  deleted: json['deleted'] == true,
 );
 
 /// One row of `my_notifications`.
@@ -667,8 +674,10 @@ RegistrationStatus registrationStatusOf(String value) => switch (value) {
   _ => throw FormatException('Unknown registration status "$value"'),
 };
 
+/// `{ id, name }` of an entry's registrant or partner, plus `deleted: true`
+/// for a deleted account.
 PlayerRef playerRefFromJson(Row json, {required String? myUserId}) =>
-    PlayerRef(id: _userId(json['id'], myUserId), name: json['name'] as String? ?? '');
+    PlayerRef(id: _userId(json['id'], myUserId), name: json['name'] as String? ?? '', deleted: json['deleted'] == true);
 
 DateTime? _wallClockOrNull(Object? value) => value == null ? null : wallClock(value as String);
 

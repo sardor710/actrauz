@@ -341,3 +341,99 @@ test('deleted_at is readable', async () => {
   // (community_core.test.mjs).
   await expectError(asUser(pool, me, (c) => c.query('select * from profiles')), '42501');
 });
+
+// Constraint: a deleted player in someone else's history shows as "Deleted
+// player". The JSON that names other players says so with `deleted: true`
+// (`customer_deleted` on an owner's booking, `host_deleted` on a Game
+// Request), only when true; a null name alone means an unfinished sign-up.
+test('deleted player shows a placeholder name', async () => {
+  const gone = await player('Gone');
+  const host = await player('Host');
+  const owner = await player('Owner');
+  await addOwner(pool, venueId, owner);
+
+  // A game that is over, with the leaving player in it.
+  const { id: past } = await one(
+    `insert into games (sport_id, city_id, venue_id, host_id, kind, visibility, during, utc_offset_minutes, spots, completed_at)
+     values ('football', 'almaty', $1, $2, 'place', 'public',
+             tstzrange($3::timestamptz - interval '2 days', $3::timestamptz - interval '47 hours'), 300, 10,
+             $3::timestamptz - interval '47 hours')
+     returning id`,
+    [venueId, host, now],
+  );
+  await pool.query(`insert into game_participants (game_id, user_id) values ($1, $2), ($1, $3)`, [past, host, gone]);
+  // A booking that will have been played by the time of deletion.
+  const played = await booking(gone, '2026-11-22T21:00:00');
+  // Entries in a tournament that will have ended: as partner and as registrant.
+  const cup = await tournament({ starts: '2026-12-10' });
+  const asPartner = await register(host, await category(cup), gone);
+  await acceptPartner(gone, asPartner);
+  const asRegistrant = await register(gone, await category(cup), host);
+  await acceptPartner(host, asRegistrant);
+
+  await deleteAccount(gone, later(24 * 20));
+
+  // Rows the cancellation steps cannot leave behind, written directly to
+  // check the builders: a join request, an "I'm in", a request they posted.
+  const upcoming = await openGame(host, venueId);
+  await pool.query(`insert into game_join_requests (game_id, user_id) values ($1, $2)`, [upcoming, gone]);
+  const { id: theirs } = await one(
+    `select (app.create_game_request($1, $2::jsonb, $3)).id`,
+    [host, JSON.stringify({ sport_id: 'football', venue_id: venueId, starts_local: '2026-11-28T18:00:00', ends_local: '2026-11-28T21:00:00', players_needed: 6 }), now],
+  );
+  await pool.query(`insert into game_request_interest (request_id, user_id) values ($1, $2)`, [theirs, gone]);
+  const { id: posted } = await one(
+    `insert into game_requests (sport_id, city_id, host_id, during, utc_offset_minutes, players_needed)
+     values ('football', 'almaty', $1, tstzrange($2::timestamptz + interval '6 days', $2::timestamptz + interval '6 days 3 hours'), 300, 4)
+     returning id`,
+    [gone, now],
+  );
+
+  // Game participants (any viewer) and join requests (the host).
+  const { g } = await one(`select app.game_json(g, $2) as g from games g where g.id = $1`, [past, host]);
+  const byId = Object.fromEntries(g.participants.map((p) => [p.id, p]));
+  assert.equal(byId[gone].deleted, true);
+  assert.equal(byId[gone].name, null);
+  assert.equal(byId[host].deleted, undefined, 'only a deleted player carries the key');
+  assert.equal(byId[host].name, 'Host');
+  const { g: hostView } = await one(`select app.game_json(g, $2) as g from games g where g.id = $1`, [upcoming, host]);
+  assert.equal(hostView.join_requests[0].user_id, gone);
+  assert.equal(hostView.join_requests[0].deleted, true);
+  assert.equal(hostView.participants[0].deleted, undefined);
+
+  // Game Requests: interested players and the poster.
+  const { r } = await one(`select app.game_request_json(r, $2) as r from game_requests r where r.id = $1`, [theirs, host]);
+  assert.equal(r.interested[0].deleted, true);
+  assert.equal(r.host_deleted, undefined);
+  const { r: theirsGone } = await one(`select app.game_request_json(r, $2) as r from game_requests r where r.id = $1`, [posted, host]);
+  assert.equal(theirsGone.host_deleted, true);
+  assert.equal(theirsGone.host_name, null);
+
+  // A player's profile.
+  const { p } = await one(`select app.player_json(pr) as p from profiles pr where pr.id = $1`, [gone]);
+  assert.equal(p.deleted, true);
+  assert.equal((await one(`select app.player_json(pr) as p from profiles pr where pr.id = $1`, [host])).p.deleted, undefined);
+
+  // The owner's booking view and calendar.
+  const { b } = await one(`select app.owner_booking_json(b) as b from bookings b where b.id = $1`, [played]);
+  assert.equal(b.customer_deleted, true);
+  assert.equal(b.customer_name, null);
+  assert.equal(b.customer_phone, null);
+  assert.equal(b.status, 'confirmed', 'the history stays');
+  const courtId = (await one(`select court_id from bookings where id = $1`, [played])).court_id;
+  const { cal } = await one(`select app.owner_calendar($1, $2, '2026-11-22', 1, $3) as cal`, [owner, courtId, now]);
+  assert.equal(cal.bookings.find((x) => x.id === played).customer_deleted, true);
+
+  // Tournament entries, in the player's view and the admin's.
+  const reg = async (fn, id) => (await one(`select app.${fn}(r) as j from tournament_registrations r where r.id = $1`, [id])).j;
+  for (const fn of ['registration_json', 'admin_registration_json']) {
+    const partnered = await reg(fn, asPartner);
+    assert.equal(partnered.status, 'registered', fn);
+    assert.equal(partnered.partner.deleted, true, fn);
+    assert.equal(partnered.registrant.deleted, undefined, fn);
+    const registered = await reg(fn, asRegistrant);
+    assert.equal(registered.registrant.deleted, true, fn);
+    assert.equal(registered.registrant.name, null, fn);
+    assert.equal(registered.partner.deleted, undefined, fn);
+  }
+});

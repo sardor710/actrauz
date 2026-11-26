@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/booking_engine.dart';
+import '../auth/auth_repository.dart';
 import '../../domain/games.dart';
 import '../../domain/tournaments.dart';
 
@@ -82,6 +85,24 @@ TournamentException tournamentExceptionFor(Object error) {
   if (error is TournamentException) return error;
   final code = error is PostgrestException ? _tournamentErrors[error.message] : null;
   return TournamentException(code ?? TournamentError.unavailable);
+}
+
+/// What a failed `delete-account` call means to the app: 403
+/// `{"error": "admin_account"}` is an [AdminAccountException]; anything else
+/// is returned as it is.
+Object deleteAccountErrorFor(Object error) {
+  if (error is FunctionException && error.status == 403) {
+    var details = error.details;
+    if (details is String) {
+      try {
+        details = jsonDecode(details);
+      } on FormatException {
+        // Plain text: not the refusal.
+      }
+    }
+    if (details is Map && details['error'] == 'admin_account') return const AdminAccountException();
+  }
+  return error;
 }
 
 /// Runs a booking call; every failure surfaces as a [BookingException].

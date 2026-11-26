@@ -133,7 +133,11 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    isBlock ? l.slotBlocked : (booking.customerName ?? l.summaryTitle),
+                    isBlock
+                        ? l.slotBlocked
+                        : booking.customerDeleted
+                        ? l.deletedPlayer
+                        : (booking.customerName ?? l.summaryTitle),
                     style: AppText.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
