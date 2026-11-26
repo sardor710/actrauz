@@ -25,7 +25,7 @@ void main() {
 
   bool uses(String message, String name) => RegExp('\\{$name[,}]').hasMatch(message);
 
-  for (final code in ['ru', 'uz']) {
+  for (final code in ['ru', 'uz', 'kk']) {
     final other = messages(load(code));
 
     test('$code has exactly the same keys as en', () {
