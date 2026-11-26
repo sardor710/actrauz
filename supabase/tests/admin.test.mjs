@@ -551,7 +551,7 @@ test('sports: create, list by sort order, update; inactive ones are hidden from 
   };
   assert.equal(await saveSport(admin, squash, true), 'squash_2');
   const sports = await listSports(admin);
-  assert.deepEqual(sports[0], squash);
+  assert.deepEqual(sports[0], { ...squash, name_kk: null });
   const orders = sports.map((s) => s.sort_order);
   assert.deepEqual(orders, [...orders].sort((a, b) => a - b));
 

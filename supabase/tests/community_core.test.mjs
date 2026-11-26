@@ -299,7 +299,7 @@ test('owner cancelling an app booking notifies the player, with no reliability e
   assert.ok(note);
   assert.equal(note.category, 'bookings');
   assert.equal(note.payload.booking_id, id);
-  assert.deepEqual(note.payload.venue_name, { uz: 'Sinov', ru: 'Test-ru', en: 'Test venue' });
+  assert.deepEqual(note.payload.venue_name, { uz: 'Sinov', ru: 'Test-ru', kk: null, en: 'Test venue' });
   assert.equal(note.payload.sport_id, 'padel');
   assert.equal(note.payload.starts_local, ten);
   assert.equal((await pool.query('select 1 from reliability_events')).rows.length, 0);
@@ -323,7 +323,7 @@ test('confirming notifies the player and every owner', async () => {
     assert.equal(note.payload.venue_id, venueId);
     assert.equal(note.payload.booking_id, id);
     assert.equal(note.payload.actor_name, 'Ali');
-    assert.deepEqual(note.payload.court_name, { uz: null, ru: null, en: 'Court' });
+    assert.deepEqual(note.payload.court_name, { uz: null, ru: null, kk: null, en: 'Court' });
   }
 });
 

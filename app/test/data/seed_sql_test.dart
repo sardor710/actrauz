@@ -48,6 +48,14 @@ void main() {
     expect(sql.substring(sync).trimRight().split('\n'), hasLength(2));
   });
 
+  test('every localized text has a Kazakh column; cities and sports carry Kazakh names', () {
+    expect(sql, contains('name_uz, name_ru, name_kk, name_en, country_code'));
+    expect(sql, contains('title_uz, title_ru, title_kk, title_en, subtitle_uz, subtitle_ru, subtitle_kk, subtitle_en'));
+    expect(sql, contains('name_kk = excluded.name_kk'));
+    expect(sql, contains("('almaty', 'Olmaota', 'Алматы', 'Алматы', 'Almaty'"));
+    expect(sql, contains("('gym', 'Sport zali', 'Тренажёрный зал', 'Жаттығу залы', 'Gym'"));
+  });
+
   test('every sample row is in the seed', () {
     final ids = [
       ...kSampleVenues.map((v) => v.id),

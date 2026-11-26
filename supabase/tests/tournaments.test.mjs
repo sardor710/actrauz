@@ -165,8 +165,8 @@ test('singles: register counts, the fee is locked, the third player gets full', 
   assert.equal(notes[0].payload.registration_id, ra.id);
   assert.equal(notes[0].payload.tournament_id, t);
   assert.equal(notes[0].payload.category_id, cat);
-  assert.deepEqual(notes[0].payload.title, { uz: 'Cup uz', ru: 'Cup ru', en: 'Cup' });
-  assert.deepEqual(notes[0].payload.category_name, { uz: 'Open', ru: 'Open', en: 'Open' });
+  assert.deepEqual(notes[0].payload.title, { uz: 'Cup uz', ru: 'Cup ru', kk: null, en: 'Cup' });
+  assert.deepEqual(notes[0].payload.category_name, { uz: 'Open', ru: 'Open', kk: null, en: 'Open' });
 });
 
 test('register rules: unknown category, partner on singles, inactive tournament', async () => {
