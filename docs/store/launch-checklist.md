@@ -17,12 +17,16 @@ Status as of the M6 (Kazakhstan) branch. The founder has no store accounts yet.
 
 1. **Launch migration first**: `node scripts/deploy.mjs migrations` (never `db`; that reloads the seed and resets sample hours and prices). The new app reads `profiles.deleted_at`, so a build must never reach users before this migration is live.
 2. **Edge functions second**: `delete-account`, `telegram-login`, `telegram-webhook` (the deletion function depends on `delete_account_service` from the migration).
-3. **App builds last**: upload to Play (and later the App Store) only after steps 1 and 2.
+3. **Live checks, in this order, after both deploys** (run in `supabase/`): `node scripts/e2e-kz.mjs`, then `node scripts/e2e-delete.mjs`, then `node scripts/e2e-community.mjs`, then `node scripts/hide-samples.mjs --apply`.
+4. **App builds last**: upload to Play (and later the App Store) only after steps 1 to 3.
+
+**Before the first store build**
+- [ ] Put a timeout on the app's `delete-account` call. The progress dialog cannot be dismissed, so if the request never answers the user is stuck.
 
 ## 3. Live checks still pending (need the live backend or a real phone)
 
 - [ ] `delete-account` edge function against the live project: after deletion the auth user is renamed and banned (rename + ban actually applied).
-- [ ] `verify_jwt` on the live project matches `supabase/config.toml`: `delete-account` true (valid user JWT required), `telegram-login` and `telegram-webhook` false. Try calling `delete-account` without a token and expect 401.
+- [ ] `verify_jwt` on the live project matches `supabase/config.toml`: `telegram-login` and `telegram-webhook` false; `delete-account` true if a valid user token is accepted. If a valid user token gets 401 at the gateway (`scripts/e2e-delete.mjs` shows it on the first call), set `verify_jwt = false` for `[functions.delete-account]` and deploy the functions again (see `supabase/README.md`); that is safe, because the function re-validates the token with `getUser`. Either way, calling `delete-account` without a token must give 401.
 - [ ] Real geolocation on a physical Android phone: permission prompt, nearest city suggested for Tashkent, Almaty and Astana, and the denied / off / timeout paths show the manual list with no spinner left.
 - [ ] Sign in with the same phone after deleting an account, on the live project: a new, empty account.
 

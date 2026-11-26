@@ -335,13 +335,17 @@ begin
   -- future: booking notes (owners see them), notes and meeting points on the
   -- games they host, notes and areas on their Game Requests. A meeting-point
   -- game must keep a meeting point (games_meeting_point_for_map_point), so it
-  -- gets '' there, which game_json shows as null.
+  -- gets '' there, which game_json shows as null. The map coordinates of the
+  -- meeting point go too (they are nullable, no constraint ties them).
   update public.bookings b set note = null
   where b.user_id = p_user and b.source = 'app' and b.note is not null;
   update public.games g
   set note = null,
-      meeting_point = case when g.kind = 'map_point' then '' end
-  where g.host_id = p_user and (g.note is not null or g.meeting_point is not null);
+      meeting_point = case when g.kind = 'map_point' then '' end,
+      meeting_lat = null,
+      meeting_lng = null
+  where g.host_id = p_user
+    and (g.note is not null or g.meeting_point is not null or g.meeting_lat is not null or g.meeting_lng is not null);
   update public.game_requests r set note = null, area = null
   where r.host_id = p_user and (r.note is not null or r.area is not null);
 

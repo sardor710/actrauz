@@ -182,7 +182,7 @@ test('deletes a busy account', async () => {
   await pool.query(`update bookings set note = 'Gate code 1234' where id = $1`, [bookingId]);
   await pool.query(`update games set note = 'Call me on 777' where id = any ($1)`, [[hosted, joined]]);
   const meetingPoint = await openGame(me, null);
-  await pool.query(`update games set note = 'Near my house', meeting_point = 'My house, 5 Abai st' where id = $1`, [meetingPoint]);
+  await pool.query(`update games set note = 'Near my house', meeting_point = 'My house, 5 Abai st', meeting_lat = 43.2389, meeting_lng = 76.9455 where id = $1`, [meetingPoint]);
   const { id: pastMeetingPoint } = await one(
     `insert into games (sport_id, city_id, host_id, kind, meeting_point, note, visibility, during, utc_offset_minutes, spots, completed_at)
      values ('football', 'almaty', $1, 'map_point', 'My house, 5 Abai st', 'Ring twice', 'public',
@@ -236,7 +236,14 @@ test('deletes a busy account', async () => {
     const { g } = await one(`select app.game_json(g, $2) as g from games g where g.id = $1`, [id, host]);
     assert.equal(g.note, null);
     assert.equal(g.meeting_point, null, 'no meeting point is shown');
+    assert.equal(g.meeting_lat, null, 'no meeting latitude is shown');
+    assert.equal(g.meeting_lng, null, 'no meeting longitude is shown');
   }
+  assert.deepEqual(
+    await one(`select meeting_lat, meeting_lng from games where id = $1`, [meetingPoint]),
+    { meeting_lat: null, meeting_lng: null },
+    'the coordinates are cleared in the table',
+  );
   assert.equal((await one(`select note from games where id = $1`, [joined])).note, 'Call me on 777');
   const r = await one(`select note, area from game_requests where id = $1`, [myRequest]);
   assert.deepEqual(r, { note: null, area: null });
