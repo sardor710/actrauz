@@ -14,7 +14,7 @@
 
 import assert from 'node:assert/strict';
 import { randomInt, randomUUID } from 'node:crypto';
-import { call, env, removeAccounts, rpc, signIn } from './e2e-lib.mjs';
+import { call, createdUsersSql, env, removeAccounts, rpc, signIn } from './e2e-lib.mjs';
 import { sql, step } from './env.mjs';
 
 const addDays = (date, days) => {
@@ -106,21 +106,27 @@ try {
   console.error(`\nKAZAKHSTAN END TO END: FAILED\n${e.stack ?? e}`);
 } finally {
   step('Cleaning up the throw-away venue and player');
-  await removeAccounts({
-    before: [
-      `delete from public.bookings where venue_id = '${venueId}'`,
-      `delete from public.venues where id = '${venueId}'`,
-    ],
-  });
+  // The venue first and on its own: a failure here must not skip the player.
+  try {
+    await sql(env, `delete from public.bookings where venue_id = '${venueId}'`, { write: true });
+    await sql(env, `delete from public.venues where id = '${venueId}'`, { write: true });
+  } catch (e) {
+    failed = true;
+    console.error(`  venue cleanup failed, remove by hand: venue ${venueId}, court ${courtId}\n  ${e.message}`);
+  }
+  await removeAccounts();
   try {
     const left = await sql(
       env,
-      `select (select count(*) from public.venues where id = '${venueId}' or name_en like 'E2E KZ %') as venues,
-              (select count(*) from public.courts where id = '${courtId}') as courts`,
+      `select (select count(*)::int from public.venues where id = '${venueId}') as venues,
+              (select count(*)::int from public.courts where id = '${courtId}') as courts,
+              (select count(*)::int from auth.users where id in (${createdUsersSql() || 'null'})) as users`,
     );
-    console.log(`  left behind: ${left[0].venues} test venues, ${left[0].courts} test courts`);
+    console.log(`  left behind: ${left[0].venues} test venues, ${left[0].courts} test courts, ${left[0].users} test users`);
+    if (left[0].venues || left[0].courts || left[0].users) failed = true;
   } catch (e) {
-    console.error(`  could not check what is left: ${e.message}`);
+    failed = true;
+    console.error(`  could not check what is left (venue ${venueId}, court ${courtId}): ${e.message}`);
   }
 }
 process.exit(failed ? 1 : 0);

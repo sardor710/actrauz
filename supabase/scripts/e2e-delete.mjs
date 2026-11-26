@@ -82,7 +82,9 @@ try {
     try {
       const left = await sql(env, `select count(*)::int as n from auth.users where id in (${users})`);
       console.log(`  throw-away users left behind: ${left[0].n}`);
+      if (left[0].n > 0) failed = true;
     } catch (e) {
+      failed = true;
       console.error(`  could not check what is left: ${e.message}`);
     }
   }
