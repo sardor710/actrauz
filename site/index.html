@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Actra — Sports community and court booking</title>
+<meta name="description" content="Book courts, join games and find players in Tashkent, Almaty and Astana.">
+<style>
+:root{--bg:#fff;--fg:#1b1f23;--muted:#5b646e;--line:#dde2e7;--accent:#0b6b4f}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e8ebee;--muted:#9aa4ae;--line:#2b3238;--accent:#58c9a1}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:46rem;margin:0 auto;padding:1rem 1rem 3rem}
+h1{font-size:2rem;margin:1.2rem 0 .3rem}
+p,li{margin:.4rem 0}
+a{color:var(--accent)}
+nav.top{display:flex;justify-content:flex-end;border-bottom:1px solid var(--line);padding-bottom:.6rem}
+.langs{display:flex;gap:.4rem;flex-wrap:wrap}
+.langs a{border:1px solid var(--line);border-radius:.4rem;padding:.25rem .6rem;text-decoration:none;color:var(--fg)}
+.langs a[aria-current="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ph{background:var(--line);padding:0 .25rem;border-radius:.2rem}
+ul.links{padding-left:1.2rem}
+</style>
+</head>
+<body>
+<main>
+<nav class="top">
+<div class="langs" id="langs">
+<a href="#en" data-l="en">English</a>
+<a href="#ru" data-l="ru">Русский</a>
+<a href="#uz" data-l="uz">Oʻzbekcha</a>
+<a href="#kk" data-l="kk">Қазақша</a>
+</div>
+</nav>
+
+<section lang="en" id="en">
+<h1>Actra</h1>
+<p>A sports community and venue-booking app for Uzbekistan and Kazakhstan: book courts and pitches, join games, find players and register for tournaments in Tashkent, Almaty and Astana.</p>
+<ul class="links">
+<li><a href="privacy.html#en">Privacy policy</a> (draft)</li>
+<li><a href="delete-account.html#en">Delete your account</a></li>
+<li>Contact: <span class="ph">&lt;founder: contact e-mail&gt;</span></li>
+<li>App store links: <span class="ph">&lt;founder: after the apps are published&gt;</span></li>
+</ul>
+</section>
+
+<section lang="ru" id="ru">
+<h1>Actra</h1>
+<p>Спортивное сообщество и сервис бронирования площадок для Узбекистана и Казахстана: бронируйте корты и поля, играйте, находите партнёров и регистрируйтесь на турниры в Ташкенте, Алматы и Астане.</p>
+<ul class="links">
+<li><a href="privacy.html#ru">Политика конфиденциальности</a> (черновик)</li>
+<li><a href="delete-account.html#ru">Удаление аккаунта</a></li>
+<li>Контакты: <span class="ph">&lt;founder: contact e-mail&gt;</span></li>
+<li>Ссылки на магазины приложений: <span class="ph">&lt;founder: после публикации приложений&gt;</span></li>
+</ul>
+</section>
+
+<section lang="uz" id="uz">
+<h1>Actra</h1>
+<p>Oʻzbekiston va Qozogʻiston uchun sport hamjamiyati va maydonlarni band qilish ilovasi: Toshkent, Almati va Astanada kort va maydonlarni band qiling, oʻyinlarga qoʻshiling, sherik toping va turnirlarga roʻyxatdan oʻting.</p>
+<ul class="links">
+<li><a href="privacy.html#uz">Maxfiylik siyosati</a> (qoralama)</li>
+<li><a href="delete-account.html#uz">Akkauntni oʻchirish</a></li>
+<li>Aloqa: <span class="ph">&lt;founder: contact e-mail&gt;</span></li>
+<li>Ilova doʻkonlaridagi havolalar: <span class="ph">&lt;founder: ilovalar chiqqandan keyin&gt;</span></li>
+</ul>
+</section>
+
+<section lang="kk" id="kk">
+<h1>Actra</h1>
+<p>Өзбекстан мен Қазақстанға арналған спорт қауымдастығы және нысандарды брондау қолданбасы: Ташкентте, Алматыда және Астанада корттар мен алаңдарды брондаңыз, ойындарға қосылыңыз, серіктес табыңыз және турнирлерге тіркеліңіз.</p>
+<ul class="links">
+<li><a href="privacy.html#kk">Құпиялылық саясаты</a> (жоба)</li>
+<li><a href="delete-account.html#kk">Аккаунтты жою</a></li>
+<li>Байланыс: <span class="ph">&lt;founder: contact e-mail&gt;</span></li>
+<li>Қолданба дүкендеріндегі сілтемелер: <span class="ph">&lt;founder: қолданбалар жарияланғаннан кейін&gt;</span></li>
+</ul>
+</section>
+</main>
+<script>
+(function(){
+var codes=['en','ru','uz','kk'];
+function pick(){
+var h=(location.hash||'').slice(1);
+if(codes.indexOf(h)>-1)return h;
+var n=((navigator.language||'en')+'').slice(0,2).toLowerCase();
+return codes.indexOf(n)>-1?n:'ru';
+}
+function show(c){
+codes.forEach(function(x){
+var s=document.getElementById(x);
+if(s)s.hidden=(x!==c);
+});
+var as=document.querySelectorAll('#langs a');
+for(var i=0;i<as.length;i++)as[i].setAttribute('aria-current',as[i].getAttribute('data-l')===c?'true':'false');
+document.documentElement.lang=c;
+}
+window.addEventListener('hashchange',function(){show(pick())});
+show(pick());
+})();
+</script>
+</body>
+</html>
