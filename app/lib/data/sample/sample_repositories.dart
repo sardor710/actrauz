@@ -995,12 +995,10 @@ class SampleBackend
   /// Nobody joins a sample game after its start ([_live]), so every
   /// participant counts as there on time.
   void _recountNoShow(Game g, String targetId) {
-    final reporters = _noShowReports[g.id]?[targetId]?.length ?? 0;
-    final others = g.participantIds.length - 1;
     final events = _reliabilityEvents.putIfAbsent(targetId, () => []);
     bool has(ReliabilityKind kind, String? ref) => events.any((e) => e.kind == kind && e.ref == ref);
 
-    if (reporters * 2 > others && reporters >= 2) {
+    if (_noShowMajority(g, targetId)) {
       if (has(ReliabilityKind.noShow, g.id)) return;
       // A host the venue already marked no-show for the booking is not penalised twice.
       final venueMarked = targetId == g.hostId && g.bookingId != null && has(ReliabilityKind.noShow, g.bookingId);
@@ -1013,10 +1011,20 @@ class SampleBackend
         _notify(targetId, 'no_show_recorded', 'games', _gameNote(g));
       }
       _scores.noShowRecorded(g.id, targetId);
-    } else if (has(ReliabilityKind.noShow, g.id)) {
-      events.removeWhere((e) => e.kind == ReliabilityKind.noShow && e.ref == g.id);
-      if (_creditsTaken.remove((g.id, targetId))) recordReliability(targetId, ReliabilityKind.gameCompleted, g.id);
+    } else {
+      if (has(ReliabilityKind.noShow, g.id)) {
+        events.removeWhere((e) => e.kind == ReliabilityKind.noShow && e.ref == g.id);
+        if (_creditsTaken.remove((g.id, targetId))) recordReliability(targetId, ReliabilityKind.gameCompleted, g.id);
+      }
+      _scores.noShowLost(g.id, stillMarked: (id) => _noShowMajority(g, id));
     }
+  }
+
+  /// More than half of the other participants, and at least two, marked
+  /// [userId] as not there.
+  bool _noShowMajority(Game g, String userId) {
+    final reporters = _noShowReports[g.id]?[userId]?.length ?? 0;
+    return reporters * 2 > g.participantIds.length - 1 && reporters >= 2;
   }
 
   /// As [userId]; see [SocialRepository.reportPlayer]. Nothing happens
@@ -1089,15 +1097,17 @@ class SampleBackend
     bool listed(Game g) {
       if (g.cancelled || _started(g)) return false;
       final teamId = _teamOf[g.id];
+      // A team game is not listed to a member the host took out of it.
+      final removedFromTeamGame = teamId != null && _removed(g.id, viewer);
       final mine =
           g.hostId == viewer ||
           g.participantIds.contains(viewer) ||
           _isInvited(g.id, viewer) ||
-          (teamId != null && _teams.isMember(teamId, viewer));
+          (teamId != null && _teams.isMember(teamId, viewer) && !removedFromTeamGame);
       // Other invite-only games come in only as `mine`, never through the city.
       final inCity =
           g.cityId == cityId &&
-          (g.visibility == GameVisibility.public || _teamOpen(viewer, g)) &&
+          (g.visibility == GameVisibility.public || (_teamOpen(viewer, g) && !removedFromTeamGame)) &&
           (!g.isFull || g.participantIds.contains(viewer));
       return inCity || mine;
     }

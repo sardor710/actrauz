@@ -1107,6 +1107,62 @@ void main() {
       expect(result.flaggedNoShow, isTrue);
     });
 
+    test('a result an admin kept is not flagged again by a later no-show recount', () async {
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      await backend.admin.resolveScore('r-gf1', 'keep');
+      expect((await backend.game('gf1')).result!.flaggedNoShow, isFalse);
+
+      // The majority is lost and found again: the admin's decision stands.
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: false);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      // And another player's majority does not reopen it either.
+      await backend.reportNoShowAs('p2', 'gf1', 'p1', reported: true);
+      await backend.reportNoShowAs('p3', 'gf1', 'p1', reported: true);
+      final result = (await backend.game('gf1')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.flaggedNoShow, isFalse);
+      expect((await backend.admin.review()).disputes, isEmpty);
+    });
+
+    test('a result an admin confirmed from a dispute is not disputed again by a no-show', () async {
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      await backend.admin.resolveScore('r-gf2', 'confirm');
+      await backend.reportNoShowAs('p1', 'gf2', 'p2', reported: true);
+      await backend.reportNoShowAs('p3', 'gf2', 'p2', reported: true);
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.flaggedNoShow, isFalse);
+    });
+
+    test('a lost no-show majority clears the flag it put on a confirmed result', () async {
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      expect((await backend.game('gf1')).result!.flaggedNoShow, isTrue);
+
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: false);
+      final result = (await backend.game('gf1')).result!;
+      expect(result.flaggedNoShow, isFalse);
+      expect(result.status, ResultStatus.confirmed);
+      expect((await backend.admin.review()).disputes, isEmpty);
+    });
+
+    test("a lost majority keeps the flag while another player's majority stands", () async {
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      for (final target in ['p3', 'p2']) {
+        for (final reporter in ['p1', kMeId]) {
+          await backend.reportNoShowAs(reporter, 'gf1', target, reported: true);
+        }
+      }
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: false);
+      expect((await backend.game('gf1')).result!.flaggedNoShow, isTrue);
+    });
+
     test('reporting a player: once per player and game while open', () async {
       await backend.reportPlayer('p1', gameId: 'gf1', reason: ReportReason.falseScore, details: 'Not 6-0');
       expect(
@@ -1339,6 +1395,20 @@ void main() {
         'team_name': 'Aziz Runners',
       });
       expect(posted.route, '/games/${game.id}');
+    });
+
+    test('a member the host removed from a team game no longer sees it through the team', () async {
+      final team = await backend.createTeam(runners('Night Runners'));
+      await backend.joinTeamAs('p2', team.id);
+      final game = await backend.create(teamRun(team.id));
+      await backend.joinAs('p2', game.id);
+      expect(await listed(backend, 'p2'), contains(game.id));
+
+      await backend.removeParticipant(game.id, 'p2');
+      expect(await listed(backend, 'p2'), isNot(contains(game.id)));
+      // Another member still sees it.
+      await backend.joinTeamAs('p3', team.id);
+      expect(await listed(backend, 'p3'), contains(game.id));
     });
 
     test('a team game opens to everyone at its lead time, while spots remain', () async {

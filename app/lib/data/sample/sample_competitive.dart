@@ -238,10 +238,11 @@ class SampleScores {
   /// A no-show majority was recorded against [userId] in the game: a pending
   /// result with them in it is frozen as disputed for an admin (reason
   /// `no_show`; its players hear), a confirmed one is flagged. Nothing is
-  /// voided (design §6.2), as `app.recount_no_show`.
+  /// voided (design §6.2), as `app.recount_no_show`. A result an admin has
+  /// already decided is left as the admin decided it.
   void noShowRecorded(String gameId, String userId) {
     final result = _byGame[gameId];
-    if (result == null || !result.includes(userId)) return;
+    if (result == null || !result.includes(userId) || result.adminResolved) return;
     if (result.status == ResultStatus.pending) {
       result
         ..status = ResultStatus.disputed
@@ -252,6 +253,21 @@ class SampleScores {
     } else if (result.status == ResultStatus.confirmed) {
       result.flaggedNoShow = true;
     }
+  }
+
+  /// A no-show majority in the game was lost: a confirmed result flagged
+  /// only by no-show majorities, none of which ([stillMarked]) stands any
+  /// more, is no longer flagged, unless an admin has decided it.
+  void noShowLost(String gameId, {required bool Function(String userId) stillMarked}) {
+    final result = _byGame[gameId];
+    if (result == null ||
+        result.status != ResultStatus.confirmed ||
+        !result.flaggedNoShow ||
+        result.adminResolved ||
+        result.players.any(stillMarked)) {
+      return;
+    }
+    result.flaggedNoShow = false;
   }
 
   /// What an admin has to look at, as `app.admin_review` lists it: disputed
@@ -283,7 +299,9 @@ class SampleScores {
         if (result.status != ResultStatus.confirmed || !result.flaggedNoShow) {
           throw const JoinException(JoinError.notFound);
         }
-        result.flaggedNoShow = false;
+        result
+          ..flaggedNoShow = false
+          ..adminResolved = true;
         return (before: before, after: result.view);
       case 'confirm' || 'correct':
         if (result.status != ResultStatus.disputed) throw const JoinException(JoinError.notFound);
@@ -291,11 +309,13 @@ class SampleScores {
           if (sets == null || !validSets(sets)) throw const JoinException(JoinError.invalidArgument);
           result.sets = [...sets];
         }
+        result.adminResolved = true;
         _apply(result);
         // A deleted player in it made it void, and _apply told the others.
         if (result.status == ResultStatus.voided) return (before: before, after: result.view);
       default:
         if (result.status == ResultStatus.voided) throw const JoinException(JoinError.notFound);
+        result.adminResolved = true;
         if (result.status == ResultStatus.confirmed) _takeBack(result);
         result.status = ResultStatus.voided;
     }
@@ -386,6 +406,9 @@ class _SampleResult {
   /// Who disputed it; null for a no-show freeze.
   String? disputedBy;
   bool flaggedNoShow = false;
+
+  /// An admin confirmed, corrected, kept or voided it.
+  bool adminResolved = false;
   DateTime deadline = DateTime.utc(2000);
   final Map<String, RatingChange> changes = {};
 
