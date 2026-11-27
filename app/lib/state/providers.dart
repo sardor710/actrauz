@@ -284,27 +284,42 @@ int? venueFromPrice(Venue venue, DateTime today) {
   return min;
 }
 
+/// Invalidates one provider: `WidgetRef.invalidate` or
+/// `ProviderContainer.invalidate`.
+typedef Invalidate = void Function(ProviderOrFamily provider);
+
 /// Refreshes everything that depends on games and Game Requests.
-void refreshGames(WidgetRef ref) {
-  ref.invalidate(gamesProvider);
-  ref.invalidate(gameProvider);
-  ref.invalidate(pastGamesProvider);
-  ref.invalidate(leaderboardProvider);
-  ref.invalidate(gameRequestsProvider);
-  ref.invalidate(gameRequestProvider);
+void refreshGames(WidgetRef ref) => _refreshGames(ref.invalidate);
+
+/// [refreshGames] with a container captured before an `await`, for when the
+/// widget may be gone by then.
+void refreshGamesIn(ProviderContainer container) => _refreshGames(container.invalidate);
+
+void _refreshGames(Invalidate invalidate) {
+  invalidate(gamesProvider);
+  invalidate(gameProvider);
+  invalidate(pastGamesProvider);
+  invalidate(leaderboardProvider);
+  invalidate(gameRequestsProvider);
+  invalidate(gameRequestProvider);
   // Team pages list their upcoming games.
-  ref.invalidate(teamProvider);
-  ref.invalidate(inboxProvider);
-  ref.invalidate(unreadCountProvider);
+  invalidate(teamProvider);
+  invalidate(inboxProvider);
+  invalidate(unreadCountProvider);
 }
 
 /// Refreshes everything that shows the player's sports, levels and ratings,
 /// and the games whose join check depends on them.
-void refreshSports(WidgetRef ref) {
-  ref.invalidate(mySportsProvider);
-  ref.invalidate(playerProvider);
-  ref.invalidate(playerProfileProvider);
-  refreshGames(ref);
+void refreshSports(WidgetRef ref) => _refreshSports(ref.invalidate);
+
+/// [refreshSports] with a container captured before an `await`.
+void refreshSportsIn(ProviderContainer container) => _refreshSports(container.invalidate);
+
+void _refreshSports(Invalidate invalidate) {
+  invalidate(mySportsProvider);
+  invalidate(playerProvider);
+  invalidate(playerProfileProvider);
+  _refreshGames(invalidate);
 }
 
 /// Refreshes everything that depends on bookings.

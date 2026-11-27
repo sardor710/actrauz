@@ -151,140 +151,145 @@ class GameScreen extends ConsumerWidget {
           return Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    PhotoBox(
-                      asset: venueId == null ? kGamesPromoPhoto : venuePhoto(venueId),
-                      height: 250,
-                      radius: 0,
-                      darken: 0.55,
-                      child: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              OverlayIconButton(icon: Icons.arrow_back_rounded, onTap: () => context.pop()),
-                              const Spacer(),
-                              Pill(
-                                text:
-                                    '${dayLabel(l, context.lang, game.start, now)} · ${timeRange(game.start, game.end)}',
-                                color: AppColors.blue,
-                                onColor: Colors.white,
-                                large: true,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l.gameTitle(hostName, sport?.name.resolve(context.lang) ?? ''),
-                                style: manrope(23, 800, color: Colors.white, height: 1.2),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                child: RefreshIndicator(
+                  // Pull to see what other players changed meanwhile.
+                  onRefresh: () => reloadQuietly(ref.refresh(gameProvider(gameId).future)),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    children: [
+                      PhotoBox(
+                        asset: venueId == null ? kGamesPromoPhoto : venuePhoto(venueId),
+                        height: 250,
+                        radius: 0,
+                        darken: 0.55,
+                        child: SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                OverlayIconButton(icon: Icons.arrow_back_rounded, onTap: () => context.pop()),
+                                const Spacer(),
+                                Pill(
+                                  text:
+                                      '${dayLabel(l, context.lang, game.start, now)} · ${timeRange(game.start, game.end)}',
+                                  color: AppColors.blue,
+                                  onColor: Colors.white,
+                                  large: true,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  l.gameTitle(hostName, sport?.name.resolve(context.lang) ?? ''),
+                                  style: manrope(23, 800, color: Colors.white, height: 1.2),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    if (game.cancelled)
-                      _Banner(icon: Icons.event_busy_outlined, text: l.gameCancelledBanner, error: true)
-                    else if (status == MyGameStatus.invited)
-                      _Banner(icon: Icons.mail_outline_rounded, text: l.invitedToGame),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (venue != null || game.meetingPoint != null) ...[
-                                Row(
+                      if (game.cancelled)
+                        _Banner(icon: Icons.event_busy_outlined, text: l.gameCancelledBanner, error: true)
+                      else if (status == MyGameStatus.invited)
+                        _Banner(icon: Icons.mail_outline_rounded, text: l.invitedToGame),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (venue != null || game.meetingPoint != null) ...[
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.place_outlined, color: AppColors.muted),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: venue != null
+                                            ? Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(venue.name.resolve(context.lang), style: manrope(16, 700)),
+                                                  Text(venue.address.resolve(context.lang), style: AppText.muted),
+                                                ],
+                                              )
+                                            : Text(game.meetingPoint!, style: manrope(16, 700)),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
-                                    const Icon(Icons.place_outlined, color: AppColors.muted),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: venue != null
-                                          ? Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(venue.name.resolve(context.lang), style: manrope(16, 700)),
-                                                Text(venue.address.resolve(context.lang), style: AppText.muted),
-                                              ],
-                                            )
-                                          : Text(game.meetingPoint!, style: manrope(16, 700)),
+                                    Pill(
+                                      text: l.spotsLeft(game.spotsLeft),
+                                      color: game.isFull ? AppColors.errorSoft : AppColors.amber,
+                                      onColor: game.isFull ? AppColors.error : AppColors.ink,
                                     ),
+                                    Pill(
+                                      text: gameRangeText(
+                                        l,
+                                        minLevel: game.minLevel,
+                                        maxLevel: game.maxLevel,
+                                        minRating: game.minRating,
+                                        maxRating: game.maxRating,
+                                      ),
+                                      icon: Icons.bar_chart_rounded,
+                                      color: AppColors.primarySoft,
+                                      onColor: AppColors.primaryDark,
+                                    ),
+                                    ...accessPills(context, game, gameNow),
+                                    if (distance != null)
+                                      Pill(
+                                        text: l.distanceValue(
+                                          distance == distance.roundToDouble() ? '${distance.round()}' : '$distance',
+                                        ),
+                                        icon: Icons.route_outlined,
+                                      ),
+                                    if (game.pace != null)
+                                      Pill(text: l.paceValue(game.pace!), icon: Icons.speed_outlined),
+                                    if (game.pricePerPlayer != null) ...[
+                                      Pill(text: l.perPlayer(money(l, game.pricePerPlayer!, currency))),
+                                      Pill(text: l.payAtVenue, icon: Icons.payments_outlined),
+                                    ],
                                   ],
                                 ),
-                                const SizedBox(height: 14),
-                              ],
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  Pill(
-                                    text: l.spotsLeft(game.spotsLeft),
-                                    color: game.isFull ? AppColors.errorSoft : AppColors.amber,
-                                    onColor: game.isFull ? AppColors.error : AppColors.ink,
-                                  ),
-                                  Pill(
-                                    text: gameRangeText(
-                                      l,
-                                      minLevel: game.minLevel,
-                                      maxLevel: game.maxLevel,
-                                      minRating: game.minRating,
-                                      maxRating: game.maxRating,
-                                    ),
-                                    icon: Icons.bar_chart_rounded,
-                                    color: AppColors.primarySoft,
-                                    onColor: AppColors.primaryDark,
-                                  ),
-                                  ...accessPills(context, game, gameNow),
-                                  if (distance != null)
-                                    Pill(
-                                      text: l.distanceValue(
-                                        distance == distance.roundToDouble() ? '${distance.round()}' : '$distance',
-                                      ),
-                                      icon: Icons.route_outlined,
-                                    ),
-                                  if (game.pace != null)
-                                    Pill(text: l.paceValue(game.pace!), icon: Icons.speed_outlined),
-                                  if (game.pricePerPlayer != null) ...[
-                                    Pill(text: l.perPlayer(money(l, game.pricePerPlayer!, currency))),
-                                    Pill(text: l.payAtVenue, icon: Icons.payments_outlined),
-                                  ],
+                                if (game.note != null) ...[
+                                  const SizedBox(height: 14),
+                                  Text(game.note!, style: AppText.body),
                                 ],
-                              ),
-                              if (game.note != null) ...[
-                                const SizedBox(height: 14),
-                                Text(game.note!, style: AppText.body),
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    FinishedSection(game: game),
-                    if (isHost && canAct) JoinRequestsSection(game: game),
-                    SectionCard(
-                      title: '${l.players} · ${game.participantIds.length}/${game.spots}',
-                      contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Column(
-                        children: [
-                          for (final member in members)
-                            _PlayerTile(
-                              member: member,
-                              isHost: member.id == game.hostId,
-                              onRemove: isHost && canAct && member.id != game.hostId
-                                  ? () => _remove(context, ref, member)
-                                  : null,
-                            ),
-                        ],
+                      FinishedSection(game: game),
+                      if (isHost && canAct) JoinRequestsSection(game: game),
+                      SectionCard(
+                        title: '${l.players} · ${game.participantIds.length}/${game.spots}',
+                        contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Column(
+                          children: [
+                            for (final member in members)
+                              _PlayerTile(
+                                member: member,
+                                isHost: member.id == game.hostId,
+                                onRemove: isHost && canAct && member.id != game.hostId
+                                    ? () => _remove(context, ref, member)
+                                    : null,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    if (isHost && canAct) HostToolsSection(game: game, onCancelled: () => context.go('/games')),
-                  ],
+                      if (isHost && canAct) HostToolsSection(game: game, onCancelled: () => context.go('/games')),
+                    ],
+                  ),
                 ),
               ),
               if (bar != null)

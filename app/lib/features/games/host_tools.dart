@@ -11,20 +11,28 @@ import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 
 /// Runs a game action and shows the translated reason when the backend
-/// refuses. Refreshes everything that depends on games after a success.
-/// Returns whether it went through.
+/// refuses. Refreshes everything that depends on games afterwards, also after a
+/// refusal (another player may have changed the game meanwhile). Returns
+/// whether it went through.
 Future<bool> runGameAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
   final l = context.l;
+  // Captured now: the widget may be gone when the action returns.
+  final container = ProviderScope.containerOf(context, listen: false);
   try {
     await action();
-    refreshGames(ref);
-    // The Social tab's team tiles count upcoming team games (a cancel changes it).
-    ref.invalidate(teamsProvider);
+    _refreshAfterGameAction(container);
     return true;
   } on JoinException catch (e) {
+    _refreshAfterGameAction(container);
     if (context.mounted) showMessage(context, joinErrorText(l, e));
   }
   return false;
+}
+
+void _refreshAfterGameAction(ProviderContainer c) {
+  refreshGamesIn(c);
+  // The Social tab's team tiles count upcoming team games (a cancel changes it).
+  c.invalidate(teamsProvider);
 }
 
 /// Spots as a stepper, 2 to 30 like the database.

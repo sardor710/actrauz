@@ -6,6 +6,7 @@ import 'data/supabase/last_seen.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'router.dart';
 import 'state/providers.dart';
+import 'state/ui_providers.dart';
 
 class ActraApp extends ConsumerStatefulWidget {
   const ActraApp({super.key});
@@ -30,7 +31,20 @@ class _ActraAppState extends ConsumerState<ActraApp> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _touchLastSeen();
+    if (state != AppLifecycleState.resumed) return;
+    _touchLastSeen();
+    _reloadOthersChanges();
+  }
+
+  /// Other players may have changed games, scores, teams and the inbox while
+  /// the app was away; what was loaded before is reloaded when next shown.
+  /// Nothing while signed out.
+  void _reloadOthersChanges() {
+    if (ref.read(sessionProvider).userName == null) return;
+    // Games, past games, the leaderboards, team pages, the inbox and its
+    // count, and the player's sports.
+    refreshSports(ref);
+    ref.invalidate(teamsProvider);
   }
 
   /// Tells the backend the player is around (for "active users"): on start, on

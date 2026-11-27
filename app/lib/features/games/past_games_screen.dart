@@ -20,15 +20,20 @@ class PastGamesScreen extends ConsumerWidget {
         value: ref.watch(pastGamesProvider),
         builder: (games) => games.isEmpty
             ? Center(child: EmptyState(icon: Icons.history_rounded, text: l.noPastGames))
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: [
-                  for (final game in games)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: GameCard(game: game),
-                    ),
-                ],
+            : RefreshIndicator(
+                // Pull to see scores other players entered meanwhile.
+                onRefresh: () => reloadQuietly(ref.refresh(pastGamesProvider.future)),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  children: [
+                    for (final game in games)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: GameCard(game: game),
+                      ),
+                  ],
+                ),
               ),
       ),
     );

@@ -233,6 +233,53 @@ void main() {
     expect(result.confirmedBy, [kMeId]);
   });
 
+  testWidgets("a score another player entered shows when its notice is opened", (tester) async {
+    // Sunday 22:00: more than 24 hours after gf1, so any of its players may enter it.
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning.add(const Duration(hours: 12)));
+    await _openGame(tester, 'gf1');
+    expect(find.byKey(const ValueKey('score-enter')), findsOneWidget);
+
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    await backend.enterScoreAs('p2', 'gf1', sideA: ['p2', 'p3'], sideB: [kMeId, 'p1'], sets: _sixFourTwice);
+    containerOf(tester).read(routerProvider).go('/inbox');
+    await tester.pumpAndSettle();
+    await tap(tester, find.text('The score of your game was entered. Confirm or dispute it').first);
+
+    expect(find.byType(GameScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('score-confirm')), findsOneWidget);
+    expect(find.byKey(const ValueKey('score-dispute')), findsOneWidget);
+  });
+
+  testWidgets('pulling the game page down shows what other players changed', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning.add(const Duration(hours: 12)));
+    await _openGame(tester, 'gf1');
+    await containerOf(tester)
+        .read(sampleBackendProvider)
+        .enterScoreAs('p2', 'gf1', sideA: ['p2', 'p3'], sideB: [kMeId, 'p1'], sets: _sixFourTwice);
+
+    expect(find.byType(RefreshIndicator), findsOneWidget);
+    // Far enough on the tall test screen to start a reload.
+    await tester.fling(find.byType(GameScreen), const Offset(0, 1500), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('score-confirm')), findsOneWidget);
+  });
+
+  testWidgets('a refused confirm reloads the game', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await _openGame(tester, 'gf2');
+    // Meanwhile another player disputed it.
+    await containerOf(tester).read(sampleBackendProvider).disputeScoreAs('p2', 'r-gf2');
+
+    await tap(tester, find.byKey(const ValueKey('score-confirm')));
+
+    expect(find.byKey(const ValueKey('score-confirm')), findsNothing);
+    expect(find.text('Disputed — an Actra admin will review'), findsOneWidget);
+    await settleSnackbars(tester);
+  });
+
   testWidgets('a refused score shows in the sheet', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await _openGame(tester, 'gf1');

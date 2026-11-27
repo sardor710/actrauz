@@ -404,3 +404,13 @@ void showMessage(BuildContext context, String text) {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
 }
+
+/// Waits for a pull-to-refresh reload. A failed one is not thrown again: the
+/// page shows the provider's error itself.
+Future<void> reloadQuietly(Future<Object?> reload) async {
+  try {
+    await reload;
+  } catch (_) {
+    // Shown by the page's AsyncBody.
+  }
+}

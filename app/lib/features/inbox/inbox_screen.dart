@@ -8,6 +8,7 @@ import '../../data/supabase/supabase_notification_repository.dart';
 import '../../domain/community.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
+import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
 import '../common/rating_pill.dart' show formatRating;
 import '../common/widgets.dart';
@@ -146,10 +147,27 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       }
     }
     if (route == null || !mounted) return;
+    _reloadFor(n);
     // Games and tournaments live inside the tabs, like everywhere else in the
     // app: go, not push (pushing a tab route from outside the tabs duplicates
     // its page).
     route.startsWith('/games') || route.startsWith('/tournaments') ? context.go(route) : context.push(route);
+  }
+
+  /// Another player changed what [n] is about, so what was loaded before is
+  /// stale: reload the pages it opens (and, for a score or rating, the lists
+  /// that show it) before going there.
+  void _reloadFor(AppNotification n) {
+    final p = n.payload;
+    if (p['game_id'] case final String gameId when gameId.isNotEmpty) ref.invalidate(gameProvider(gameId));
+    if (p['team_id'] case final String teamId when teamId.isNotEmpty) {
+      ref.invalidate(teamProvider(teamId));
+      ref.invalidate(teamsProvider);
+    }
+    if (n.category == 'ratings') {
+      ref.invalidate(pastGamesProvider);
+      ref.invalidate(mySportsProvider);
+    }
   }
 
   Future<void> _markAll(List<AppNotification> shown) async {

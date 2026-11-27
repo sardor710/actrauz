@@ -176,40 +176,45 @@ class TeamScreen extends ConsumerWidget {
         builder: (team) => Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
-                children: [
-                  _Header(team: team),
-                  if (team.isCaptain && team.requests.isNotEmpty) _Requests(team: team),
-                  if (team.isMember || team.games.isNotEmpty) _Games(team: team),
-                  SectionCard(
-                    title: l.teamMembersTitle,
-                    contentPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < team.members.length; i++) ...[
-                          if (i > 0) const Divider(height: 1),
-                          _MemberRow(
-                            team: team,
-                            member: team.members[i],
-                            onMenu: () => _memberMenu(context, ref, team, team.members[i]),
-                          ),
+              child: RefreshIndicator(
+                // Pull to see what the captain and the others changed meanwhile.
+                onRefresh: () => reloadQuietly(ref.refresh(teamProvider(teamId).future)),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(top: 8, bottom: 16),
+                  children: [
+                    _Header(team: team),
+                    if (team.isCaptain && team.requests.isNotEmpty) _Requests(team: team),
+                    if (team.isMember || team.games.isNotEmpty) _Games(team: team),
+                    SectionCard(
+                      title: l.teamMembersTitle,
+                      contentPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < team.members.length; i++) ...[
+                            if (i > 0) const Divider(height: 1),
+                            _MemberRow(
+                              team: team,
+                              member: team.members[i],
+                              onMenu: () => _memberMenu(context, ref, team, team.members[i]),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ),
-                  if (team.isCaptain)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: OutlinedButton.icon(
-                        key: const ValueKey('team-delete'),
-                        onPressed: () => _delete(context, ref, team),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(l.teamDelete),
                       ),
                     ),
-                ],
+                    if (team.isCaptain)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('team-delete'),
+                          onPressed: () => _delete(context, ref, team),
+                          style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: Text(l.teamDelete),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             _ActionBar(team: team, onLeave: () => _leave(context, ref, team)),
