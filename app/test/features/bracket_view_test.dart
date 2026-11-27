@@ -235,6 +235,7 @@ class _FlakyTournaments implements TournamentRepository {
   @override
   Future<TournamentBracket> bracket(String tournamentId) => _guard(() async {
     await _owner.gate?.future;
+    if (_owner.offline) throw const TournamentException(TournamentError.unavailable);
     final b = await _inner.bracket(tournamentId);
     if (!_owner.plainPlayer) return b;
     // As a player who does not organise it sees it.
@@ -246,7 +247,11 @@ class _FlakyTournaments implements TournamentRepository {
     );
   });
   @override
-  Future<List<MyMatch>> myMatches() => _guard(_inner.myMatches);
+  Future<List<MyMatch>> myMatches() => _guard(() async {
+    await _owner.gate?.future;
+    if (_owner.offline) throw const TournamentException(TournamentError.unavailable);
+    return _inner.myMatches();
+  });
 }
 
 class _Flaky extends SampleBackend {
@@ -258,7 +263,7 @@ class _Flaky extends SampleBackend {
   /// on, brackets come as a plain player's.
   bool plainPlayer = false;
 
-  /// Brackets wait for it.
+  /// Brackets and My matches wait for it (and then fail while [offline]).
   Completer<void>? gate;
 
   @override
@@ -713,14 +718,20 @@ void main() {
       expect(find.text('6–1 6–1'), findsOneWidget);
     });
 
-    testWidgets("another account never sees the previous one's next match or Manage", (tester) async {
+    testWidgets("another account never sees the previous one's next match, Manage or draws, even when its load fails", (
+      tester,
+    ) async {
       final gate = Completer<void>();
-      var built = 0;
+      final backends = <_Flaky>[];
       await pumpApp(
         tester,
         prefs: signedIn,
         utcNow: sundayMorning,
-        backend: (clock) => _Flaky(utcNow: clock)..gate = built++ == 0 ? null : gate,
+        backend: (clock) {
+          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          backends.add(b);
+          return b;
+        },
       );
       await _openT1(tester);
       expect(find.byKey(const ValueKey('next-match')), findsOneWidget);
@@ -733,8 +744,52 @@ void main() {
       expect(find.byKey(const ValueKey('tournament-manage')), findsNothing);
       expect(find.byKey(const ValueKey('draw-t1c2')), findsNothing);
 
+      // The other account's bracket load fails.
+      backends.last.offline = true;
       gate.complete();
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('tournament-detail')), findsOneWidget);
+      expect(find.byKey(const ValueKey('next-match')), findsNothing);
+      expect(find.byKey(const ValueKey('tournament-manage')), findsNothing);
+      expect(find.byKey(const ValueKey('draw-t1c2')), findsNothing);
+    });
+
+    testWidgets("My tournaments never shows the previous account's matches when the other's load fails", (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final backends = <_Flaky>[];
+      await pumpApp(
+        tester,
+        prefs: signedIn,
+        utcNow: sundayMorning,
+        backend: (clock) {
+          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          backends.add(b);
+          return b;
+        },
+      );
+      await _openMine(tester);
+      expect(find.byKey(const ValueKey('next-match')), findsOneWidget);
+      expect(find.byKey(const ValueKey('my-matches')), findsOneWidget);
+
+      await containerOf(tester).read(sessionProvider.notifier).signIn('Other');
+      await tester.pump();
+      backends.last.offline = true;
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('next-match')), findsNothing);
+      expect(find.byKey(const ValueKey('my-matches')), findsNothing);
+    });
+
+    testWidgets('an unknown tournament says Not found, with nothing to try again', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      containerOf(tester).read(routerProvider).go('/tournaments/nope');
+      await tester.pumpAndSettle();
+      expect(find.text('Not found. Refresh and try again.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('async-retry')), findsNothing);
+      // The way back is there.
+      expect(find.byType(BackButton), findsOneWidget);
     });
   });
 

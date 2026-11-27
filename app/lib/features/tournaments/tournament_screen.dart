@@ -36,6 +36,12 @@ class TournamentScreen extends ConsumerStatefulWidget {
 class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   String get tournamentId => widget.tournamentId;
 
+  /// The bracket's previous data belongs to another account until fresh data
+  /// arrives (also when that load fails). Noted on every build, also while the
+  /// page itself shows a spinner.
+  final _bracketTracker = StaleTracker();
+  bool _bracketStale = false;
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +89,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final value = ref.watch(tournamentProvider(tournamentId));
+    _bracketStale = _bracketTracker.update(ref.watch(bracketProvider(tournamentId)));
     return Scaffold(
       key: const ValueKey('tournament-detail'),
       appBar: value.hasValue ? null : AppBar(leading: BackButton(onPressed: () => _back(context))),
@@ -91,6 +98,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       body: AsyncBody(
         value: value,
         onRetry: () => ref.invalidate(tournamentProvider(tournamentId)),
+        errorText: (error) => tournamentErrorText(context.l, error),
+        canRetry: (error) => !(error is TournamentException && error.error == TournamentError.notFound),
         builder: (tournament) => _body(context, tournament),
       ),
     );
@@ -103,9 +112,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final sport = ref.watch(sportsProvider).valueOrNull?.where((s) => s.id == t.sportId).firstOrNull;
     final description = t.description.resolve(lang);
     // Kept through a failed refresh; nothing of the draws until it first
-    // loads, nor while it reloads for another account.
-    final bracketValue = ref.watch(bracketProvider(tournamentId));
-    final bracket = bracketValue.isReloading ? null : bracketValue.valueOrNull;
+    // loads, nor after a reload for another account until fresh data arrives.
+    final bracket = _bracketStale ? null : ref.watch(bracketProvider(tournamentId)).valueOrNull;
     final next = bracket?.myNextMatch;
     final nextDraw = next == null ? null : bracket?.draw(next.categoryId);
     CategoryDraw? published(String categoryId) {

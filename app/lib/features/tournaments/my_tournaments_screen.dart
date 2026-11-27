@@ -27,6 +27,13 @@ class MyTournamentsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
+  /// Previous data that belongs to another account until fresh data arrives
+  /// (also when that load fails): the matches, and each tournament's bracket
+  /// (for the names). Noted on every build, also while the list shows a
+  /// spinner.
+  final _matchesTracker = StaleTracker();
+  final _bracketTrackers = <String, StaleTracker>{};
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +61,14 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
+    final matchesValue = ref.watch(myMatchesProvider);
+    final matchesStale = _matchesTracker.update(matchesValue);
+    final drawOf = <(String, String), CategoryDraw?>{};
+    for (final m in matchesValue.valueOrNull ?? const <MyMatch>[]) {
+      final bracketValue = ref.watch(bracketProvider(m.tournamentId));
+      final stale = _bracketTrackers.putIfAbsent(m.tournamentId, StaleTracker.new).update(bracketValue);
+      drawOf[(m.tournamentId, m.categoryId)] = stale ? null : bracketValue.valueOrNull?.draw(m.categoryId);
+    }
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
@@ -64,9 +79,9 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
       body: AsyncBody(
         value: ref.watch(myRegistrationsProvider),
         onRetry: () => ref.invalidate(myRegistrationsProvider),
+        errorText: (error) => tournamentErrorText(l, error),
         builder: (entries) {
-          final matchesValue = ref.watch(myMatchesProvider);
-          final matches = (matchesValue.isReloading ? null : matchesValue.valueOrNull) ?? const <MyMatch>[];
+          final matches = (matchesStale ? null : matchesValue.valueOrNull) ?? const <MyMatch>[];
           final next = matches.where((m) => m.match.status != MatchStatus.done).firstOrNull;
           String? categoryName(String categoryId) =>
               entries.where((e) => e.categoryId == categoryId).firstOrNull?.categoryName.resolve(context.lang);
@@ -83,6 +98,7 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
                 if (next != null) ...[
                   _MatchOf(
                     myMatch: next,
+                    draw: drawOf[(next.tournamentId, next.categoryId)],
                     categoryName: categoryName(next.categoryId),
                     cityId: cityOf(next.tournamentId),
                     next: true,
@@ -104,6 +120,7 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _MatchOf(
                                 myMatch: m,
+                                draw: drawOf[(m.tournamentId, m.categoryId)],
                                 categoryName: categoryName(m.categoryId),
                                 cityId: cityOf(m.tournamentId),
                               ),
@@ -131,9 +148,19 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
 /// One of the player's matches, as the next-match card or a row of My
 /// matches. The entries' names come from the tournament's bracket.
 class _MatchOf extends ConsumerWidget {
-  const _MatchOf({required this.myMatch, required this.categoryName, required this.cityId, this.next = false});
+  const _MatchOf({
+    required this.myMatch,
+    required this.draw,
+    required this.categoryName,
+    required this.cityId,
+    this.next = false,
+  });
 
   final MyMatch myMatch;
+
+  /// From the tournament's bracket, for the names; null while there is none
+  /// to show.
+  final CategoryDraw? draw;
   final String? categoryName;
 
   /// The tournament's city, for its wall-clock; the current city without an
@@ -144,11 +171,7 @@ class _MatchOf extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final m = myMatch;
-    final bracketValue = ref.watch(bracketProvider(m.tournamentId));
-    final bracket = bracketValue.isReloading ? null : bracketValue.valueOrNull;
-    final draw =
-        bracket?.draw(m.categoryId) ??
-        CategoryDraw(categoryId: m.categoryId, format: DrawFormat.knockout, published: true);
+    final draw = this.draw ?? CategoryDraw(categoryId: m.categoryId, format: DrawFormat.knockout, published: true);
     final now = tournamentNow(ref, cityId ?? ref.watch(currentCityProvider).id);
     final title = [m.title.resolve(context.lang), ?categoryName].join(' · ');
     void open() => context.go('/tournaments/${m.tournamentId}');

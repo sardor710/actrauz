@@ -5,17 +5,37 @@ import '../../core/theme.dart';
 import '../../data/sample/sample_media.dart';
 import 'formatters.dart';
 
-/// Loading, error and data states for one async value.
+/// Remembers, across builds, whether an async value's previous data belongs
+/// to something else (AsyncBody's rule).
 ///
 /// A refresh of the same data (`ref.invalidate` / `ref.refresh`, Riverpod's
-/// `isRefreshing`) keeps the data on screen while it loads and when it fails.
-/// A reload because a dependency changed (another city, another player:
-/// `isReloading`) never shows the previous value, which belongs to something
-/// else: it shows the spinner and then the new data or the error, as a first
-/// load does. Riverpod keeps the previous value on an error after either, so
-/// the widget remembers a reload until fresh data arrives.
+/// `isRefreshing`) keeps the data, also when it fails. A reload because a
+/// dependency changed (another city, another player: `isReloading`) makes the
+/// previous value stale until fresh data arrives: Riverpod keeps the previous
+/// value on an error after either, so the reload has to be remembered.
+class StaleTracker {
+  /// A reload was seen and no fresh data has arrived since.
+  bool stale = false;
+
+  /// Notes [value]'s state; true while its previous data is not to be shown.
+  bool update<T>(AsyncValue<T> value) {
+    if (value.isReloading) {
+      stale = true;
+    } else if (value is AsyncData<T> && !value.isLoading) {
+      stale = false;
+    }
+    return stale;
+  }
+}
+
+/// Loading, error and data states for one async value.
+///
+/// A refresh of the same data keeps the data on screen while it loads and
+/// when it fails. A reload because a dependency changed never shows the
+/// previous value, which belongs to something else: it shows the spinner and
+/// then the new data or the error, as a first load does ([StaleTracker]).
 class AsyncBody<T> extends StatefulWidget {
-  const AsyncBody({super.key, required this.value, required this.builder, this.onRetry});
+  const AsyncBody({super.key, required this.value, required this.builder, this.onRetry, this.errorText, this.canRetry});
 
   final AsyncValue<T> value;
   final Widget Function(T data) builder;
@@ -23,32 +43,35 @@ class AsyncBody<T> extends StatefulWidget {
   /// When set, the error state offers "Try again", which calls it.
   final VoidCallback? onRetry;
 
+  /// The error's text; "Something went wrong" without it.
+  final String Function(Object error)? errorText;
+
+  /// Whether "Try again" is offered for this error (default: always, with
+  /// [onRetry]); e.g. not for something that does not exist.
+  final bool Function(Object error)? canRetry;
+
   @override
   State<AsyncBody<T>> createState() => _AsyncBodyState<T>();
 }
 
 class _AsyncBodyState<T> extends State<AsyncBody<T>> {
-  /// The value's previous data is not to be shown: a reload was seen and no
-  /// fresh data has arrived since.
-  bool _stale = false;
+  final _tracker = StaleTracker();
 
   @override
   Widget build(BuildContext context) {
     final value = widget.value;
-    if (value.isReloading) {
-      _stale = true;
-    } else if (value is AsyncData<T> && !value.isLoading) {
-      _stale = false;
-    }
+    final stale = _tracker.update(value);
 
     const loading = Padding(
       padding: EdgeInsets.all(32),
       child: Center(child: CircularProgressIndicator()),
     );
     Widget error() {
+      final failure = value.error;
+      final text = failure == null ? null : widget.errorText?.call(failure);
+      final state = EmptyState(icon: Icons.error_outline, text: text ?? context.l.errGeneric);
       final retry = widget.onRetry;
-      final state = EmptyState(icon: Icons.error_outline, text: context.l.errGeneric);
-      if (retry == null) return state;
+      if (retry == null || (failure != null && !(widget.canRetry?.call(failure) ?? true))) return state;
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -58,7 +81,7 @@ class _AsyncBodyState<T> extends State<AsyncBody<T>> {
       );
     }
 
-    if (_stale) return value.isLoading ? loading : error();
+    if (stale) return value.isLoading ? loading : error();
     return value.when(
       skipLoadingOnReload: false,
       skipLoadingOnRefresh: true,
