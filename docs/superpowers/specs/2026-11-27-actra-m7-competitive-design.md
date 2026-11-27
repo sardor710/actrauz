@@ -1,7 +1,7 @@
 # Actra M7 — Competitive Layer: Design
 
 **Date:** 2026-11-27
-**Status:** draft for founder approval
+**Status:** draft for founder approval (read by an independent reviewer; their questions are answered in the text)
 **Spec:** [docs/actra-product-spec.md](../../actra-product-spec.md) §7.1, §7.2, §7.7, §8, §9.1, §9.3, §12.7, §13
 **Roadmap row:** M7 in [2026-11-22-actra-roadmap.md](../plans/2026-11-22-actra-roadmap.md): "Padel and tennis 1.0–7.0 ratings, score entry and confirmation, leaderboards, teams, sportsmanship. Done when ratings move after confirmed results."
 
@@ -48,6 +48,8 @@ M7 makes levels earned for padel and tennis (a 1.0–7.0 rating that moves with 
 - Four ARB files with a parity test; admin-entered text has four language fields.
 - Every feature works in sample mode too (the app runs without a backend for tests and previews), following the existing split: repository interface, sample implementation, Supabase implementation.
 - Rules live in the database, as in M2–M6: SQL functions under `app.` taking the acting user and a clock, thin `public.` wrappers for the app, tables closed to clients unless a policy says otherwise.
+- Shipped builds read `player_levels.level` directly through the table's existing foreign key, so the derived level for padel and tennis physically stays in that column and the key keeps its name.
+- No build has ever written `player_levels` (checked in the code and the git history), so closing client writes for rated sports breaks nothing.
 - `app.delete_account` must cover every new table.
 - The GitHub repo is public: no secrets committed.
 - Tests: `npm test` in `supabase/` and `flutter test` in `app/` pass at the end of every task.
@@ -72,6 +74,7 @@ C costs the most backend work but is the only one that satisfies the first anti-
 - The player ticks the sports they play. For a simple sport they pick a level 1–5 and can change it any time (spec §8.1). For padel and tennis they answer the questionnaire (§5.2).
 - Removing a sport removes its level; a rating that has confirmed results behind it is kept and comes back if the sport is added again.
 - The profile and other players' profiles show, per sport, the level or the rating with its "provisional" label and rated-games count.
+- **Rated sports are padel and tennis. Call:** the admin's "Rating 1.0–7.0" switch on a sport can no longer be changed from the admin screen, and new sports are created with simple levels. Turning rating on for another sport needs its own questionnaire and a decision on what a "score" is there, so it is an engineering change, not a switch.
 
 ### 5.2 Starting rating
 
@@ -79,13 +82,14 @@ C costs the most backend work but is the only one that satisfies the first anti-
 - **Call:** the questionnaire can place a player between 1.0 and 5.0, never higher. The top of the scale has to be earned.
 - **Call:** the questionnaire can be retaken until the player's first confirmed result in that sport, not after.
 - A player who already has a 1–5 level in padel or tennis when M7 is deployed starts at that level plus 0.5 (level 3 → 3.5), provisional, and may still take the questionnaire once.
-- A padel or tennis player with no rating yet (never answered) counts as 1.0 for level checks and is asked to answer before joining a rated-sport game with a level range.
+- A padel or tennis player with no rating yet (never answered) counts as 1.0 for level checks. The new app asks them to answer before they create or join a padel or tennis game; the server does not refuse them, so a build made before M7 and an invited player can still get in.
+- **Call:** when a result is confirmed and one of its players still has no rating, that player starts at the average rating of the other players in the result, capped at 5.0, provisional, and the result is then applied as usual. An unknown player is assumed to fit the game they were let into, so their opponents are not punished for beating "a 1.0". They can no longer take the questionnaire afterwards. If nobody in the result has a rating, they all start at 2.5.
 - The question texts and the scoring table are left to the builder, in all four languages, modelled on the Playtomic-style self-assessment the spec refers to.
 
 ### 5.3 Rating and level together
 
 - The rating is stored with two decimals and shown with two (3.47), so a player sees it move after one game. **Call.**
-- For padel and tennis the 1–5 level becomes the whole part of the rating, capped at 5 (2.00–2.99 → 2, 5.00–7.00 → 5). The server keeps it in step with the rating and the player can no longer set it. A build made before M7 that tries to set it must not fail: for a player with no rating, the chosen level seeds the rating as in §5.2; otherwise the write is ignored.
+- For padel and tennis the 1–5 level becomes the whole part of the rating, capped at 5 (2.00–2.99 → 2, 5.00–7.00 → 5). The server keeps it in step with the rating, and a client can no longer write the level for a rated sport at all (today any signed-in client can, through the API). Levels for simple sports stay the player's own to set.
 - Games and game requests in padel and tennis get a rating range in half steps (for example 3.0–4.5) next to the existing whole-number range. The new app shows and edits the rating range; the whole-number range is filled from it for old builds, and a range sent by an old build is converted (2–4 → 2.0–4.99).
 - Joining follows today's rule with the rating in place of the level: inside the range joins with one tap, outside sends a join request.
 - Find players filters padel and tennis by rating range.
@@ -97,7 +101,8 @@ C costs the most backend work but is the only one that satisfies the first anti-
 - **Call:** if the host has not entered a score 24 hours after the end, any participant may. Otherwise one forgetful host loses everyone's result.
 - The side with more sets wins; with equal sets, more games; equal on both is a draw.
 - Until it is confirmed, whoever entered the score can correct it; a correction clears the confirmations given so far.
-- One result per game.
+- One result per game. A result voided by an admin is final: no new score can be entered for that game (the admin's "confirm with a corrected score" covers a wrong score).
+- **Roster freeze (Call):** once a game has started nobody can leave it or be removed from it. Today a participant can leave a finished game, which would let someone step out of a result or dodge a no-show majority.
 
 ### 5.5 Confirming and disputing
 
@@ -133,6 +138,10 @@ Known gap, accepted for now: two friends could trade results to climb. Every pad
 
 The game page gains a "Game finished" section once the end time has passed, visible to participants only. It holds the score block (enter, or confirm/dispute, or the confirmed score with each player's rating change) for rated sports, and the votes and reports of Part 7b for every sport.
 
+Finished games cannot be found in the app today (the games list only returns games that have not started), so two things are added:
+- **Past games:** the player's own games that ended in the last 30 days, listed under their games, each opening the game page.
+- **A "game finished" notification** to every participant of a game that had at least two players, sent when the game ends. For the host of a padel or tennis game it says "enter the score"; for everyone else, "rate the game".
+
 ## 6. Part 7b — sportsmanship, no-shows, reports, admin review
 
 ### 6.1 Thumbs up or down
@@ -147,7 +156,7 @@ The game page gains a "Game finished" section once the end time has passed, visi
 - When more than half of the *other* participants, and at least two people, have marked the same player, that player gets the existing no-show reliability penalty for that game, once, and loses the small "game completed" credit for it. They are notified. If reports are withdrawn below the majority within the 48 hours, the penalty is removed.
 - **Call:** a host already marked no-show by the venue for the same booking is not penalised a second time for the same game.
 - A two-player game can never reach "at least two reporters", so a no-show there is handled through the venue's mark or an abuse report. Accepted.
-- **Call:** a player with a majority no-show cannot be part of that game's result; a pending result that includes them becomes disputed for the admin to look at.
+- **Call:** a majority no-show against a player who is in that game's result sends the result to the admin review list. A pending result is frozen as disputed; a result that was already confirmed stays in force until the admin decides to keep or void it. Nothing is voided automatically.
 
 ### 6.3 Reporting abuse
 
@@ -174,7 +183,7 @@ The game page gains a "Game finished" section once the end time has passed, visi
 
 ## 8. Notifications
 
-New kinds, each opening the relevant screen: score entered (confirm or dispute), score confirmed with rating change, score disputed, dispute resolved, no-show recorded against you, team invite, team join request, join approved or declined, removed from team, made captain, team game posted, team deleted.
+New kinds, each opening the relevant screen: game finished (enter the score / rate the game), score entered (confirm or dispute), score confirmed with rating change, score disputed, dispute resolved, no-show recorded against you, team invite, team join request, join approved or declined, removed from team, made captain, team game posted, team deleted.
 
 Two new mute categories in settings: **Ratings** and **Teams**. Old builds show an unknown kind as a generic line (already the case), so nothing breaks.
 
