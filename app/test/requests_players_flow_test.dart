@@ -52,9 +52,10 @@ void main() {
     expect(find.text('GAME REQUESTS'), findsOneWidget);
     expect(find.text('Aziz wants to play Padel'), findsOneWidget);
     expect(find.text('1 of 2 interested'), findsOneWidget);
-    // A padel request shows its rating range.
+    // A padel request shows its rating range: levels 2–4 are 2.00–4.99, shown truncated to one decimal.
     final rq1 = await containerOf(tester).read(gameRepositoryProvider).request('rq1');
-    expect(find.text(formatRatingRange(rq1.minRating!, rq1.maxRating!)), findsWidgets);
+    expect((rq1.minRating, rq1.maxRating), (2.0, 4.99));
+    expect(find.text('2.0–4.9'), findsWidgets);
 
     await tap(tester, find.descendant(of: find.byKey(const ValueKey('home-requests')), matching: find.text('See all')));
     // The Games tab, on its Requests list.

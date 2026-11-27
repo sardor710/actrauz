@@ -13,19 +13,18 @@ import 'widgets.dart';
 
 // How a rating (padel, tennis; design 2026-11-27-actra-m7-competitive §5.3)
 // reads anywhere in the app: two decimals for a player's rating, one for a
-// range in half steps.
+// range.
 
 /// A player's rating with two decimals: 3.47.
 String formatRating(double rating) => rating.toStringAsFixed(2);
 
-/// One end of a rating range: one decimal for a half step (3.0, 4.5), two
-/// otherwise, so a range converted from levels (2.00–4.99) is shown exactly.
-String formatRatingBound(double value) {
-  final tenths = value * 10;
-  return (tenths - tenths.round()).abs() < 1e-9 ? value.toStringAsFixed(1) : value.toStringAsFixed(2);
-}
+/// One end of a rating range with one decimal, truncated, not rounded: a range
+/// converted from levels (2.00–4.99) ends at 4.9, never 5.0, which would
+/// suggest a 5.0 player fits. The tiny epsilon keeps 4.5 (or 0.3 × 10) from
+/// falling to the tenth below through floating-point error.
+String formatRatingBound(double value) => ((value * 10 + 1e-9).floor() / 10).toStringAsFixed(1);
 
-/// "3.0–4.5".
+/// "3.0–4.5": every place that shows a rating range uses this.
 String formatRatingRange(double min, double max) => '${formatRatingBound(min)}–${formatRatingBound(max)}';
 
 /// What a game or Game Request asks for: its rating range in a rated sport,
