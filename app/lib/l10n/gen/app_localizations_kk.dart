@@ -2330,4 +2330,35 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get qTennisRallyA3 => 'Қарқын мен айналымды әдейі өзгертемін';
+
+  @override
+  String get notifCategoryRatings => 'Рейтинг';
+
+  @override
+  String get notifCategoryTeams => 'Командалар';
+
+  @override
+  String get notifGameFinishedScore => 'Ойын аяқталды. Есепті енгізіңіз';
+
+  @override
+  String get notifGameFinishedRate => 'Ойын аяқталды. Ойынды бағалаңыз';
+
+  @override
+  String get notifScoreEntered =>
+      'Ойыныңыздың есебі енгізілді. Оны растаңыз немесе дау айтыңыз';
+
+  @override
+  String get notifScoreDisputed =>
+      'Ойыныңыздың есебіне дау айтылды. Оны Actra әкімшісі қарайды';
+
+  @override
+  String get notifScoreResolved => 'Actra әкімшісі даулы есепті қарап шықты';
+
+  @override
+  String get notifScoreVoided => 'Ойыныңыздың есебі жойылды';
+
+  @override
+  String notifRatingUpdated(String from, String to) {
+    return 'Рейтингіңіз өзгерді: $from → $to';
+  }
 }

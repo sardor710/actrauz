@@ -174,6 +174,9 @@ final gamesProvider = FutureProvider<List<Game>>(
 
 final gameProvider = FutureProvider.family<Game, String>((ref, id) => ref.watch(gameRepositoryProvider).game(id));
 
+/// The player's games that ended in the last 30 days, the latest first.
+final pastGamesProvider = FutureProvider<List<Game>>((ref) => ref.watch(gameRepositoryProvider).pastGames());
+
 final playerProvider = FutureProvider.family<Player, String>((ref, id) => ref.watch(gameRepositoryProvider).player(id));
 
 /// Open Game Requests ("looking for players") in the current city, plus the
@@ -276,6 +279,7 @@ int? venueFromPrice(Venue venue, DateTime today) {
 void refreshGames(WidgetRef ref) {
   ref.invalidate(gamesProvider);
   ref.invalidate(gameProvider);
+  ref.invalidate(pastGamesProvider);
   ref.invalidate(gameRequestsProvider);
   ref.invalidate(gameRequestProvider);
   ref.invalidate(inboxProvider);

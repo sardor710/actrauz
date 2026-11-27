@@ -2349,4 +2349,36 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qTennisRallyA3 => 'Намеренно меняю темп и вращение';
+
+  @override
+  String get notifCategoryRatings => 'Рейтинг';
+
+  @override
+  String get notifCategoryTeams => 'Команды';
+
+  @override
+  String get notifGameFinishedScore => 'Игра закончилась. Введите счёт';
+
+  @override
+  String get notifGameFinishedRate => 'Игра закончилась. Оцените игру';
+
+  @override
+  String get notifScoreEntered =>
+      'Счёт вашей игры внесён. Подтвердите или оспорьте его';
+
+  @override
+  String get notifScoreDisputed =>
+      'Счёт вашей игры оспорен. Его проверит администратор Actra';
+
+  @override
+  String get notifScoreResolved =>
+      'Администратор Actra проверил оспоренный счёт';
+
+  @override
+  String get notifScoreVoided => 'Счёт вашей игры аннулирован';
+
+  @override
+  String notifRatingUpdated(String from, String to) {
+    return 'Ваш рейтинг изменился: $from → $to';
+  }
 }

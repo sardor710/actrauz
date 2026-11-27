@@ -64,6 +64,33 @@ abstract class GameRepository {
   /// Throws [JoinError.notCancellable] once the game has started.
   Future<Game> cancelGame(String gameId, {required bool cancelBooking});
 
+  /// The player's games that ended in the last 30 days and were not
+  /// cancelled, the latest end first.
+  Future<List<Game>> pastGames();
+
+  /// The score of a finished game in a rated sport: 1 against 1 or 2 against
+  /// 2 of its participants, the player among them, and 1–5 sets of
+  /// (games of side a, games of side b). The host may enter it from the end,
+  /// anyone in the game 24 hours after; whoever entered a pending score may
+  /// enter it again to correct it. Throws [JoinError.scoreClosed] before the
+  /// end, 7 days after, or once the result is confirmed, disputed or void;
+  /// [JoinError.forbidden] when it is not the player's turn or someone else's
+  /// pending score is there; [JoinError.notFound] for a game the player is not
+  /// in or a simple sport.
+  Future<Game> enterScore(
+    String gameId, {
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  });
+
+  /// A player in a pending result, other than whoever entered it, agrees. A
+  /// confirmation from the other side confirms the result and moves ratings.
+  Future<Game> confirmScore(String resultId);
+
+  /// Any player in a pending result freezes it for an admin.
+  Future<Game> disputeScore(String resultId, {String? reason});
+
   /// Open Game Requests in the city, plus the player's own anywhere.
   Future<List<GameRequest>> requests(String cityId);
   Future<GameRequest> request(String id);

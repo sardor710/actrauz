@@ -533,7 +533,50 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
       ),
   ],
   cancelled: json['status'] == 'cancelled',
+  result: json['result'] == null
+      ? null
+      : matchResultFromJson(Map<String, dynamic>.from(json['result'] as Map), myUserId: myUserId),
 );
+
+/// `result` of the game JSON (`app.result_json`): `{id, status, sets [[a, b], …],
+/// winner, entered_by, side_a, side_b, confirmed_by, dispute_reason,
+/// flagged_no_show}` and, once confirmed, `changes {user_id: {old, new}}`.
+MatchResult matchResultFromJson(Row json, {required String? myUserId}) {
+  List<String> ids(Object? value) => [for (final id in (value as List? ?? const [])) _userId(id, myUserId)];
+  return MatchResult(
+    id: json['id'] as String,
+    status: switch (json['status']) {
+      'pending' => ResultStatus.pending,
+      'confirmed' => ResultStatus.confirmed,
+      'disputed' => ResultStatus.disputed,
+      'void' => ResultStatus.voided,
+      final other => throw FormatException('Unknown result status "$other"'),
+    },
+    sets: [for (final set in json['sets'] as List) (((set as List)[0] as num).toInt(), (set[1] as num).toInt())],
+    winner: switch (json['winner']) {
+      'a' => MatchWinner.a,
+      'b' => MatchWinner.b,
+      'draw' => MatchWinner.draw,
+      final other => throw FormatException('Unknown winner "$other"'),
+    },
+    enteredBy: _userId(json['entered_by'], myUserId),
+    sideA: ids(json['side_a']),
+    sideB: ids(json['side_b']),
+    confirmedBy: ids(json['confirmed_by']),
+    disputeReason: json['dispute_reason'] as String?,
+    flaggedNoShow: json['flagged_no_show'] == true,
+    changes: {
+      for (final e in (json['changes'] as Map? ?? const {}).entries)
+        _userId(e.key, myUserId): RatingChange(
+          oldRating: _double((e.value as Map)['old'])!,
+          newRating: _double((e.value as Map)['new'])!,
+        ),
+    },
+  );
+}
+
+/// The sets of `enter_score`: `[[6, 4], [3, 6]]`.
+List<List<int>> setsJson(List<(int, int)> sets) => [for (final (a, b) in sets) [a, b]];
 
 /// The JSON returned by `get_game_request`, `list_game_requests` and the other
 /// request functions.

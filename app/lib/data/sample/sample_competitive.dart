@@ -103,3 +103,222 @@ class SampleSports {
   }
   return (min: min, max: max);
 }
+
+/// Match scores in memory, with the database's rules (`app.enter_score`,
+/// `app.confirm_score`, `app.dispute_score`, `app.auto_confirm_scores`,
+/// `app.apply_result` in supabase/migrations/20261127110000_scores.sql). One
+/// result per game, with the id `r-<game id>`. Failures are the
+/// [JoinException]s the Supabase repository maps the same codes to.
+class SampleScores {
+  SampleScores({
+    required this.utcNow,
+    required this.ratingOf,
+    required this.setRating,
+    required this.isDeleted,
+    required this.notify,
+  });
+
+  /// Scores open at the end of a game and close this long after it.
+  static const openFor = Duration(days: 7);
+
+  /// Only the host may enter a score until this long after the end.
+  static const hostOnlyFor = Duration(hours: 24);
+
+  /// A pending score nobody disputed confirms itself after this long.
+  static const confirmWithin = Duration(hours: 24);
+
+  /// Deadlines are kept in UTC.
+  final DateTime Function() utcNow;
+
+  /// A player's rating in a sport, null when they have none.
+  final SportRating? Function(String userId, String sportId) ratingOf;
+
+  /// Writes a player's rating (and the level derived from it).
+  final void Function(String userId, String sportId, SportRating rating) setRating;
+  final bool Function(String userId) isDeleted;
+  final void Function(String userId, String kind, String category, Map<String, Object?> payload) notify;
+
+  final Map<String, _SampleResult> _byGame = {};
+
+  /// The result of a game as the screens see it, or null before any score.
+  MatchResult? resultOf(String gameId) => _byGame[gameId]?.view;
+
+  /// [userId] enters (or corrects) the score of [game]. [rated]: the game's
+  /// sport is rated; [localNow]: the venue's wall-clock time; [note]: what
+  /// notices about the game carry.
+  void enter(
+    String userId,
+    Game game, {
+    required bool rated,
+    required DateTime localNow,
+    required Map<String, Object?> note,
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  }) {
+    if (game.cancelled || !rated || !game.participantIds.contains(userId)) {
+      throw const JoinException(JoinError.notFound);
+    }
+    if (localNow.isBefore(game.end) || !localNow.isBefore(game.end.add(openFor))) {
+      throw const JoinException(JoinError.scoreClosed);
+    }
+    if (game.hostId != userId && localNow.isBefore(game.end.add(hostOnlyFor))) {
+      throw const JoinException(JoinError.forbidden);
+    }
+    final players = [...sideA, ...sideB];
+    if (sideA.isEmpty ||
+        sideA.length > 2 ||
+        sideA.length != sideB.length ||
+        players.toSet().length != players.length ||
+        !players.contains(userId) ||
+        !players.every(game.participantIds.contains) ||
+        players.any(isDeleted)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    bool games(int n) => n >= 0 && n <= 30;
+    if (sets.isEmpty || sets.length > 5 || sets.any((s) => !games(s.$1) || !games(s.$2) || (s.$1 == 0 && s.$2 == 0))) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+
+    final existing = _byGame[game.id];
+    // already_exists and not_allowed in the database.
+    if (existing != null && existing.status != ResultStatus.pending) throw const JoinException(JoinError.scoreClosed);
+    if (existing != null && existing.enteredBy != userId) throw const JoinException(JoinError.forbidden);
+
+    final result = existing ?? _SampleResult(game.id, game.sportId, userId, note);
+    _byGame[game.id] = result
+      ..sideA = [...sideA]
+      ..sideB = [...sideB]
+      ..sets = [...sets]
+      ..deadline = utcNow().add(confirmWithin);
+    result.confirmedBy.clear();
+    for (final id in players) {
+      if (id != userId) notify(id, 'score_entered', 'ratings', result.note);
+    }
+  }
+
+  /// A pending result as sample data starts with it: no checks, no notices.
+  void seedPending(
+    Game game, {
+    required String enteredBy,
+    required DateTime enteredAt,
+    required Map<String, Object?> note,
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  }) {
+    _byGame[game.id] = _SampleResult(game.id, game.sportId, enteredBy, note)
+      ..sideA = [...sideA]
+      ..sideB = [...sideB]
+      ..sets = [...sets]
+      ..deadline = enteredAt.add(confirmWithin);
+  }
+
+  /// A player in the result other than whoever entered it confirms it; one
+  /// from the other side confirms the result. Returns the game id.
+  String confirm(String userId, String resultId) {
+    final result = _pending(resultId);
+    if (result.enteredBy == userId || !result.includes(userId)) throw const JoinException(JoinError.notFound);
+    if (!result.confirmedBy.contains(userId)) result.confirmedBy.add(userId);
+    if (result.sideA.contains(userId) != result.sideA.contains(result.enteredBy)) _apply(result);
+    return result.gameId;
+  }
+
+  /// Any player in a pending result freezes it for an admin. Returns the game id.
+  String dispute(String userId, String resultId, {String? reason}) {
+    final result = _pending(resultId);
+    if (!result.includes(userId)) throw const JoinException(JoinError.notFound);
+    final text = reason?.trim() ?? '';
+    result
+      ..status = ResultStatus.disputed
+      ..disputeReason = text.isEmpty ? null : (text.length > 300 ? text.substring(0, 300) : text);
+    for (final id in result.players) {
+      if (id != userId) notify(id, 'score_disputed', 'ratings', result.note);
+    }
+    return result.gameId;
+  }
+
+  /// Confirms every pending result whose 24 hours are over; returns how many.
+  int autoConfirm() {
+    final due = [
+      for (final r in _byGame.values)
+        if (r.status == ResultStatus.pending && !r.deadline.isAfter(utcNow())) r,
+    ];
+    due.forEach(_apply);
+    return due.length;
+  }
+
+  _SampleResult _pending(String resultId) {
+    final result = _byGame.values.where((r) => r.id == resultId).firstOrNull;
+    if (result == null || result.status != ResultStatus.pending) throw const JoinException(JoinError.notFound);
+    return result;
+  }
+
+  /// Moves the ratings and confirms the result. One with a deleted player in
+  /// it becomes void instead, and the others hear.
+  void _apply(_SampleResult result) {
+    if (result.players.any(isDeleted)) {
+      result.status = ResultStatus.voided;
+      for (final id in result.players) {
+        if (!isDeleted(id)) notify(id, 'score_resolved', 'ratings', {...result.note, 'action': 'void'});
+      }
+      return;
+    }
+    final sport = result.sportId;
+    final changes = ratingChanges(
+      sideA: [for (final id in result.sideA) ratingOf(id, sport)],
+      sideB: [for (final id in result.sideB) ratingOf(id, sport)],
+      sets: result.sets,
+    );
+    final byPlayer = {
+      for (final (i, id) in result.sideA.indexed) id: changes.a[i],
+      for (final (i, id) in result.sideB.indexed) id: changes.b[i],
+    };
+    for (final MapEntry(key: id, value: change) in byPlayer.entries) {
+      final played = ratingOf(id, sport)?.ratedGames ?? 0;
+      setRating(id, sport, SportRating(rating: change.newRating, ratedGames: played + 1));
+      result.changes[id] = change;
+      notify(id, 'rating_updated', 'ratings', {...result.note, 'old': change.oldRating, 'new': change.newRating});
+    }
+    result.status = ResultStatus.confirmed;
+  }
+}
+
+/// A result as [SampleScores] keeps it.
+class _SampleResult {
+  _SampleResult(this.gameId, this.sportId, this.enteredBy, Map<String, Object?> gameNote)
+    : note = {...gameNote, 'result_id': 'r-$gameId'};
+
+  final String gameId;
+  final String sportId;
+  final String enteredBy;
+
+  /// What notices about it carry: the game's keys and `result_id`.
+  final Map<String, Object?> note;
+
+  String get id => 'r-$gameId';
+  ResultStatus status = ResultStatus.pending;
+  List<String> sideA = const [];
+  List<String> sideB = const [];
+  List<(int, int)> sets = const [];
+  final List<String> confirmedBy = [];
+  String? disputeReason;
+  DateTime deadline = DateTime.utc(2000);
+  final Map<String, RatingChange> changes = {};
+
+  List<String> get players => [...sideA, ...sideB];
+  bool includes(String userId) => sideA.contains(userId) || sideB.contains(userId);
+
+  MatchResult get view => MatchResult(
+    id: id,
+    status: status,
+    sets: List.unmodifiable(sets),
+    winner: matchWinner(sets),
+    enteredBy: enteredBy,
+    sideA: List.unmodifiable(sideA),
+    sideB: List.unmodifiable(sideB),
+    confirmedBy: List.unmodifiable(confirmedBy),
+    disputeReason: disputeReason,
+    changes: Map.unmodifiable(changes),
+  );
+}

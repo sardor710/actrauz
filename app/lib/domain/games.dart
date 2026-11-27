@@ -2,7 +2,7 @@ import 'community.dart';
 import 'competitive.dart';
 
 export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
-export 'competitive.dart' show SportRating;
+export 'competitive.dart' show MatchResult, MatchWinner, RatingChange, ResultStatus, SportRating;
 
 class Player {
   const Player({
@@ -95,6 +95,7 @@ class Game {
     this.participants = const [],
     this.joinRequests = const [],
     this.cancelled = false,
+    this.result,
   });
 
   final String id;
@@ -142,8 +143,15 @@ class Game {
   final List<JoinRequest> joinRequests;
   final bool cancelled;
 
+  /// The score, once someone has entered one (rated sports only).
+  final MatchResult? result;
+
   int get spotsLeft => spots - participantIds.length;
   bool get isFull => spotsLeft <= 0;
+
+  /// Whether the game is over at [now], the venue's wall-clock time (like
+  /// every time of a game).
+  bool endedAt(DateTime now) => !end.isAfter(now);
 
   Game copyWith({
     List<String>? participantIds,
@@ -158,6 +166,7 @@ class Game {
     List<GameMember>? participants,
     List<JoinRequest>? joinRequests,
     bool? cancelled,
+    MatchResult? result,
   }) => Game(
     id: id,
     sportId: sportId,
@@ -187,6 +196,7 @@ class Game {
     participants: participants ?? this.participants,
     joinRequests: joinRequests ?? this.joinRequests,
     cancelled: cancelled ?? this.cancelled,
+    result: result ?? this.result,
   );
 }
 

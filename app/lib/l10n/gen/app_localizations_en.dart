@@ -2320,4 +2320,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qTennisRallyA3 => 'I change pace and spin on purpose';
+
+  @override
+  String get notifCategoryRatings => 'Ratings';
+
+  @override
+  String get notifCategoryTeams => 'Teams';
+
+  @override
+  String get notifGameFinishedScore =>
+      'Your game has finished. Enter the score';
+
+  @override
+  String get notifGameFinishedRate => 'Your game has finished. Rate the game';
+
+  @override
+  String get notifScoreEntered =>
+      'The score of your game was entered. Confirm or dispute it';
+
+  @override
+  String get notifScoreDisputed =>
+      'The score of your game was disputed. An Actra admin will review it';
+
+  @override
+  String get notifScoreResolved =>
+      'An Actra admin has reviewed the disputed score';
+
+  @override
+  String get notifScoreVoided => 'The score of your game was cancelled';
+
+  @override
+  String notifRatingUpdated(String from, String to) {
+    return 'Your rating changed: $from → $to';
+  }
 }

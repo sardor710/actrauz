@@ -672,5 +672,14 @@
   "qTennisRallyA0": "Удерживаю в корте несколько мячей",
   "qTennisRallyA1": "Играю в среднем темпе",
   "qTennisRallyA2": "Контролирую направление и глубину",
-  "qTennisRallyA3": "Намеренно меняю темп и вращение"
+  "qTennisRallyA3": "Намеренно меняю темп и вращение",
+  "notifCategoryRatings": "Рейтинг",
+  "notifCategoryTeams": "Команды",
+  "notifGameFinishedScore": "Игра закончилась. Введите счёт",
+  "notifGameFinishedRate": "Игра закончилась. Оцените игру",
+  "notifScoreEntered": "Счёт вашей игры внесён. Подтвердите или оспорьте его",
+  "notifScoreDisputed": "Счёт вашей игры оспорен. Его проверит администратор Actra",
+  "notifScoreResolved": "Администратор Actra проверил оспоренный счёт",
+  "notifScoreVoided": "Счёт вашей игры аннулирован",
+  "notifRatingUpdated": "Ваш рейтинг изменился: {from} → {to}"
 }

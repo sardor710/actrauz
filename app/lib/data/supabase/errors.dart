@@ -51,6 +51,15 @@ const _joinErrors = <String, JoinError>{
   'score_closed': JoinError.scoreClosed,
 };
 
+/// What the score calls (`enter_score`, `confirm_score`, `dispute_score`)
+/// mean by codes other calls use differently (ruling R1): `already_exists` is a
+/// result that can no longer change, `not_allowed` a score that is not the
+/// player's to enter.
+const kScoreErrors = <String, JoinError>{
+  'not_allowed': JoinError.forbidden,
+  'already_exists': JoinError.scoreClosed,
+};
+
 const _tournamentErrors = <String, TournamentError>{
   'full': TournamentError.full,
   'deadline_passed': TournamentError.deadlinePassed,
@@ -76,9 +85,10 @@ BookingException bookingExceptionFor(Object error) {
   return BookingException(code ?? BookingError.unavailable);
 }
 
-JoinException joinExceptionFor(Object error) {
+/// [codes] are the meanings one call gives to codes, ahead of the common ones.
+JoinException joinExceptionFor(Object error, [Map<String, JoinError> codes = const {}]) {
   if (error is JoinException) return error;
-  final code = error is PostgrestException ? _joinErrors[error.message] : null;
+  final code = error is PostgrestException ? codes[error.message] ?? _joinErrors[error.message] : null;
   return JoinException(code ?? JoinError.unavailable);
 }
 
@@ -117,12 +127,13 @@ Future<T> guardBooking<T>(Future<T> Function() call) async {
   }
 }
 
-/// Runs a game call; every failure surfaces as a [JoinException].
-Future<T> guardJoin<T>(Future<T> Function() call) async {
+/// Runs a game call; every failure surfaces as a [JoinException]. [codes]:
+/// see [joinExceptionFor].
+Future<T> guardJoin<T>(Future<T> Function() call, {Map<String, JoinError> codes = const {}}) async {
   try {
     return await call();
   } catch (e) {
-    throw joinExceptionFor(e);
+    throw joinExceptionFor(e, codes);
   }
 }
 

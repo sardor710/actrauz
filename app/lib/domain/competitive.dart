@@ -3,6 +3,8 @@
 // §5.1-§5.3). The database computes and stores ratings; these mirror its
 // rules for the sample backend and the screens.
 
+import 'dart:math' as math;
+
 /// Every tuning number of the rating system, the same values as the
 /// database's `app.rating_const` (supabase/migrations/20261127100000_ratings.sql).
 class RatingRules {
@@ -99,3 +101,151 @@ class MySport {
   /// rated game).
   final bool canRetake;
 }
+
+// ---- Match results (design §5.4-§5.6) ----
+
+/// Where a result stands. [voided]: cancelled by an admin, or because a player
+/// in it deleted their account (`void` in the database).
+enum ResultStatus { pending, confirmed, disputed, voided }
+
+enum MatchWinner { a, b, draw }
+
+/// More sets won; equal sets, more games; equal games, a draw (as
+/// `app.score_winner`). Each set is (games of side a, games of side b).
+MatchWinner matchWinner(List<(int, int)> sets) {
+  var setsA = 0, setsB = 0, gamesA = 0, gamesB = 0;
+  for (final (a, b) in sets) {
+    if (a > b) setsA++;
+    if (b > a) setsB++;
+    gamesA += a;
+    gamesB += b;
+  }
+  if (setsA != setsB) return setsA > setsB ? MatchWinner.a : MatchWinner.b;
+  if (gamesA != gamesB) return gamesA > gamesB ? MatchWinner.a : MatchWinner.b;
+  return MatchWinner.draw;
+}
+
+/// One player's rating before and after a confirmed result.
+class RatingChange {
+  const RatingChange({required this.oldRating, required this.newRating});
+
+  final double oldRating;
+  final double newRating;
+
+  /// Rounded, so 3.63 − 3.50 reads 0.13 and not 0.12999….
+  double get delta => roundRating(newRating - oldRating);
+}
+
+/// The score of a game: who played on each side, the sets, and how it stands.
+class MatchResult {
+  const MatchResult({
+    required this.id,
+    required this.status,
+    required this.sets,
+    required this.winner,
+    required this.enteredBy,
+    required this.sideA,
+    required this.sideB,
+    this.confirmedBy = const [],
+    this.disputeReason,
+    this.flaggedNoShow = false,
+    this.changes = const {},
+  });
+
+  final String id;
+  final ResultStatus status;
+
+  /// (games of side a, games of side b) per set, 1–5 sets.
+  final List<(int, int)> sets;
+  final MatchWinner winner;
+  final String enteredBy;
+
+  /// 1 or 2 player ids each.
+  final List<String> sideA;
+  final List<String> sideB;
+
+  /// The players who confirmed it, first confirmation first.
+  final List<String> confirmedBy;
+  final String? disputeReason;
+
+  /// A majority marked a player in it as a no-show (design §6.2).
+  final bool flaggedNoShow;
+
+  /// Player id → rating change; only once confirmed.
+  final Map<String, RatingChange> changes;
+}
+
+/// The rating changes a confirmed result makes, as `app.apply_result` computes
+/// them; each list follows the order of its side. A player passed as null has
+/// no rating yet: they start at the average of the players who have one,
+/// rounded to two decimals and capped at [RatingRules.questionnaireCap], or at
+/// [RatingRules.unratedDefault] when nobody has one, with no rated games.
+///
+/// The database works in exact decimals, so this does too: ratings and side
+/// averages in whole hundredths, and the change rounded half away from zero
+/// after removing binary noise (0.30 × 0.85 × 0.5 = 0.1275 → 0.13).
+({List<RatingChange> a, List<RatingChange> b}) ratingChanges({
+  required List<SportRating?> sideA,
+  required List<SportRating?> sideB,
+  required List<(int, int)> sets,
+}) {
+  int hundredths(double rating) => (rating * 100).round();
+
+  final known = [for (final r in [...sideA, ...sideB]) if (r != null) hundredths(r.rating)];
+  final cap = hundredths(RatingRules.questionnaireCap);
+  final start = known.isEmpty
+      ? hundredths(RatingRules.unratedDefault)
+      : math.min(_divideRounded(known.fold(0, (s, r) => s + r), known.length), cap);
+  SportRating rated(SportRating? r) => r ?? SportRating(rating: start / 100);
+
+  final a = [for (final r in sideA) rated(r)];
+  final b = [for (final r in sideB) rated(r)];
+  final sumA = a.fold(0, (s, r) => s + hundredths(r.rating));
+  final sumB = b.fold(0, (s, r) => s + hundredths(r.rating));
+  // Ra − Rb in rating points; exactly 0 for equal sides.
+  final strengthGap = (sumA * b.length - sumB * a.length) / (100 * a.length * b.length);
+  final expectedA = strengthGap == 0 ? 0.5 : 1 / (1 + math.pow(10, -strengthGap));
+
+  final winner = matchWinner(sets);
+  final actualA = switch (winner) {
+    MatchWinner.a => 1.0,
+    MatchWinner.b => 0.0,
+    MatchWinner.draw => 0.5,
+  };
+  // The margin factor as a fraction marginTop / marginBottom: 1 for a draw,
+  // else min + span × share of games won by the winner.
+  var gamesA = 0, gamesB = 0;
+  for (final (x, y) in sets) {
+    gamesA += x;
+    gamesB += y;
+  }
+  final won = winner == MatchWinner.a ? gamesA : gamesB;
+  final lost = winner == MatchWinner.a ? gamesB : gamesA;
+  final total = won + lost;
+  final minH = hundredths(RatingRules.marginMin);
+  final spanH = hundredths(RatingRules.marginSpan);
+  final (marginTop, marginBottom) = winner == MatchWinner.draw || total == 0
+      ? (1, 1)
+      : (minH * total + spanH * math.max(0, won - lost), 100 * total);
+
+  RatingChange change(SportRating r, double actual, double expected) {
+    final kH = hundredths(r.provisional ? RatingRules.kProvisional : RatingRules.kEstablished);
+    final deltaH = _roundHalfAway(kH * marginTop * (actual - expected) / marginBottom);
+    final old = hundredths(r.rating);
+    final next = math.max(hundredths(RatingRules.min), math.min(hundredths(RatingRules.max), old + deltaH));
+    return RatingChange(oldRating: old / 100, newRating: next / 100);
+  }
+
+  return (
+    a: [for (final r in a) change(r, actualA, expectedA)],
+    b: [for (final r in b) change(r, 1 - actualA, 1 - expectedA)],
+  );
+}
+
+/// [total] / [count] rounded half away from zero (both positive here).
+int _divideRounded(int total, int count) => (2 * total + count) ~/ (2 * count);
+
+/// [value] rounded to a whole number, half away from zero, as `round()` on a
+/// numeric does. Twelve significant digits first, so a product that is
+/// exactly x.5 in decimals but x.4999… in binary still rounds away from zero.
+int _roundHalfAway(double value) => double.parse(value.toStringAsPrecision(12)).round();

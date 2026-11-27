@@ -287,8 +287,17 @@ class GameRequestDraft {
 
 // ---- Inbox and settings ----
 
-/// The categories a player can mute (spec §13).
-const kNotificationCategories = ['bookings', 'venue', 'games', 'requests', 'invites', 'tournaments'];
+/// The categories a player can mute (spec §13; `ratings` and `teams` from M7).
+const kNotificationCategories = [
+  'bookings',
+  'venue',
+  'games',
+  'requests',
+  'invites',
+  'tournaments',
+  'ratings',
+  'teams',
+];
 
 /// One inbox entry. The database stores no sentence: the app renders the text
 /// from [kind] and [payload].
@@ -336,7 +345,12 @@ class AppNotification {
           'game_removed' ||
           'game_reminder' ||
           'game_invite' ||
-          'request_converted':
+          'request_converted' ||
+          'game_finished' ||
+          'score_entered' ||
+          'score_disputed' ||
+          'score_resolved' ||
+          'rating_updated':
         final gameId = text('game_id');
         return gameId == null ? null : '/games/$gameId';
       case 'tournament_registered' ||

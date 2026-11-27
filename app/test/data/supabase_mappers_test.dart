@@ -312,6 +312,95 @@ void main() {
       expect(player.deleted, isFalse);
     });
 
+    test('a game without a result (or from a backend before M7) has none', () {
+      expect(gameFromJson(json, myUserId: me).result, isNull);
+      expect(gameFromJson({...json, 'result': null}, myUserId: me).result, isNull);
+    });
+
+    test('a confirmed result with its sides, sets and rating changes, me marked', () {
+      final game = gameFromJson({
+        ...json,
+        'result': {
+          'id': 'result-1',
+          'status': 'confirmed',
+          'sets': [
+            [6, 4],
+            [3, 6],
+            [7, 5],
+          ],
+          'winner': 'a',
+          'entered_by': other,
+          'side_a': [other],
+          'side_b': [me],
+          'confirmed_by': [me],
+          'dispute_reason': null,
+          'flagged_no_show': false,
+          'changes': {
+            other: {'old': 3.5, 'new': 3.53},
+            me: {'old': 4.5, 'new': 4.47},
+          },
+        },
+      }, myUserId: me);
+      final result = game.result!;
+      expect(result.id, 'result-1');
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.sets, [(6, 4), (3, 6), (7, 5)]);
+      expect(result.winner, MatchWinner.a);
+      expect(result.enteredBy, other);
+      expect(result.sideA, [other]);
+      expect(result.sideB, [kMeId]);
+      expect(result.confirmedBy, [kMeId]);
+      expect(result.disputeReason, isNull);
+      expect(result.flaggedNoShow, isFalse);
+      expect(result.changes[kMeId]!.oldRating, 4.5);
+      expect(result.changes[kMeId]!.newRating, 4.47);
+      expect(result.changes[kMeId]!.delta, -0.03);
+      expect(result.changes[other]!.delta, 0.03);
+    });
+
+    test('a pending, disputed or void result has no changes', () {
+      Map<String, dynamic> result(String status) => {
+        'id': 'result-1',
+        'status': status,
+        'sets': [
+          [6, 6],
+        ],
+        'winner': 'draw',
+        'entered_by': me,
+        'side_a': [me],
+        'side_b': [other],
+        'confirmed_by': [],
+        'dispute_reason': status == 'disputed' ? 'Wrong score' : null,
+        'flagged_no_show': false,
+      };
+      for (final (status, expected) in [
+        ('pending', ResultStatus.pending),
+        ('disputed', ResultStatus.disputed),
+        ('void', ResultStatus.voided),
+      ]) {
+        final parsed = gameFromJson({...json, 'result': result(status)}, myUserId: me).result!;
+        expect(parsed.status, expected);
+        expect(parsed.winner, MatchWinner.draw);
+        expect(parsed.enteredBy, kMeId);
+        expect(parsed.changes, isEmpty);
+      }
+      expect(gameFromJson({...json, 'result': result('disputed')}, myUserId: me).result!.disputeReason, 'Wrong score');
+    });
+
+    test('the score calls map their refusals', () {
+      expect(joinExceptionFor(const PostgrestException(message: 'score_closed')).error, JoinError.scoreClosed);
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'not_allowed'), kScoreErrors).error,
+        JoinError.forbidden,
+      );
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'already_exists'), kScoreErrors).error,
+        JoinError.scoreClosed,
+      );
+      // Elsewhere already_exists keeps its own meaning (ruling R1).
+      expect(joinExceptionFor(const PostgrestException(message: 'already_exists')).error, JoinError.unavailable);
+    });
+
     test('deleted player shows a placeholder name: the deleted flag is read', () {
       final gone = playerFromJson({'id': other, 'name': null, 'levels': {}, 'deleted': true}, myUserId: me);
       expect(gone.deleted, isTrue);

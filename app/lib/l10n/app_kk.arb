@@ -672,5 +672,14 @@
   "qTennisRallyA0": "Бірнеше допты алаңда ұстаймын",
   "qTennisRallyA1": "Орташа қарқынмен ойнаймын",
   "qTennisRallyA2": "Бағыт пен тереңдікті бақылаймын",
-  "qTennisRallyA3": "Қарқын мен айналымды әдейі өзгертемін"
+  "qTennisRallyA3": "Қарқын мен айналымды әдейі өзгертемін",
+  "notifCategoryRatings": "Рейтинг",
+  "notifCategoryTeams": "Командалар",
+  "notifGameFinishedScore": "Ойын аяқталды. Есепті енгізіңіз",
+  "notifGameFinishedRate": "Ойын аяқталды. Ойынды бағалаңыз",
+  "notifScoreEntered": "Ойыныңыздың есебі енгізілді. Оны растаңыз немесе дау айтыңыз",
+  "notifScoreDisputed": "Ойыныңыздың есебіне дау айтылды. Оны Actra әкімшісі қарайды",
+  "notifScoreResolved": "Actra әкімшісі даулы есепті қарап шықты",
+  "notifScoreVoided": "Ойыныңыздың есебі жойылды",
+  "notifRatingUpdated": "Рейтингіңіз өзгерді: {from} → {to}"
 }

@@ -23,9 +23,10 @@ class SupabaseGameRepository implements GameRepository {
 
   GameRequest _gameRequest(Object? json) => gameRequestFromJson(Map<String, dynamic>.from(json as Map), myUserId: _me);
 
-  /// Calls [function] and reads one game back. Every failure is a [JoinException].
-  Future<Game> _callGame(String function, [Map<String, dynamic>? params]) =>
-      guardJoin(() async => _game(await _client.rpc(function, params: params)));
+  /// Calls [function] and reads one game back. Every failure is a [JoinException];
+  /// [codes] as in [guardJoin].
+  Future<Game> _callGame(String function, [Map<String, dynamic>? params, Map<String, JoinError> codes = const {}]) =>
+      guardJoin(() async => _game(await _client.rpc(function, params: params)), codes: codes);
 
   Future<GameRequest> _callRequest(String function, [Map<String, dynamic>? params]) =>
       guardJoin(() async => _gameRequest(await _client.rpc(function, params: params)));
@@ -90,6 +91,32 @@ class SupabaseGameRepository implements GameRepository {
   @override
   Future<Game> cancelGame(String gameId, {required bool cancelBooking}) =>
       _callGame('host_cancel_game', {'p_game_id': gameId, 'p_cancel_booking': cancelBooking});
+
+  @override
+  Future<List<Game>> pastGames() async {
+    final rows = await _client.rpc('my_past_games');
+    return [for (final row in rows as List) _game(row)];
+  }
+
+  @override
+  Future<Game> enterScore(
+    String gameId, {
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  }) => _callGame('enter_score', {
+    'p_game_id': gameId,
+    'p_side_a': [for (final id in sideA) userIdOut(id, _me)],
+    'p_side_b': [for (final id in sideB) userIdOut(id, _me)],
+    'p_sets': setsJson(sets),
+  }, kScoreErrors);
+
+  @override
+  Future<Game> confirmScore(String resultId) => _callGame('confirm_score', {'p_result_id': resultId}, kScoreErrors);
+
+  @override
+  Future<Game> disputeScore(String resultId, {String? reason}) =>
+      _callGame('dispute_score', {'p_result_id': resultId, 'p_reason': reason}, kScoreErrors);
 
   @override
   Future<List<GameRequest>> requests(String cityId) async {

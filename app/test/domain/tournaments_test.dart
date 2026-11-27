@@ -825,6 +825,8 @@ void main() {
 
     test('tournaments are a category a player can mute', () async {
       expect(kNotificationCategories, contains('tournaments'));
+      // M7: ratings now, teams for the team notifications to come.
+      expect(kNotificationCategories, containsAll(['ratings', 'teams']));
       await backend.saveSettings(const CommunitySettings(mutedCategories: {'tournaments'}));
       final cat = await makeCategory(cap: 2);
       await backend.tournament.register(cat);

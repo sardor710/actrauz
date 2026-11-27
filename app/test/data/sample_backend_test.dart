@@ -701,6 +701,249 @@ void main() {
       expect((game.minLevel, game.maxLevel), (2, 4));
     });
   });
+
+  group('scores and past games', () {
+    Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
+
+    // Sunday 10:00 in Tashkent; gf1 and gf2 were played yesterday.
+    final tashkentNow = DateTime.utc(2026, 11, 22, 10);
+    const sixFourTwice = [(6, 4), (6, 4)];
+    const aziz = SportRating(rating: 3.5, ratedGames: 12);
+    const dilnoza = SportRating(rating: 2.5, ratedGames: 4);
+
+    Future<MatchResult> enterGf1() async =>
+        (await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: sixFourTwice)).result!;
+
+    test('finished games are past games, newest first, and never in the games list', () async {
+      final past = await backend.pastGames();
+      expect(past.map((g) => g.id), ['gf2', 'gf1']);
+      expect((await backend.games('tashkent')).map((g) => g.id), isNot(contains('gf1')));
+
+      final gf1 = await backend.game('gf1');
+      expect(gf1.sportId, 'padel');
+      expect(gf1.hostId, kMeId);
+      expect(gf1.participantIds, [kMeId, 'p1', 'p2', 'p3']);
+      expect(gf1.endedAt(tashkentNow), isTrue);
+      expect(gf1.endedAt(gf1.start), isFalse);
+      expect(gf1.result, isNull);
+
+      final gf2 = await backend.game('gf2');
+      expect(gf2.hostId, 'p1');
+      expect(gf2.result!.status, ResultStatus.pending);
+      expect(gf2.result!.enteredBy, 'p1');
+      expect(gf2.result!.sideB, contains(kMeId), reason: 'I am on the other side, so I can confirm');
+    });
+
+    test('the host enters a score; an opponent confirms and ratings move', () async {
+      final pending = await enterGf1();
+      expect(pending.status, ResultStatus.pending);
+      expect(pending.enteredBy, kMeId);
+      expect(pending.sideA, [kMeId, 'p1']);
+      expect(pending.sideB, ['p2', 'p3']);
+      expect(pending.sets, sixFourTwice);
+      expect(pending.winner, MatchWinner.a);
+      expect(pending.changes, isEmpty);
+
+      final confirmed = (await backend.confirmScoreAs('p2', pending.id)).result!;
+      expect(confirmed.status, ResultStatus.confirmed);
+      expect(confirmed.confirmedBy, ['p2']);
+
+      // I had no padel rating: I start at the average of those who have one.
+      final expected = ratingChanges(sideA: [null, aziz], sideB: [dilnoza, null], sets: sixFourTwice);
+      expect(confirmed.changes[kMeId]!.oldRating, 3.0);
+      expect(confirmed.changes[kMeId]!.newRating, expected.a.first.newRating);
+      expect(confirmed.changes['p2']!.newRating, expected.b.first.newRating);
+      expect(confirmed.changes.keys, unorderedEquals([kMeId, 'p1', 'p2', 'p3']));
+
+      final padel = (await backend.mySports()).singleWhere((s) => s.sportId == 'padel');
+      expect(padel.rating!.rating, expected.a.first.newRating);
+      expect(padel.rating!.ratedGames, 1);
+      expect(padel.level, levelOfRating(expected.a.first.newRating));
+      expect(padel.canRetake, isFalse);
+      final p2 = (await backend.game('gf1')).participants.singleWhere((m) => m.id == 'p2');
+      expect(p2.rating, expected.b.first.newRating);
+
+      final notice = (await backend.inbox()).firstWhere((n) => n.kind == 'rating_updated');
+      expect(notice.category, 'ratings');
+      expect(notice.payload['old'], 3.0);
+      expect(notice.payload['new'], expected.a.first.newRating);
+      expect(notice.route, '/games/gf1');
+
+      // Confirming twice changes nothing.
+      expect(() => backend.confirmScoreAs('p3', pending.id), joinError(JoinError.notFound));
+    });
+
+    test('I confirm the score p1 entered for gf2', () async {
+      final gf2 = await backend.game('gf2');
+      final confirmed = (await backend.confirmScore(gf2.result!.id)).result!;
+      expect(confirmed.status, ResultStatus.confirmed);
+      expect(confirmed.changes, contains(kMeId));
+    });
+
+    test('a partner confirming is not enough', () async {
+      final pending = await enterGf1();
+      final after = (await backend.confirmScoreAs('p1', pending.id)).result!;
+      expect(after.status, ResultStatus.pending);
+      expect(after.confirmedBy, ['p1']);
+      expect(after.changes, isEmpty);
+      // The one who entered it cannot confirm it.
+      expect(() => backend.confirmScore(pending.id), joinError(JoinError.notFound));
+    });
+
+    test('whoever entered a pending score can correct it; that clears the confirmations', () async {
+      final pending = await enterGf1();
+      await backend.confirmScoreAs('p1', pending.id);
+      final corrected =
+          (await backend.enterScore('gf1', sideA: [kMeId, 'p2'], sideB: ['p1', 'p3'], sets: [(6, 3)])).result!;
+      expect(corrected.id, pending.id);
+      expect(corrected.confirmedBy, isEmpty);
+      expect(corrected.sideA, [kMeId, 'p2']);
+      expect(corrected.sets, [(6, 3)]);
+    });
+
+    test('a dispute freezes the result', () async {
+      final pending = await enterGf1();
+      final disputed = (await backend.disputeScoreAs('p2', pending.id, reason: '  We won the second set  ')).result!;
+      expect(disputed.status, ResultStatus.disputed);
+      expect(disputed.disputeReason, 'We won the second set');
+      expect((await backend.inbox()).where((n) => n.kind == 'score_disputed'), hasLength(1));
+      expect(backend.autoConfirmScores(), 0);
+      expect(await backend.mySports(), isEmpty, reason: 'no rating moved');
+      expect(() => backend.confirmScoreAs('p2', pending.id), joinError(JoinError.notFound));
+      expect(
+        () => backend.enterScore('gf1', sideA: [kMeId], sideB: ['p2'], sets: sixFourTwice),
+        joinError(JoinError.scoreClosed),
+      );
+    });
+
+    test('a pending score confirms itself 24 hours after it was entered', () async {
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      final pending =
+          (await timed.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: sixFourTwice)).result!;
+      now = utcNow.add(const Duration(hours: 23));
+      // Only gf2's, which p1 entered an hour before the start.
+      expect(timed.autoConfirmScores(), 1);
+      expect((await timed.game('gf2')).result!.status, ResultStatus.confirmed);
+      expect((await timed.game('gf1')).result!.status, ResultStatus.pending);
+      now = utcNow.add(const Duration(hours: 24));
+      expect(timed.autoConfirmScores(), 1);
+      expect((await timed.game('gf1')).result!.status, ResultStatus.confirmed);
+      expect(pending.status, ResultStatus.pending);
+      expect((await timed.mySports()).single.rating!.ratedGames, 2, reason: 'gf2 and gf1');
+    });
+
+    test('who may enter a score, and when', () async {
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      // Not the host, within 24 hours of the end.
+      expect(
+        () => timed.enterScoreAs('p1', 'gf1', sideA: ['p1'], sideB: ['p2'], sets: sixFourTwice),
+        joinError(JoinError.forbidden),
+      );
+      // A score someone else entered.
+      expect(
+        () => timed.enterScore('gf2', sideA: [kMeId], sideB: ['p1'], sets: sixFourTwice),
+        joinError(JoinError.forbidden),
+      );
+      // Not in the game.
+      expect(
+        () => timed.enterScoreAs('p5', 'gf1', sideA: ['p5'], sideB: ['p2'], sets: sixFourTwice),
+        joinError(JoinError.notFound),
+      );
+      // A simple sport.
+      await timed.join('g2');
+      expect(
+        () => timed.enterScore('g2', sideA: [kMeId], sideB: ['p3'], sets: sixFourTwice),
+        joinError(JoinError.notFound),
+      );
+      // A padel game that has not ended.
+      final slot = SlotTime(DateTime.utc(2026, 11, 23, 19), DateTime.utc(2026, 11, 23, 20, 30));
+      final booking = await timed.confirm((await timed.hold('v1', 'v1c2', [slot])).id, players: 2);
+      final upcoming = await timed.create(GameDraft(sportId: 'padel', spots: 2, bookingId: booking.id));
+      await timed.joinAs('p1', upcoming.id);
+      expect(
+        () => timed.enterScore(upcoming.id, sideA: [kMeId], sideB: ['p1'], sets: sixFourTwice),
+        joinError(JoinError.scoreClosed),
+      );
+
+      // 25 hours after the end anyone in the game may.
+      now = utcNow.add(const Duration(hours: 25));
+      final entered = await timed.enterScoreAs('p1', 'gf1', sideA: ['p1'], sideB: ['p2'], sets: sixFourTwice);
+      expect(entered.result!.enteredBy, 'p1');
+      // 8 days after the end nobody may.
+      now = utcNow.add(const Duration(days: 8));
+      expect(
+        () => timed.enterScoreAs('p1', 'gf1', sideA: ['p1'], sideB: ['p2'], sets: sixFourTwice),
+        joinError(JoinError.scoreClosed),
+      );
+    });
+
+    test('bad scores are refused', () async {
+      for (final (sideA, sideB, sets) in <(List<String>, List<String>, List<(int, int)>)>[
+        ([kMeId, 'p1'], ['p2'], sixFourTwice),
+        ([kMeId, 'p1'], ['p1', 'p2'], sixFourTwice),
+        ([kMeId], ['p5'], sixFourTwice),
+        (['p1'], ['p2'], sixFourTwice),
+        ([kMeId], ['p2'], [(6, 0), (6, 0), (6, 0), (6, 0), (6, 0), (6, 0)]),
+        ([kMeId], ['p2'], [(0, 0)]),
+        ([kMeId], ['p2'], [(31, 0)]),
+        ([kMeId], ['p2'], [(-1, 6)]),
+        ([kMeId], ['p2'], []),
+      ]) {
+        expect(
+          () => backend.enterScore('gf1', sideA: sideA, sideB: sideB, sets: sets),
+          joinError(JoinError.invalidArgument),
+          reason: '$sideA v $sideB $sets',
+        );
+      }
+    });
+
+    test('a deleted player cannot be named; one deleted before confirmation voids the result', () async {
+      final pending = await enterGf1();
+      backend.markDeleted('p3');
+      expect(
+        () => backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: sixFourTwice),
+        joinError(JoinError.invalidArgument),
+      );
+      final voided = (await backend.confirmScoreAs('p2', pending.id)).result!;
+      expect(voided.status, ResultStatus.voided);
+      expect(voided.changes, isEmpty);
+      expect(await backend.mySports(), isEmpty);
+      final notice = (await backend.inbox()).firstWhere((n) => n.kind == 'score_resolved');
+      expect(notice.payload['action'], 'void');
+    });
+
+    test('nobody leaves a game once it has started', () async {
+      expect(() => backend.leaveAs('p1', 'gf1'), joinError(JoinError.notFound));
+    });
+
+    test('the players of a game that ends hear about it; the host may enter the score', () async {
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      final slot = SlotTime(DateTime.utc(2026, 11, 23, 19), DateTime.utc(2026, 11, 23, 20, 30));
+      final booking = await timed.confirm((await timed.hold('v1', 'v1c2', [slot])).id, players: 2);
+      final game = await timed.create(GameDraft(sportId: 'padel', spots: 2, bookingId: booking.id));
+      await timed.joinAs('p1', game.id);
+      expect((await timed.inbox()).where((n) => n.kind == 'game_finished'), isEmpty);
+
+      now = DateTime.utc(2026, 11, 23, 15, 31); // 20:31 in Tashkent
+      final finished = (await timed.inbox()).where((n) => n.kind == 'game_finished').toList();
+      expect(finished, hasLength(1));
+      expect(finished.single.category, 'games');
+      expect(finished.single.payload['can_score'], isTrue);
+      expect(finished.single.route, '/games/${game.id}');
+      expect((await timed.pastGames()).first.id, game.id);
+      expect((await timed.inbox()).where((n) => n.kind == 'game_finished'), hasLength(1), reason: 'once');
+    });
+
+    test('score notices can be muted under ratings', () async {
+      await backend.saveSettings(const CommunitySettings(mutedCategories: {'ratings', 'teams'}));
+      final pending = await enterGf1();
+      await backend.confirmScoreAs('p2', pending.id);
+      expect((await backend.inbox()).where((n) => n.category == 'ratings'), isEmpty);
+    });
+  });
 }
 
 String _courtOf(String bookingId, SampleBackend backend) {

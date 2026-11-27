@@ -468,6 +468,83 @@ const kGameSeeds = <GameSeed>[
   ),
 ];
 
+/// A padel game that was played yesterday, placed relative to the day the
+/// sample backend starts, so the score and past-games screens have something
+/// to show. Sample mode only: a game in the past cannot be booked, so these
+/// are not in `supabase/seed.sql`.
+class FinishedGameSeed {
+  const FinishedGameSeed({
+    required this.id,
+    required this.venueId,
+    required this.courtId,
+    required this.hour,
+    required this.minute,
+    required this.participantIds,
+    this.result,
+  });
+
+  final String id;
+  final String venueId;
+  final String courtId;
+
+  /// Start, yesterday in venue time; it lasts one slot of the court.
+  final int hour;
+  final int minute;
+
+  /// The first one is the host.
+  final List<String> participantIds;
+
+  /// A pending score already entered, or none.
+  final ResultSeed? result;
+}
+
+/// A pending score of a [FinishedGameSeed], entered [hoursAgo] hours before
+/// the sample backend starts (so it is still waiting for confirmation).
+class ResultSeed {
+  const ResultSeed({
+    required this.enteredBy,
+    required this.sideA,
+    required this.sideB,
+    required this.sets,
+    required this.hoursAgo,
+  });
+
+  final String enteredBy;
+  final List<String> sideA;
+  final List<String> sideB;
+  final List<(int, int)> sets;
+  final int hoursAgo;
+}
+
+const kFinishedGameSeeds = <FinishedGameSeed>[
+  // The demo player hosted it; nobody has entered the score yet.
+  FinishedGameSeed(
+    id: 'gf1',
+    venueId: 'v1',
+    courtId: 'v1c1',
+    hour: 18,
+    minute: 0,
+    participantIds: [kMeId, 'p1', 'p2', 'p3'],
+  ),
+  // Aziz hosted it and entered the score; the demo player, on the other side,
+  // can confirm or dispute it.
+  FinishedGameSeed(
+    id: 'gf2',
+    venueId: 'v1',
+    courtId: 'v1c2',
+    hour: 19,
+    minute: 30,
+    participantIds: ['p1', kMeId, 'p2', 'p3'],
+    result: ResultSeed(
+      enteredBy: 'p1',
+      sideA: ['p1', 'p3'],
+      sideB: [kMeId, 'p2'],
+      sets: [(6, 3), (6, 4)],
+      hoursAgo: 1,
+    ),
+  ),
+];
+
 const kSampleBanners = <BannerItem>[
   BannerItem(
     id: 'bn1',

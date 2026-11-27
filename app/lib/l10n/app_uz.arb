@@ -672,5 +672,14 @@
   "qTennisRallyA0": "Bir nechta toʻpni maydonda ushlab turaman",
   "qTennisRallyA1": "Oʻrtacha tezlikda oʻynayman",
   "qTennisRallyA2": "Yoʻnalish va chuqurlikni nazorat qilaman",
-  "qTennisRallyA3": "Tezlik va aylanishni ataylab oʻzgartiraman"
+  "qTennisRallyA3": "Tezlik va aylanishni ataylab oʻzgartiraman",
+  "notifCategoryRatings": "Reyting",
+  "notifCategoryTeams": "Jamoalar",
+  "notifGameFinishedScore": "Oʻyin tugadi. Hisobni kiriting",
+  "notifGameFinishedRate": "Oʻyin tugadi. Oʻyinni baholang",
+  "notifScoreEntered": "Oʻyiningiz hisobi kiritildi. Uni tasdiqlang yoki eʼtiroz bildiring",
+  "notifScoreDisputed": "Oʻyiningiz hisobiga eʼtiroz bildirildi. Uni Actra administratori koʻrib chiqadi",
+  "notifScoreResolved": "Actra administratori eʼtirozli hisobni koʻrib chiqdi",
+  "notifScoreVoided": "Oʻyiningiz hisobi bekor qilindi",
+  "notifRatingUpdated": "Reytingingiz oʻzgardi: {from} → {to}"
 }

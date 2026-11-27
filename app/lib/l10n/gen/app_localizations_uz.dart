@@ -2318,4 +2318,36 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get qTennisRallyA3 => 'Tezlik va aylanishni ataylab oʻzgartiraman';
+
+  @override
+  String get notifCategoryRatings => 'Reyting';
+
+  @override
+  String get notifCategoryTeams => 'Jamoalar';
+
+  @override
+  String get notifGameFinishedScore => 'Oʻyin tugadi. Hisobni kiriting';
+
+  @override
+  String get notifGameFinishedRate => 'Oʻyin tugadi. Oʻyinni baholang';
+
+  @override
+  String get notifScoreEntered =>
+      'Oʻyiningiz hisobi kiritildi. Uni tasdiqlang yoki eʼtiroz bildiring';
+
+  @override
+  String get notifScoreDisputed =>
+      'Oʻyiningiz hisobiga eʼtiroz bildirildi. Uni Actra administratori koʻrib chiqadi';
+
+  @override
+  String get notifScoreResolved =>
+      'Actra administratori eʼtirozli hisobni koʻrib chiqdi';
+
+  @override
+  String get notifScoreVoided => 'Oʻyiningiz hisobi bekor qilindi';
+
+  @override
+  String notifRatingUpdated(String from, String to) {
+    return 'Reytingingiz oʻzgardi: $from → $to';
+  }
 }

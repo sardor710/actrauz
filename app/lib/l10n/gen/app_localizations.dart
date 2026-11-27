@@ -4139,6 +4139,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I change pace and spin on purpose'**
   String get qTennisRallyA3;
+
+  /// No description provided for @notifCategoryRatings.
+  ///
+  /// In en, this message translates to:
+  /// **'Ratings'**
+  String get notifCategoryRatings;
+
+  /// No description provided for @notifCategoryTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get notifCategoryTeams;
+
+  /// No description provided for @notifGameFinishedScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game has finished. Enter the score'**
+  String get notifGameFinishedScore;
+
+  /// No description provided for @notifGameFinishedRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game has finished. Rate the game'**
+  String get notifGameFinishedRate;
+
+  /// No description provided for @notifScoreEntered.
+  ///
+  /// In en, this message translates to:
+  /// **'The score of your game was entered. Confirm or dispute it'**
+  String get notifScoreEntered;
+
+  /// No description provided for @notifScoreDisputed.
+  ///
+  /// In en, this message translates to:
+  /// **'The score of your game was disputed. An Actra admin will review it'**
+  String get notifScoreDisputed;
+
+  /// No description provided for @notifScoreResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'An Actra admin has reviewed the disputed score'**
+  String get notifScoreResolved;
+
+  /// No description provided for @notifScoreVoided.
+  ///
+  /// In en, this message translates to:
+  /// **'The score of your game was cancelled'**
+  String get notifScoreVoided;
+
+  /// No description provided for @notifRatingUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your rating changed: {from} → {to}'**
+  String notifRatingUpdated(String from, String to);
 }
 
 class _AppLocalizationsDelegate

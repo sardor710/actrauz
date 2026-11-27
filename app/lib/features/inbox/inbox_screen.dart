@@ -9,6 +9,7 @@ import '../../domain/community.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart' show formatRating;
 import '../common/widgets.dart';
 
 /// One sentence for [n], in the app language. The database stores none: it is
@@ -30,6 +31,9 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
   final tournament = name('title', l.notifTournamentFallback);
   final categoryName = name('category_name', '');
   final category = categoryName.isEmpty ? null : categoryName;
+  double? number(String key) => (p[key] as num?)?.toDouble();
+  final oldRating = number('old');
+  final newRating = number('new');
   return switch (n.kind) {
     'booking_confirmed' => l.notifBookingConfirmed(venue),
     'booking_cancelled_by_venue' => l.notifBookingCancelledByVenue(venue),
@@ -50,6 +54,14 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'request_interest' => l.notifRequestInterest(actor),
     'request_converted' => p['added'] == false ? l.notifRequestConvertedFull : l.notifRequestConvertedIn,
     'request_expired' => l.notifRequestExpired,
+    'game_finished' => p['can_score'] == true ? l.notifGameFinishedScore : l.notifGameFinishedRate,
+    'score_entered' => l.notifScoreEntered,
+    'score_disputed' => l.notifScoreDisputed,
+    'score_resolved' => p['action'] == 'void' ? l.notifScoreVoided : l.notifScoreResolved,
+    'rating_updated' when oldRating != null && newRating != null => l.notifRatingUpdated(
+      formatRating(oldRating),
+      formatRating(newRating),
+    ),
     'tournament_registered' => l.notifTournamentRegistered(tournament),
     'tournament_partner_invite' => l.notifTournamentPartnerInvite(actor, tournament),
     'tournament_partner_accepted' => l.notifTournamentPartnerAccepted(actor, tournament),
@@ -73,6 +85,8 @@ IconData _categoryIcon(String category) => switch (category) {
   'requests' => Icons.campaign_outlined,
   'invites' => Icons.mail_outline_rounded,
   'tournaments' => Icons.emoji_events_outlined,
+  'ratings' => Icons.bar_chart_rounded,
+  'teams' => Icons.groups_outlined,
   _ => Icons.notifications_none_rounded,
 };
 

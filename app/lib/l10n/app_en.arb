@@ -1298,5 +1298,24 @@
   "qTennisRallyA0": "I keep a few balls in",
   "qTennisRallyA1": "I rally at medium pace",
   "qTennisRallyA2": "I control direction and depth",
-  "qTennisRallyA3": "I change pace and spin on purpose"
+  "qTennisRallyA3": "I change pace and spin on purpose",
+  "notifCategoryRatings": "Ratings",
+  "notifCategoryTeams": "Teams",
+  "notifGameFinishedScore": "Your game has finished. Enter the score",
+  "notifGameFinishedRate": "Your game has finished. Rate the game",
+  "notifScoreEntered": "The score of your game was entered. Confirm or dispute it",
+  "notifScoreDisputed": "The score of your game was disputed. An Actra admin will review it",
+  "notifScoreResolved": "An Actra admin has reviewed the disputed score",
+  "notifScoreVoided": "The score of your game was cancelled",
+  "notifRatingUpdated": "Your rating changed: {from} → {to}",
+  "@notifRatingUpdated": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -33,6 +33,7 @@ class SampleBackend
     _mySports = SampleSports(levels: meLevels, ratings: meRatings, sportOf: (id) => _sports[id]);
     _engine = BookingEngine(venueById: _venue);
     _seedGames();
+    _seedFinishedGames();
     _seedCommunity();
     // Dated from the clock at start-up, like the games.
     _rules;
@@ -70,6 +71,32 @@ class SampleBackend
   final List<AuditEntry> _audit = [];
   final Map<String, Game> _games = {};
   final Map<String, GameRequest> _requests = {};
+
+  /// Games whose end has been handled (`app.complete_games`): their players
+  /// were told once.
+  final Set<String> _completed = {};
+
+  /// The sample players' ratings, which confirmed results move. The demo
+  /// player's are in [_mySports].
+  final Map<String, Map<String, SportRating>> _ratings = {
+    for (final p in kSamplePlayers) p.id: {...p.ratings},
+  };
+
+  late final SampleScores _scores = SampleScores(
+    utcNow: utcNow,
+    ratingOf: (userId, sportId) => userId == kMeId ? _mySports.ratings[sportId] : _ratings[userId]?[sportId],
+    setRating: (userId, sportId, rating) {
+      if (userId == kMeId) {
+        // As app.sync_level: the derived level ticks the sport.
+        _mySports.ratings[sportId] = rating;
+        _mySports.levels[sportId] = levelOfRating(rating.rating);
+      } else {
+        (_ratings[userId] ??= {})[sportId] = rating;
+      }
+    },
+    isDeleted: _deleted.contains,
+    notify: _notify,
+  );
 
   /// Reliability events per player; only the demo player starts with any.
   final Map<String, List<ReliabilityEvent>> _reliabilityEvents = {};
@@ -158,6 +185,42 @@ class SampleBackend
         );
       } on BookingException {
         // The venue is closed that day: skip this sample game.
+      }
+    }
+  }
+
+  /// Games played yesterday, straight into the state: a past slot cannot be
+  /// booked. They count as completed already, so nobody is told they ended.
+  void _seedFinishedGames() {
+    for (final seed in kFinishedGameSeeds) {
+      final venue = _venue(seed.venueId);
+      final court = venue.court(seed.courtId);
+      final start = dateOnly(_nowAt(venue)).add(Duration(days: -1, hours: seed.hour, minutes: seed.minute));
+      final range = ratingRangeFor(_sports[court.sportId]!, minRating: null, maxRating: null, minLevel: 1, maxLevel: 5);
+      final game = _games[seed.id] = Game(
+        id: seed.id,
+        sportId: court.sportId,
+        cityId: venue.cityId,
+        venueId: venue.id,
+        hostId: seed.participantIds.first,
+        start: start,
+        end: start.add(Duration(minutes: court.slotMinutes)),
+        spots: seed.participantIds.length,
+        participantIds: seed.participantIds,
+        minRating: range?.min,
+        maxRating: range?.max,
+      );
+      _completed.add(seed.id);
+      if (seed.result case final result?) {
+        _scores.seedPending(
+          game,
+          enteredBy: result.enteredBy,
+          enteredAt: utcNow().subtract(Duration(hours: result.hoursAgo)),
+          note: _gameNote(game),
+          sideA: result.sideA,
+          sideB: result.sideB,
+          sets: result.sets,
+        );
       }
     }
   }
@@ -387,12 +450,19 @@ class SampleBackend
 
   // ---- Who is who ----
 
-  Player _playerOf(String id) => id == kMeId
-      ? _me
-      : kSamplePlayers.firstWhere(
-          (p) => p.id == id,
-          orElse: () => Player(id: id, name: id),
-        );
+  /// A sample player with their current ratings, and the levels derived from
+  /// them.
+  Player _playerOf(String id) {
+    if (id == kMeId) return _me;
+    final p = kSamplePlayers.firstWhere((p) => p.id == id, orElse: () => Player(id: id, name: id));
+    final ratings = _ratings[id] ?? const {};
+    return Player(
+      id: p.id,
+      name: p.name,
+      levels: {...p.levels, for (final e in ratings.entries) e.key: levelOfRating(e.value.rating)},
+      ratings: {...ratings},
+    );
+  }
 
   /// The session name for the demo player, the sample name for anyone else;
   /// empty once deleted, as the backend scrubs it.
@@ -497,6 +567,7 @@ class SampleBackend
       clearMyStatus: status == null,
       myRequestId: _pendingAsk(g.id, viewer)?.id,
       clearMyRequestId: _pendingAsk(g.id, viewer) == null,
+      result: _scores.resultOf(g.id),
     );
   }
 
@@ -523,11 +594,13 @@ class SampleBackend
     return _view(joined, userId);
   }
 
+  /// Once a game has started nobody leaves it (the roster freeze), so nobody
+  /// steps out of a result.
   Future<Game> leaveAs(String userId, String id) async {
     final g = _games[id];
-    if (g == null) throw const JoinException(JoinError.notFound);
+    if (g == null || _started(g)) throw const JoinException(JoinError.notFound);
     final left = _save(leaveGame(g, userId));
-    if (!g.cancelled && g.end.isAfter(_cityNow(g.cityId))) {
+    if (!g.cancelled) {
       if (g.start.difference(_cityNow(g.cityId)) < BookingEngine.freeCancelWindow) {
         recordReliability(userId, ReliabilityKind.lateCancel, id);
       }
@@ -700,10 +773,95 @@ class SampleBackend
     }
   }
 
+  // ---- Scores ----
+
+  bool _rated(String sportId) => _sports[sportId]?.sport.competitiveRating ?? false;
+
+  /// What the database's scheduled job does, run whenever the state is read:
+  /// a game that has ended with at least two players tells them, once
+  /// (`can_score` for the host of a rated sport, who enters the score); a
+  /// pending score 24 hours old confirms itself.
+  void _tick() {
+    for (final g in _games.values) {
+      if (g.cancelled || _completed.contains(g.id) || !g.endedAt(_cityNow(g.cityId))) continue;
+      _completed.add(g.id);
+      if (g.participantIds.length < 2) continue;
+      for (final id in g.participantIds) {
+        _notify(id, 'game_finished', 'games', {..._gameNote(g), 'can_score': id == g.hostId && _rated(g.sportId)});
+      }
+    }
+    _scores.autoConfirm();
+  }
+
+  /// As [userId]; see [GameRepository.enterScore].
+  Future<Game> enterScoreAs(
+    String userId,
+    String gameId, {
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  }) async {
+    final g = _games[gameId];
+    if (g == null) throw const JoinException(JoinError.notFound);
+    _scores.enter(
+      userId,
+      g,
+      rated: _rated(g.sportId),
+      localNow: _cityNow(g.cityId),
+      note: _gameNote(g),
+      sideA: sideA,
+      sideB: sideB,
+      sets: sets,
+    );
+    return _view(g, userId);
+  }
+
+  Future<Game> confirmScoreAs(String userId, String resultId) async =>
+      _view(_games[_scores.confirm(userId, resultId)]!, userId);
+
+  Future<Game> disputeScoreAs(String userId, String resultId, {String? reason}) async =>
+      _view(_games[_scores.dispute(userId, resultId, reason: reason)]!, userId);
+
+  /// Confirms every pending score whose 24 hours are over (the database's
+  /// job does it every ten minutes); returns how many.
+  int autoConfirmScores() => _scores.autoConfirm();
+
+  @override
+  Future<List<Game>> pastGames() async {
+    _tick();
+    // Ends compared as instants: the cities keep different clocks.
+    DateTime endUtc(Game g) => g.end.subtract(_cityNow(g.cityId).difference(utcNow()));
+    final from = utcNow().subtract(const Duration(days: 30));
+    final past = [
+      for (final g in _games.values)
+        if (!g.cancelled && g.participantIds.contains(kMeId) && g.endedAt(_cityNow(g.cityId)) && endUtc(g).isAfter(from))
+          g,
+    ]..sort((a, b) {
+        final byEnd = endUtc(b).compareTo(endUtc(a));
+        return byEnd != 0 ? byEnd : a.id.compareTo(b.id);
+      });
+    return [for (final g in past) _view(g, kMeId)];
+  }
+
+  @override
+  Future<Game> enterScore(
+    String gameId, {
+    required List<String> sideA,
+    required List<String> sideB,
+    required List<(int, int)> sets,
+  }) => enterScoreAs(kMeId, gameId, sideA: sideA, sideB: sideB, sets: sets);
+
+  @override
+  Future<Game> confirmScore(String resultId) => confirmScoreAs(kMeId, resultId);
+
+  @override
+  Future<Game> disputeScore(String resultId, {String? reason}) => disputeScoreAs(kMeId, resultId, reason: reason);
+
   // ---- GameRepository ----
 
   @override
   Future<List<Game>> games(String cityId) async {
+    _tick();
     bool listed(Game g) {
       if (g.cancelled || _started(g)) return false;
       final mine = g.hostId == kMeId || g.participantIds.contains(kMeId) || _isInvited(g.id, kMeId);
@@ -722,6 +880,7 @@ class SampleBackend
 
   @override
   Future<Game> game(String id) async {
+    _tick();
     final g = _games[id];
     if (g == null || !_canSee(kMeId, g)) throw StateError('Unknown game $id');
     return _view(g, kMeId);
@@ -1059,7 +1218,7 @@ class SampleBackend
       throw const JoinException(JoinError.invalidArgument);
     }
     return searchPlayers(
-      kSamplePlayers,
+      [for (final p in kSamplePlayers) _playerOf(p.id)],
       sportId: sportId,
       minLevel: minLevel,
       maxLevel: maxLevel,
@@ -1097,6 +1256,7 @@ class SampleBackend
 
   @override
   Future<List<AppNotification>> inbox({DateTime? before, String? beforeId}) async {
+    _tick();
     // Newest first, ties by id, as the database pages: (createdAt, id) < (before, beforeId).
     int newestFirst(AppNotification a, AppNotification b) {
       final byDate = b.createdAt.compareTo(a.createdAt);
@@ -1116,7 +1276,10 @@ class SampleBackend
   }
 
   @override
-  Future<int> unreadCount() async => _inbox.where((n) => !n.read).length;
+  Future<int> unreadCount() async {
+    _tick();
+    return _inbox.where((n) => !n.read).length;
+  }
 
   @override
   Future<void> markRead([List<String>? ids]) async {
