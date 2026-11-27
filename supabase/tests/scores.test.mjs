@@ -359,6 +359,30 @@ test('bad scores are refused', async () => {
   assert.equal(await one(`select count(*)::int as n from match_results`).then((r) => r.n), 0);
 });
 
+test('whole numbers with a decimal point are accepted', async () => {
+  const admin = await addAdmin(pool, await player('Decimal admin'));
+  const players = await four('3.50');
+  const [h, p, o1, o2] = players;
+  const gameId = await finishedGame('padel', players);
+  // Sent as text: JSON.stringify would drop the ".0".
+  const r = await one(`select r.* from app.enter_score($1, $2, $3::uuid[], $4::uuid[], '[[6.0, 4], [3, 6.00], [7, 5]]'::jsonb, $5) r`, [
+    h,
+    gameId,
+    [h, p],
+    [o1, o2],
+    now,
+  ]);
+  assert.equal(r.winner, 'a');
+  const stored = async () => (await one(`select sets::text from match_results where id = $1`, [r.id])).sets;
+  assert.equal(await stored(), '[[6, 4], [3, 6], [7, 5]]');
+
+  await dispute(o1, r.id, null);
+  await pool.query(`select app.admin_resolve_score($1, $2, 'correct', '[[0, 6.0], [2.0, 6]]'::jsonb, $3)`, [admin, r.id, now]);
+  assert.equal(await stored(), '[[0, 6], [2, 6]]');
+  assert.equal((await resultRow(r.id)).winner, 'b');
+  assert.equal(await ratingOf(o1), '3.67');
+});
+
 // --- starting ratings and limits -------------------------------------------
 
 test('unrated player starts at the others’ average', async () => {
@@ -579,4 +603,176 @@ test('client calls', async () => {
   await expectError(asUser(pool, h, (c) => c.query(`select app.auto_confirm_scores(now())`)), '42501');
   await expectError(asUser(pool, h, (c) => c.query(`select * from match_results`)), '42501');
   await expectError(asUser(pool, h, (c) => c.query(`select * from rating_events`)), '42501');
+  await expectError(asUser(pool, h, (c) => c.query(`select * from match_result_players`)), '42501');
+
+  const board = await asUser(pool, h, (c) =>
+    c.query(`select public.leaderboard('padel', 'tashkent') as b`).then((r) => r.rows[0].b),
+  );
+  assert.ok(Array.isArray(board.rows));
+  assert.equal(board.me.id, h);
+  const past = await asUser(pool, h, (c) => c.query(`select public.my_past_games() as g`).then((r) => r.rows.map((x) => x.g)));
+  assert.deepEqual(past.map((x) => x.id), [gameId]);
+  await expectError(asAnon(pool, (c) => c.query(`select public.leaderboard('padel', 'tashkent')`)), '42501');
+  await expectError(asAnon(pool, (c) => c.query(`select public.my_past_games()`)), '42501');
+  await expectError(asUser(pool, h, (c) => c.query(`select app.leaderboard($1, 'padel', 'tashkent', 10)`, [h])), '42501');
+});
+
+// --- leaderboard -----------------------------------------------------------
+
+const leaderboard = (user, sportId, cityId, limit = 100) =>
+  one(`select app.leaderboard($1, $2, $3, $4) as b`, [user, sportId, cityId, limit]).then((r) => r.b);
+
+/** A tennis player in Almaty (a city and sport no other test here rates). */
+async function almaty(name, rating, ratedGames) {
+  const id = await rated(name, rating, ratedGames, 'tennis');
+  await pool.query(`update profiles set city_id = 'almaty' where id = $1`, [id]);
+  return id;
+}
+
+test('leaderboard orders by rating', async () => {
+  const first = await almaty('First', '4.00', 3);
+  const second = await almaty('Second', '3.50', 5);
+  const third = await almaty('Third', '3.50', 2);
+  const hidden = await almaty('Hidden', '5.00', 1);
+  await pool.query(`update profiles set hidden_from_search = true where id = $1`, [hidden]);
+  const gone = await almaty('Gone', '6.00', 1);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [gone, now]);
+  const elsewhere = await rated('Elsewhere', '4.50', 1, 'tennis');
+  await almaty('Never played', '4.80', 0);
+  const me = await almaty('Me hidden', '3.80', 12);
+  await pool.query(`update profiles set hidden_from_search = true where id = $1`, [me]);
+
+  const row = (position, id, name, rating, ratedGames) => ({
+    position,
+    id,
+    name,
+    rating,
+    provisional: ratedGames < 10,
+    rated_games: ratedGames,
+  });
+  const board = await leaderboard(me, 'tennis', 'almaty');
+  assert.deepEqual(board.rows, [row(1, first, 'First', 4, 3), row(2, second, 'Second', 3.5, 5), row(3, third, 'Third', 3.5, 2)]);
+  assert.deepEqual(board.me, row(2, me, 'Me hidden', 3.8, 12));
+  assert.ok(!board.rows.some((r) => [hidden, gone, elsewhere].includes(r.id)));
+
+  // A player in the list has the same place in `me`.
+  assert.deepEqual((await leaderboard(second, 'tennis', 'almaty')).me, board.rows[1]);
+  // The limit cuts the list, not `me`.
+  const top = await leaderboard(third, 'tennis', 'almaty', 1);
+  assert.deepEqual(top.rows, [board.rows[0]]);
+  assert.deepEqual(top.me, board.rows[2]);
+  assert.deepEqual((await leaderboard(elsewhere, 'tennis', 'tashkent')).rows, [row(1, elsewhere, 'Elsewhere', 4.5, 1)]);
+});
+
+test('no results, no place', async () => {
+  const unplayed = await almaty('Unplayed', '3.00', 0);
+  assert.equal((await leaderboard(unplayed, 'tennis', 'almaty')).me, null);
+  const unrated = await player('No rating');
+  assert.equal((await leaderboard(unrated, 'tennis', 'almaty')).me, null);
+  assert.deepEqual(await leaderboard(unrated, 'tennis', 'farcity'), { rows: [], me: null });
+});
+
+// --- past games, leaving, the finished-game notice ---------------------------
+
+test('past games', async () => {
+  const me = await player('Past me');
+  const other = await player('Past other');
+  const DAY = 24;
+  const yesterday = await finishedGame('padel', [other, me], plus(-DAY));
+  const lastWeek = await finishedGame('football', [me, other], plus(-7 * DAY));
+  await finishedGame('padel', [other, me], plus(-31 * DAY));
+  const cancelled = await finishedGame('padel', [me, other], plus(-2 * DAY));
+  await pool.query(`update games set status = 'cancelled' where id = $1`, [cancelled]);
+  await finishedGame('padel', [other], plus(-DAY));
+  await finishedGame('padel', [me, other], plus(3));
+
+  const past = (await pool.query(`select g from app.my_past_games($1, $2) g`, [me, now])).rows.map((r) => r.g);
+  assert.deepEqual(past.map((g) => g.id), [yesterday, lastWeek]);
+  assert.equal(past[0].my_status, 'participant');
+  assert.equal(past[1].my_status, 'host');
+});
+
+test('nobody leaves after the start', async () => {
+  const [h, a, b] = await Promise.all(['Freeze host', 'Freeze A', 'Freeze B'].map((n) => player(n)));
+  // 90 minutes starting one hour after `now`.
+  const gameId = await finishedGame('padel', [h, a, b], plus(2.5));
+  const leave = (user, at) => pool.query(`select app.leave_game($1, $2, $3)`, [user, gameId, at]);
+  await expectError(leave(a, plus(1 + 1 / 60)), 'not_found');
+  await expectError(leave(h, plus(1 + 1 / 60)), 'not_found');
+  await expectError(leave(a, plus(3)), 'not_found');
+  await leave(b, now);
+  assert.deepEqual(
+    (await pool.query(`select user_id from game_participants where game_id = $1 order by joined_at`, [gameId])).rows.map((r) => r.user_id),
+    [h, a],
+  );
+});
+
+test('game finished notice', async () => {
+  const [h, a, b] = await Promise.all(['Done host', 'Done A', 'Done B'].map((n) => player(n)));
+  const gameId = await finishedGame('padel', [h, a, b]);
+  const solo = await finishedGame('padel', [await player('Alone')]);
+  const fh = await player('Football host');
+  const football = await finishedGame('football', [fh, a]);
+  await pool.query(`select app.complete_games($1)`, [now]);
+
+  const finished = (id) =>
+    pool
+      .query(`select user_id, category, payload from notifications where kind = 'game_finished' and payload->>'game_id' = $1`, [id])
+      .then((r) => r.rows);
+  const notes = await finished(gameId);
+  assert.deepEqual(notes.map((n) => n.user_id).sort(), sorted([h, a, b]));
+  for (const n of notes) {
+    assert.equal(n.category, 'games');
+    assert.equal(n.payload.sport_id, 'padel');
+    assert.equal(n.payload.can_score, n.user_id === h);
+    assert.ok(n.payload.starts_local);
+  }
+  assert.deepEqual(await finished(solo), []);
+  const footballNotes = await finished(football);
+  assert.equal(footballNotes.length, 2);
+  assert.ok(footballNotes.every((n) => n.payload.can_score === false));
+  // Once only.
+  await pool.query(`select app.complete_games($1)`, [plus(1)]);
+  assert.equal((await finished(gameId)).length, 3);
+});
+
+// --- deleting an account ---------------------------------------------------
+
+test('deleting an account with results', async () => {
+  const [d, x, y, z] = await four('3.50');
+  const confirmed = await doubles([d, x, y, z], [[6, 4], [6, 4]]);
+  await confirm(y, confirmed.resultId);
+  const kept = await events(confirmed.resultId);
+  const othersBefore = await Promise.all([x, y, z].map((u) => ratingRow(u)));
+
+  const [p, q, s] = await Promise.all(['Del P', 'Del Q', 'Del S'].map((n) => rated(n, '3.00')));
+  const pending = await doubles([p, d, q, s], [[6, 1]]);
+  const [t, u, v] = await Promise.all(['Del T', 'Del U', 'Del V'].map((n) => rated(n, '3.00')));
+  const disputed = await doubles([d, t, u, v], [[6, 1]]);
+  await dispute(u, disputed.resultId, null);
+  await pool.query('delete from notifications');
+
+  await pool.query(`select app.delete_account($1, $2)`, [d, now]);
+
+  assert.equal((await resultRow(pending.resultId)).status, 'void');
+  assert.equal((await resultRow(disputed.resultId)).status, 'void');
+  const voided = await notices('score_resolved', pending.resultId);
+  assert.deepEqual(voided.map((n) => n.user_id), sorted([p, q, s]));
+  assert.equal(voided[0].payload.action, 'void');
+  assert.equal(voided[0].payload.game_id, pending.gameId);
+  assert.deepEqual((await notices('score_resolved', disputed.resultId)).map((n) => n.user_id), sorted([t, u, v]));
+  assert.equal(
+    (await one(`select category from notifications where kind = 'score_resolved' and user_id = $1`, [p])).category,
+    'ratings',
+  );
+
+  assert.equal((await resultRow(confirmed.resultId)).status, 'confirmed');
+  assert.deepEqual(await events(confirmed.resultId), kept.filter((e) => e.user_id !== d));
+  assert.equal((await events(confirmed.resultId)).length, 3);
+  assert.deepEqual(await Promise.all([x, y, z].map((w) => ratingRow(w))), othersBefore);
+  assert.equal(await ratingRow(d), undefined);
+  assert.equal((await one(`select count(*)::int as n from rating_events where user_id = $1`, [d])).n, 0);
+  for (const w of [p, q, s, t, u, v]) assert.equal(await ratingOf(w), '3.00');
+  // A second call does nothing.
+  await pool.query(`select app.delete_account($1, $2)`, [d, now]);
 });

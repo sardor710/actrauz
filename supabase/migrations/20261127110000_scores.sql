@@ -1,6 +1,8 @@
 -- Milestone 7a, part 2: match scores in rated sports, confirmation and
 -- disputes, the rating maths and admin resolution (design
--- 2026-11-27-actra-m7-competitive §5.4-§5.6).
+-- 2026-11-27-actra-m7-competitive §5.4-§5.6), then the leaderboard, past
+-- games, the finished-game notice, the roster freeze and account deletion
+-- for the new tables (§5.4, §5.7, §5.8).
 --
 -- Additive: new server-only tables and functions. app.game_json keeps its
 -- signature (copied from 20261127100000_ratings.sql) and gains `result`.
@@ -90,8 +92,20 @@ begin
         raise exception 'invalid_argument';
       end if;
     end loop;
-    if (v_set ->> 0)::integer = 0 and (v_set ->> 1)::integer = 0 then raise exception 'invalid_argument'; end if;
+    if (v_set ->> 0)::numeric = 0 and (v_set ->> 1)::numeric = 0 then raise exception 'invalid_argument'; end if;
   end loop;
+end $$;
+
+-- The sets checked and rewritten as whole numbers ([[6.0, 4]] -> [[6, 4]]),
+-- as they are stored: everything that reads stored sets casts to integer.
+create function app.whole_sets(p_sets jsonb) returns jsonb
+language plpgsql immutable
+set search_path = ''
+as $$
+begin
+  perform app.check_sets(p_sets);
+  return (select jsonb_agg(jsonb_build_array((s ->> 0)::numeric::integer, (s ->> 1)::numeric::integer) order by n)
+          from jsonb_array_elements(p_sets) with ordinality as t (s, n));
 end $$;
 
 -- More sets won; equal sets -> more games; equal -> draw. Sets already checked.
@@ -169,6 +183,7 @@ declare
   v_game public.games;
   v_players uuid[];
   v_result public.match_results;
+  v_sets jsonb;
   v_winner text;
 begin
   if p_user is null then raise exception 'not_authenticated'; end if;
@@ -199,13 +214,13 @@ begin
         <> cardinality(v_players) then
     raise exception 'invalid_argument';
   end if;
-  perform app.check_sets(p_sets);
-  v_winner := app.score_winner(p_sets);
+  v_sets := app.whole_sets(p_sets);
+  v_winner := app.score_winner(v_sets);
 
   select r.* into v_result from public.match_results r where r.game_id = p_game_id for update;
   if not found then
     insert into public.match_results (game_id, entered_by, status, sets, winner, entered_at, confirm_deadline)
-    values (p_game_id, p_user, 'pending', p_sets, v_winner, p_now, p_now + c_confirm_within)
+    values (p_game_id, p_user, 'pending', v_sets, v_winner, p_now, p_now + c_confirm_within)
     returning * into v_result;
   elsif v_result.status <> 'pending' then
     raise exception 'already_exists';
@@ -213,7 +228,7 @@ begin
     raise exception 'not_allowed';
   else
     update public.match_results r
-    set sets = p_sets, winner = v_winner, entered_at = p_now, confirm_deadline = p_now + c_confirm_within
+    set sets = v_sets, winner = v_winner, entered_at = p_now, confirm_deadline = p_now + c_confirm_within
     where r.id = v_result.id
     returning * into v_result;
     delete from public.match_result_players p where p.result_id = v_result.id;
@@ -450,6 +465,7 @@ as $$
 declare
   v_result public.match_results;
   v_before public.match_results;
+  v_sets jsonb;
   v_sport text;
   v_event record;
 begin
@@ -463,8 +479,8 @@ begin
   if p_action in ('confirm', 'correct') then
     if v_result.status <> 'disputed' then raise exception 'not_found'; end if;
     if p_action = 'correct' then
-      perform app.check_sets(p_sets);
-      update public.match_results r set sets = p_sets, winner = app.score_winner(p_sets) where r.id = p_result_id;
+      v_sets := app.whole_sets(p_sets);
+      update public.match_results r set sets = v_sets, winner = app.score_winner(v_sets) where r.id = p_result_id;
     end if;
     perform app.apply_result(p_result_id, p_now);
   else
@@ -646,3 +662,400 @@ grant execute on function
   public.dispute_score(uuid, text),
   public.admin_resolve_score(uuid, text, jsonb)
 to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Leaderboard and past games (design §5.7, §5.8)
+-- ---------------------------------------------------------------------------
+
+-- {"rows": [{"position", "id", "name", "rating", "provisional",
+-- "rated_games"}], "me": {same keys} | null}. Rows: players of the city with
+-- at least one confirmed result in the sport, not deleted, not hidden from
+-- search, best first (rating, then rated games, then id), at most p_limit.
+-- me: the caller with their place among those players and themselves (so a
+-- hidden caller still sees it), null without a confirmed result.
+create function app.leaderboard(p_user uuid, p_sport_id text, p_city_id text, p_limit integer) returns jsonb
+language sql
+set search_path = ''
+as $$
+  with listed as (
+    select r.user_id, p.full_name, r.rating, r.rated_games
+    from public.player_ratings r
+    join public.profiles p on p.id = r.user_id
+    where r.sport_id = p_sport_id and r.rated_games >= 1
+      and p.city_id = p_city_id and p.deleted_at is null and not p.hidden_from_search
+  ),
+  ranked as (
+    select l.*, row_number() over (order by l.rating desc, l.rated_games desc, l.user_id) as position
+    from listed l
+  ),
+  me as (
+    select r.user_id, p.full_name, r.rating, r.rated_games,
+           1 + (select count(*) from listed l
+                where l.user_id <> r.user_id
+                  and (l.rating > r.rating
+                       or (l.rating = r.rating and l.rated_games > r.rated_games)
+                       or (l.rating = r.rating and l.rated_games = r.rated_games and l.user_id < r.user_id))) as position
+    from public.player_ratings r
+    join public.profiles p on p.id = r.user_id
+    where r.user_id = p_user and r.sport_id = p_sport_id and r.rated_games >= 1
+  )
+  select jsonb_build_object(
+    'rows', coalesce(
+      (select jsonb_agg(
+                jsonb_build_object(
+                  'position', k.position,
+                  'id', k.user_id,
+                  'name', k.full_name,
+                  'rating', k.rating,
+                  'provisional', k.rated_games < app.rating_const('provisional_games'),
+                  'rated_games', k.rated_games)
+                order by k.position)
+       from (select * from ranked order by position limit p_limit) k),
+      '[]'::jsonb),
+    'me', (select jsonb_build_object(
+                    'position', m.position,
+                    'id', m.user_id,
+                    'name', m.full_name,
+                    'rating', m.rating,
+                    'provisional', m.rated_games < app.rating_const('provisional_games'),
+                    'rated_games', m.rated_games)
+           from me m))
+$$;
+
+-- The player's games (as a participant) that ended in the last 30 days and
+-- were not cancelled, the most recent end first, as app.game_json.
+create function app.my_past_games(p_user uuid, p_now timestamptz) returns setof jsonb
+language sql
+set search_path = ''
+as $$
+  select app.game_json(g, p_user)
+  from public.games g
+  where g.status <> 'cancelled'
+    and upper(g.during) <= p_now
+    and upper(g.during) > p_now - interval '30 days'
+    and exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)
+  order by upper(g.during) desc, g.id
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Roster freeze, the finished-game notice, the job (design §5.4, §5.8)
+-- ---------------------------------------------------------------------------
+
+-- Redefined from 20261124110000_games_v2.sql: once a game has started nobody
+-- leaves it (not_found), so nobody steps out of a result. Leaving inside six
+-- hours of the start of a game that is still on counts as a late
+-- cancellation.
+create or replace function app.leave_game(p_user uuid, p_game_id uuid, p_now timestamptz) returns public.games
+language plpgsql
+set search_path = ''
+as $$
+declare
+  c_free_window constant interval := interval '6 hours';
+  v_game public.games;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+
+  select g.* into v_game from public.games g where g.id = p_game_id for update;
+  if not found or lower(v_game.during) <= p_now then raise exception 'not_found'; end if;
+  if v_game.host_id = p_user then raise exception 'host_cannot_leave'; end if;
+
+  delete from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user;
+  if not found then raise exception 'not_participant'; end if;
+
+  if v_game.status = 'open' and v_game.completed_at is null then
+    if lower(v_game.during) - p_now < c_free_window then
+      perform app.reliability_event(p_user, 'late_cancel', v_game.id::text, p_now);
+    end if;
+    perform app.notify(v_game.host_id, 'game_left', 'games',
+      app.game_note(v_game) || jsonb_build_object('actor_name', (select p.full_name from public.profiles p where p.id = p_user)),
+      p_now);
+  end if;
+  return v_game;
+end $$;
+
+-- Redefined from 20261124110000_games_v2.sql: a game that ended with at least
+-- two players also sends every participant `game_finished` (category games;
+-- can_score: true for the host of a game in a rated sport, who enters the
+-- score). Open games that have ended: marked completed. A game that ended
+-- with at least two players gives one game_completed event to each
+-- participant who joined before it started (no credit for solo games or late
+-- joiners). Returns how many games were completed.
+create or replace function app.complete_games(p_now timestamptz) returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_game public.games;
+  v_user uuid;
+  v_count integer := 0;
+begin
+  for v_game in
+    update public.games g set completed_at = p_now
+    where g.status = 'open' and g.completed_at is null and upper(g.during) <= p_now
+    returning g.*
+  loop
+    if (select count(*) from public.game_participants p where p.game_id = v_game.id) >= 2 then
+      for v_user in
+        select p.user_id from public.game_participants p
+        where p.game_id = v_game.id and p.joined_at < lower(v_game.during)
+      loop
+        perform app.reliability_event(v_user, 'game_completed', v_game.id::text, p_now);
+      end loop;
+      perform app.notify(p.user_id, 'game_finished', 'games',
+        app.game_note(v_game) || jsonb_build_object(
+          'can_score', p.user_id = v_game.host_id and app.is_rated_sport(v_game.sport_id)),
+        p_now)
+      from public.game_participants p
+      where p.game_id = v_game.id;
+    end if;
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
+end $$;
+
+-- The reminders job also confirms scores after 24 hours (scheduling by the
+-- same name replaces the command; the four existing calls stay).
+do $$
+begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+    create extension if not exists pg_cron;
+    execute $job$
+      select cron.schedule(
+        'actra-send-reminders',
+        '*/10 * * * *',
+        'select app.send_reminders(now()), app.complete_games(now()), app.expire_game_requests(now()), app.expire_tournament_entries(now()), app.auto_confirm_scores(now())')
+    $job$;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Deleting an account (design §3: delete_account covers every new table)
+-- ---------------------------------------------------------------------------
+
+-- Redefined from 20261126110000_launch.sql: the player's pending and
+-- disputed results become void (the other players hear), and their rating
+-- events and ratings go; confirmed results and the other players' rating
+-- changes stay. Games are still left only before they start, so the roster
+-- freeze never refuses here.
+--
+-- Scrubs and closes the account. Admins cannot delete themselves
+-- (admin_account): another admin removes the role first. A second call does
+-- nothing. Each step selects exactly the rows the normal function accepts,
+-- so none of them raises (a change made by someone else in between aborts
+-- the whole call, and the client retries). Where a timing rule would refuse
+-- (a registration after its deadline, or an entry the player is only invited
+-- to) the same change is made directly, with the same notifications. What has started or
+-- ended (bookings, games, tournaments that have started) stays as anonymous
+-- history, without the player's own notes.
+create or replace function app.delete_account(p_user uuid, p_now timestamptz) returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  c_live constant text[] := array['pending_partner', 'registered', 'waitlisted', 'offered'];
+  v_profile public.profiles;
+  v_phone text;
+  v_id uuid;
+  v_reg public.tournament_registrations;
+  v_tournament public.tournaments;
+  v_counted boolean;
+  v_other uuid;
+  v_result public.match_results;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+  if app.is_admin(p_user) then raise exception 'admin_account'; end if;
+
+  -- `no key update`: the rows below that reference the profile can still be
+  -- written while it is held.
+  select p.* into v_profile from public.profiles p where p.id = p_user for no key update;
+  if not found or v_profile.deleted_at is not null then return; end if;
+
+  -- Bookings first, then games: the lock order cancel_booking and
+  -- host_cancel_game use. A booking's games are cancelled with it
+  -- (cancel_games_for_booking), so their players hear once. Inside the late
+  -- window cancel_booking does not refuse; it records a late cancellation.
+  for v_id in
+    select b.id from public.bookings b
+    where b.user_id = p_user and b.source = 'app' and b.status = 'confirmed' and lower(b.during) > p_now
+    order by b.id
+  loop
+    perform app.cancel_booking(p_user, v_id, p_now);
+  end loop;
+  for v_id in select b.id from public.bookings b where b.user_id = p_user and b.status = 'held' order by b.id loop
+    perform app.release_hold(p_user, v_id);
+  end loop;
+
+  -- Games still to come that the player hosts (the participants hear), then
+  -- the ones they joined (the host hears; leaving late is a late cancel, not
+  -- a refusal).
+  for v_id in
+    select g.id from public.games g
+    where g.host_id = p_user and g.status = 'open' and g.completed_at is null and lower(g.during) > p_now
+    order by g.id
+  loop
+    perform app.host_cancel_game(p_user, v_id, false, p_now);
+  end loop;
+  for v_id in
+    select g.id from public.game_participants gp
+    join public.games g on g.id = gp.game_id
+    where gp.user_id = p_user and g.host_id <> p_user
+      and g.status = 'open' and g.completed_at is null and lower(g.during) > p_now
+    order by g.id
+  loop
+    perform app.leave_game(p_user, v_id, p_now);
+  end loop;
+  for v_id in select r.id from public.game_join_requests r where r.user_id = p_user and r.status = 'pending' order by r.id loop
+    perform app.withdraw_join_request(p_user, v_id);
+  end loop;
+  for v_id in select i.game_id from public.game_invites i where i.user_id = p_user and i.status = 'pending' order by i.game_id loop
+    perform app.decline_invite(p_user, v_id);
+  end loop;
+
+  -- Game Requests: the player's open ones, and their "I'm in" on open ones.
+  for v_id in select r.id from public.game_requests r where r.host_id = p_user and r.status = 'open' order by r.id loop
+    perform app.cancel_game_request(p_user, v_id);
+  end loop;
+  for v_id in
+    select i.request_id from public.game_request_interest i
+    join public.game_requests r on r.id = i.request_id
+    where i.user_id = p_user and r.status = 'open'
+    order by i.request_id
+  loop
+    perform app.withdraw_interest(p_user, v_id);
+  end loop;
+
+  -- Live entries, as registrant or named partner, in tournaments that have
+  -- not started yet (a tournament starting today in venue time has started;
+  -- its entries stay as history). Every category involved is locked first, in id order, before
+  -- any tournament row (as expire_tournament_entries does), so this never
+  -- deadlocks with a player's call in one of them.
+  perform 1 from public.tournament_categories c
+  where c.id in (
+    select r.category_id from public.tournament_registrations r
+    where (r.user_id = p_user or r.partner_id = p_user) and r.status = any (c_live))
+  order by c.id
+  for update;
+  for v_id in
+    select r.id from public.tournament_registrations r
+    join public.tournament_categories c on c.id = r.category_id
+    join public.tournaments t on t.id = c.tournament_id
+    where (r.user_id = p_user or r.partner_id = p_user)
+      and r.status = any (c_live)
+      and t.starts_on > app.to_local(p_now, app.tournament_offset(t))::date
+    order by r.category_id, r.id
+  loop
+    v_reg := app.lock_registration(v_id);
+    if v_reg.id is null then continue; end if;
+    -- Expired invites and offers are settled the usual way first.
+    perform app.sweep_category(v_reg.category_id, p_now);
+    select r.* into v_reg from public.tournament_registrations r where r.id = v_id;
+    if not (v_reg.status = any (c_live)) then continue; end if;
+    select t.* into v_tournament from public.tournaments t
+    join public.tournament_categories c on c.tournament_id = t.id
+    where c.id = v_reg.category_id;
+
+    if app.entry_member(v_reg, p_user) and v_tournament.active and p_now < app.tournament_deadline(v_tournament) then
+      perform app.cancel_registration(p_user, v_reg.id, p_now);
+    else
+      -- What cancel_registration does, for the entries it refuses: after the
+      -- deadline, in a hidden tournament, or a pair still waiting on this
+      -- player as partner.
+      v_counted := v_reg.status in ('registered', 'offered');
+      update public.tournament_registrations r set status = 'cancelled', cancelled_at = p_now
+      where r.id = v_reg.id returning * into v_reg;
+      v_other := case when v_reg.user_id = p_user then v_reg.partner_id else v_reg.user_id end;
+      if v_other is not null then
+        perform app.notify(v_other, 'tournament_partner_cancelled', 'tournaments',
+          app.registration_note(v_reg) || jsonb_build_object('actor_name', v_profile.full_name), p_now);
+      end if;
+      if v_counted then perform app.offer_next(v_reg.category_id, p_now); end if;
+      perform app.sync_tournament_summary(v_tournament.id);
+    end if;
+  end loop;
+
+  -- Results not yet confirmed that the player is in become void. Each result
+  -- row is locked before it changes, and before the player's rating row
+  -- below (the order score confirmation uses); one confirmed in between is
+  -- left as it is.
+  for v_id in
+    select r.id from public.match_results r
+    join public.match_result_players p on p.result_id = r.id
+    where p.user_id = p_user and r.status in ('pending', 'disputed')
+    order by r.id
+  loop
+    select r.* into v_result from public.match_results r where r.id = v_id for update;
+    if v_result.status not in ('pending', 'disputed') then continue; end if;
+    update public.match_results r set status = 'void' where r.id = v_id returning * into v_result;
+    perform app.notify(p.user_id, 'score_resolved', 'ratings',
+      app.result_note(v_result) || jsonb_build_object('action', 'void'), p_now)
+    from public.match_result_players p
+    where p.result_id = v_id and p.user_id <> p_user;
+  end loop;
+  -- The ratings first: an in-flight confirmation holds them until it has
+  -- written its events, which the second delete then sees.
+  delete from public.player_ratings r where r.user_id = p_user;
+  delete from public.rating_events e where e.user_id = p_user;
+
+  -- A venue left without an owner stays; an admin assigns a new one, and
+  -- the audit log says which venue needs it.
+  for v_id in select o.venue_id from public.venue_owners o where o.user_id = p_user order by o.venue_id loop
+    if not exists (select 1 from public.venue_owners o where o.venue_id = v_id and o.user_id <> p_user) then
+      perform app.audit(p_user, 'owner_account_deleted', 'venue', v_id::text, null, null, p_now);
+    end if;
+  end loop;
+
+  -- Personal rows.
+  select pc.phone into v_phone from public.profile_contacts pc where pc.user_id = p_user;
+  delete from public.login_tokens t where t.phone = v_phone;
+  delete from public.profile_contacts pc where pc.user_id = p_user;
+  delete from public.player_levels l where l.user_id = p_user;
+  delete from public.venue_owners o where o.user_id = p_user;
+  delete from public.notifications n where n.user_id = p_user;
+  delete from public.phone_lookups l where l.user_id = p_user;
+
+  -- The player's own free text, on every row they wrote it on, past and
+  -- future: booking notes (owners see them), notes and meeting points on the
+  -- games they host, notes and areas on their Game Requests. A meeting-point
+  -- game must keep a meeting point (games_meeting_point_for_map_point), so it
+  -- gets '' there, which game_json shows as null. The map coordinates of the
+  -- meeting point go too (they are nullable, no constraint ties them).
+  update public.bookings b set note = null
+  where b.user_id = p_user and b.source = 'app' and b.note is not null;
+  update public.games g
+  set note = null,
+      meeting_point = case when g.kind = 'map_point' then '' end,
+      meeting_lat = null,
+      meeting_lng = null
+  where g.host_id = p_user
+    and (g.note is not null or g.meeting_point is not null or g.meeting_lat is not null or g.meeting_lng is not null);
+  update public.game_requests r set note = null, area = null
+  where r.host_id = p_user and (r.note is not null or r.area is not null);
+
+  -- Last, so the notifications above still carry the player's name.
+  update public.profiles p
+  set full_name = null,
+      city_id = null,
+      language = null,
+      muted_categories = '{}',
+      hidden_from_search = true,
+      last_seen_at = null,
+      deleted_at = p_now
+  where p.id = p_user;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- What the app calls: the leaderboard (top 100) and past games.
+-- ---------------------------------------------------------------------------
+
+create function public.leaderboard(p_sport_id text, p_city_id text) returns jsonb
+language sql security definer
+set search_path = ''
+as $$ select app.leaderboard((select auth.uid()), p_sport_id, p_city_id, 100) $$;
+
+create function public.my_past_games() returns setof jsonb
+language sql security definer
+set search_path = ''
+as $$ select app.my_past_games((select auth.uid()), now()) $$;
+
+revoke all on function public.leaderboard(text, text), public.my_past_games() from public, anon, authenticated;
+grant execute on function public.leaderboard(text, text), public.my_past_games() to authenticated, service_role;
