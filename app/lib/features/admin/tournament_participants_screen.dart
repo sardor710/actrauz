@@ -42,6 +42,11 @@ class _Participants extends ConsumerWidget {
     final tournament = tournaments.valueOrNull?.where((a) => a.tournament.id == tournamentId).firstOrNull?.tournament;
     final list = entries.valueOrNull;
     if (tournament == null || list == null) {
+      // A failed load of the tournaments is an error, not "not found",
+      // whatever older value it still carries.
+      if (tournaments.hasError && !tournaments.isLoading) {
+        return EmptyState(icon: Icons.error_outline, text: context.l.errGeneric);
+      }
       return AsyncBody(
         value: tournaments.hasError ? tournaments : entries,
         builder: (_) => Center(child: EmptyState(icon: Icons.search_off_rounded, text: context.l.errNotFound)),

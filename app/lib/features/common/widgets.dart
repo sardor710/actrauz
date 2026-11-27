@@ -5,10 +5,16 @@ import '../../core/theme.dart';
 import '../../data/sample/sample_media.dart';
 import 'formatters.dart';
 
-/// Loading, error and data states for one async value. Data already shown
-/// stays on screen while it reloads and when a reload fails; the error
-/// state is only for a value that never loaded.
-class AsyncBody<T> extends StatelessWidget {
+/// Loading, error and data states for one async value.
+///
+/// A refresh of the same data (`ref.invalidate` / `ref.refresh`, Riverpod's
+/// `isRefreshing`) keeps the data on screen while it loads and when it fails.
+/// A reload because a dependency changed (another city, another player:
+/// `isReloading`) never shows the previous value, which belongs to something
+/// else: it shows the spinner and then the new data or the error, as a first
+/// load does. Riverpod keeps the previous value on an error after either, so
+/// the widget remembers a reload until fresh data arrives.
+class AsyncBody<T> extends StatefulWidget {
   const AsyncBody({super.key, required this.value, required this.builder, this.onRetry});
 
   final AsyncValue<T> value;
@@ -18,17 +24,29 @@ class AsyncBody<T> extends StatelessWidget {
   final VoidCallback? onRetry;
 
   @override
-  Widget build(BuildContext context) => value.when(
-    skipLoadingOnReload: true,
-    skipLoadingOnRefresh: true,
-    skipError: true,
-    data: builder,
-    loading: () => const Padding(
+  State<AsyncBody<T>> createState() => _AsyncBodyState<T>();
+}
+
+class _AsyncBodyState<T> extends State<AsyncBody<T>> {
+  /// The value's previous data is not to be shown: a reload was seen and no
+  /// fresh data has arrived since.
+  bool _stale = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = widget.value;
+    if (value.isReloading) {
+      _stale = true;
+    } else if (value is AsyncData<T> && !value.isLoading) {
+      _stale = false;
+    }
+
+    const loading = Padding(
       padding: EdgeInsets.all(32),
       child: Center(child: CircularProgressIndicator()),
-    ),
-    error: (error, _) {
-      final retry = onRetry;
+    );
+    Widget error() {
+      final retry = widget.onRetry;
       final state = EmptyState(icon: Icons.error_outline, text: context.l.errGeneric);
       if (retry == null) return state;
       return Column(
@@ -38,8 +56,18 @@ class AsyncBody<T> extends StatelessWidget {
           OutlinedButton(key: const ValueKey('async-retry'), onPressed: retry, child: Text(context.l.tryAgain)),
         ],
       );
-    },
-  );
+    }
+
+    if (_stale) return value.isLoading ? loading : error();
+    return value.when(
+      skipLoadingOnReload: false,
+      skipLoadingOnRefresh: true,
+      skipError: true,
+      data: widget.builder,
+      loading: () => loading,
+      error: (_, _) => error(),
+    );
+  }
 }
 
 class EmptyState extends StatelessWidget {

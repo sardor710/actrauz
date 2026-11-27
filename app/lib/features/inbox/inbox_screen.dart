@@ -200,6 +200,15 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
+    // Another player signed in: the older pages and read marks were the last one's.
+    ref.listen(sessionProvider.select((s) => s.userName), (previous, next) {
+      if (previous == next) return;
+      setState(() {
+        _older.clear();
+        _readHere.clear();
+        _exhausted = false;
+      });
+    });
     final inbox = ref.watch(inboxProvider);
     final newest = inbox.valueOrNull ?? const <AppNotification>[];
     final all = [

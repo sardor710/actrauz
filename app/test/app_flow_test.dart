@@ -48,7 +48,12 @@ Future<void> pumpApp(
         sharedPrefsProvider.overrideWithValue(sharedPrefs),
         if (utcNow != null) clockProvider.overrideWithValue(() => utcNow),
         if (withSports) demoSportsProvider.overrideWithValue(_level3Everywhere),
-        if (backend != null) sampleBackendProvider.overrideWith((ref) => backend(ref.watch(clockProvider))),
+        if (backend != null)
+          sampleBackendProvider.overrideWith((ref) {
+            // Built again for another signed-in player, as the real one is.
+            ref.watch(sessionProvider.select((s) => s.userName));
+            return backend(ref.watch(clockProvider));
+          }),
       ],
       child: const ActraApp(),
     ),
