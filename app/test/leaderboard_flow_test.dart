@@ -7,6 +7,7 @@ import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/router.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,6 +96,32 @@ void main() {
     expect(find.byKey(const ValueKey('leaderboard-me')), findsNothing);
     expect(_row(kMeId), findsOneWidget);
   });
+
+  for (final lang in ['ru', 'kk', 'uz']) {
+    testWidgets("a provisional player's row keeps the whole name on a small phone in $lang", (tester) async {
+      const name = 'Dilnoza';
+      await _pumpBoard(
+        tester,
+        const Leaderboard(
+          rows: [
+            LeaderboardRow(
+              position: 100,
+              id: 'u1',
+              name: name,
+              rating: SportRating(rating: 3.25, ratedGames: 4),
+              isMe: false,
+            ),
+          ],
+        ),
+        lang: lang,
+        width: 360,
+      );
+      final text = find.descendant(of: _row('u1'), matching: find.text(name));
+      expect(text, findsOneWidget);
+      final paragraph = tester.renderObject<RenderParagraph>(text);
+      expect(paragraph.didExceedMaxLines, isFalse, reason: 'the name is not cut short');
+    });
+  }
 }
 
 List<LeaderboardRow> _top(int count) => [
@@ -117,10 +144,10 @@ LeaderboardRow _me(int position) => LeaderboardRow(
 );
 
 /// The leaderboard screen on its own, showing [board].
-Future<void> _pumpBoard(WidgetTester tester, Leaderboard board) async {
+Future<void> _pumpBoard(WidgetTester tester, Leaderboard board, {String lang = 'en', double width = 900}) async {
   SharedPreferences.setMockInitialValues(signedIn);
   final prefs = await SharedPreferences.getInstance();
-  tester.view.physicalSize = const Size(900, 3400);
+  tester.view.physicalSize = Size(width, 3400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -130,7 +157,7 @@ Future<void> _pumpBoard(WidgetTester tester, Leaderboard board) async {
         leaderboardProvider.overrideWith((ref, key) async => board),
       ],
       child: MaterialApp(
-        locale: const Locale('en'),
+        locale: Locale(lang),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: buildTheme(),

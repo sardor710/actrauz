@@ -137,12 +137,27 @@ class _LeaderboardTile extends StatelessWidget {
                 children: [
                   Text(row.name, style: manrope(15.5, 700), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text(l.leaderboardGames(row.rating.ratedGames), style: AppText.caption),
+                  // The provisional tag sits by the games count, so the name
+                  // keeps its room on a small phone.
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(l.leaderboardGames(row.rating.ratedGames), style: AppText.caption),
+                      if (row.rating.provisional) Pill(text: l.ratingProvisional, color: AppColors.amberSoft),
+                    ],
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            RatingPill(row.rating),
+            Pill(
+              text: formatRating(row.rating.rating),
+              icon: Icons.bar_chart_rounded,
+              color: AppColors.primarySoft,
+              onColor: AppColors.primaryDark,
+            ),
           ],
         ),
       ),
