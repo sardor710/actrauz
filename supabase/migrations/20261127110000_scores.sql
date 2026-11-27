@@ -284,7 +284,10 @@ declare
   v_games_b integer;
   v_won integer;
   v_lost integer;
-  v_margin numeric;
+  -- The margin factor as a fraction (numerator / denominator), so the change
+  -- is divided once, last (controller ruling R16).
+  v_margin_num numeric;
+  v_margin_den numeric;
   v_player record;
   v_k numeric;
   v_actual numeric;
@@ -334,18 +337,25 @@ begin
   -- rating of 1.00 through greatest(), so refuse rather than write it.
   if v_rating_a is null or v_rating_b is null then raise exception 'invalid_result'; end if;
 
-  v_expected_a := 1 / (1 + power(10::numeric, v_rating_b - v_rating_a));
+  -- Exactly a half for equal sides, so an exact half of a change stays exact.
+  v_expected_a := case when v_rating_a = v_rating_b then 0.5
+                       else 1 / (1 + power(10::numeric, v_rating_b - v_rating_a)) end;
   v_actual_a := case v_result.winner when 'a' then 1 when 'b' then 0 else 0.5 end;
 
   select sum((s ->> 0)::integer), sum((s ->> 1)::integer) into v_games_a, v_games_b
   from jsonb_array_elements(v_result.sets) s;
+  -- margin = margin_min + margin_span × max(0, won − lost) / (won + lost),
+  -- kept as margin_min × (won + lost) + margin_span × max(0, won − lost)
+  -- over (won + lost); 1 for a draw. won + lost > 0 (no set is 0-0).
   if v_result.winner = 'draw' then
-    v_margin := 1.0;
+    v_margin_num := 1;
+    v_margin_den := 1;
   else
     v_won := case v_result.winner when 'a' then v_games_a else v_games_b end;
     v_lost := case v_result.winner when 'a' then v_games_b else v_games_a end;
-    v_margin := app.rating_const('margin_min')
-      + app.rating_const('margin_span') * greatest(0, (v_won - v_lost)::numeric / (v_won + v_lost));
+    v_margin_num := app.rating_const('margin_min') * (v_won + v_lost)
+      + app.rating_const('margin_span') * greatest(0, v_won - v_lost);
+    v_margin_den := v_won + v_lost;
   end if;
 
   for v_player in
@@ -360,7 +370,7 @@ begin
     v_actual := case when v_player.side = 'a' then v_actual_a else 1 - v_actual_a end;
     v_expected := case when v_player.side = 'a' then v_expected_a else 1 - v_expected_a end;
     v_new := least(app.rating_const('max'), greatest(app.rating_const('min'),
-      v_player.rating + round(v_k * v_margin * (v_actual - v_expected), 2)));
+      v_player.rating + round(v_k * v_margin_num * (v_actual - v_expected) / v_margin_den, 2)));
     if v_new is null then raise exception 'invalid_result'; end if;
 
     insert into public.rating_events (user_id, sport_id, result_id, old_rating, new_rating, delta, created_at)
@@ -428,7 +438,9 @@ begin
   return v_result;
 end $$;
 
--- Confirms every pending result whose 24 hours are over; returns how many.
+-- Applies every pending result whose 24 hours are over (app.apply_result:
+-- confirmed, or void when it cannot be applied); returns how many ended
+-- confirmed.
 -- It touches several results, so it takes every lock up front in the global
 -- order, as a single confirm does for one result:
 --   1. the due result rows (skip locked: a result another call holds right
@@ -490,7 +502,7 @@ begin
   foreach v_id in array v_ids loop
     perform app.apply_result(v_id, p_now);
   end loop;
-  return cardinality(v_ids);
+  return (select count(*) from public.match_results r where r.id = any (v_ids) and r.status = 'confirmed');
 end $$;
 
 -- confirm: a disputed result as entered. correct: a disputed result with the

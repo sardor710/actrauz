@@ -188,6 +188,15 @@ test('established players move less', async () => {
   assert.equal(await ratingOf(players[3]), '3.45');
 });
 
+test('an exact half rounds away from zero', async () => {
+  // 0.12 × (0.75 + 0.5 × 6/18) × 0.5 = 0.055 exactly -> 0.06.
+  const players = await four('3.50', 10);
+  const { resultId } = await doubles(players, [[6, 3], [6, 3]]);
+  await confirm(players[2], resultId);
+  assert.deepEqual(await eventOf(resultId, players[0]), { old: '3.50', new: '3.56', delta: '0.06' });
+  assert.deepEqual(await eventOf(resultId, players[3]), { old: '3.50', new: '3.44', delta: '-0.06' });
+});
+
 test('favourite wins small, underdog wins big', async () => {
   const fav = await rated('Favourite', '4.50');
   const dog = await rated('Underdog', '3.50');
@@ -728,7 +737,8 @@ test('a result with a player deleted afterwards is never applied', async () => {
   );
   await pool.query(`update profiles set deleted_at = $2 where id = $1`, [gone, now]);
 
-  assert.equal(await autoConfirm(plus(24)), 1);
+  // Voided, not confirmed: it does not count.
+  assert.equal(await autoConfirm(plus(24)), 0);
   assert.equal((await resultRow(r.id)).status, 'void');
   assert.equal((await events(r.id)).length, 0);
   assert.equal(await ratingRow(gone), undefined);
@@ -762,7 +772,7 @@ test('a result that lost a player is voided, not applied', async () => {
   const r = await enter(a, gameId, [a], [b], [[6, 4]]);
   await pool.query(`delete from match_result_players where result_id = $1 and user_id = $2`, [r.id, b]);
 
-  await autoConfirm(plus(24));
+  assert.equal(await autoConfirm(plus(24)), 0);
   assert.equal((await resultRow(r.id)).status, 'void');
   assert.deepEqual(await ratingRow(a), { rating: '3.50', rated_games: 0, source: 'questionnaire' });
   assert.equal((await events(r.id)).length, 0);
@@ -794,7 +804,10 @@ test('a doubles result with uneven sides is voided', async () => {
   const { resultId } = await doubles(players, [[6, 4]]);
   // Three players left: 2 against 1.
   await pool.query(`delete from match_result_players where result_id = $1 and user_id = $2`, [resultId, players[3]]);
-  await autoConfirm(plus(24));
+  // A sound result due in the same run is confirmed; only it counts.
+  const sound = await doubles(await four('3.50'), [[6, 4]]);
+  assert.equal(await autoConfirm(plus(24)), 1);
+  assert.equal((await resultRow(sound.resultId)).status, 'confirmed');
   assert.equal((await resultRow(resultId)).status, 'void');
   assert.equal((await events(resultId)).length, 0);
   for (const u of players.slice(0, 3)) assert.equal(await ratingOf(u), '3.50');

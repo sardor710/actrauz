@@ -2,8 +2,8 @@
 // against the hosted project, with real sessions:
 //
 //   0. Read-only first: the M7 tables exist and the live sports padel and
-//      tennis have competitive_rating = true (the M7 migration does not set
-//      that flag). Otherwise it stops before creating anything.
+//      tennis have competitive_rating = true (the M7 migrations set that
+//      flag). Otherwise it stops before creating anything.
 //   1. Five throw-away accounts sign in: an admin and four players (a host,
 //      a partner, two opponents). The admin (a row in app_admins) creates a
 //      throw-away venue "E2E M7 <timestamp>" with one padel court, so no real
@@ -80,8 +80,8 @@ const rated = await sql(env, `select id, competitive_rating from public.sports w
 const notRated = ['padel', 'tennis'].filter((id) => !rated.some((s) => s.id === id && s.competitive_rating === true));
 if (notRated.length) {
   console.error(
-    `  Not rated on the live project: ${notRated.join(', ')}. The M7 migration does not set sports.competitive_rating;\n` +
-      `  set it to true for padel and tennis (admin panel, or deploy.mjs seed), then run this again. Nothing was created.`,
+    `  padel/tennis are not rated on this database: the M7 migrations have not been applied (they set the flag).\n` +
+      `  Not rated: ${notRated.join(', ')}. Nothing was created.`,
   );
   process.exit(1);
 }
