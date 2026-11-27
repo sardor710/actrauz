@@ -1317,5 +1317,35 @@
         "type": "String"
       }
     }
-  }
+  },
+  "gameFinished": "Game finished",
+  "scoreEnter": "Enter the score",
+  "scoreHostEnters": "The host enters the score. After 24 hours any player can",
+  "scoreEntryClosed": "Score entry closed",
+  "scoreAwaiting": "Waiting for confirmation",
+  "scoreWaitingOtherSide": "Waiting for the other side",
+  "scoreConfirm": "Confirm",
+  "scoreDispute": "Dispute",
+  "scoreEdit": "Edit",
+  "scoreConfirmedLabel": "Score confirmed",
+  "scoreDisputedLabel": "Disputed — an Actra admin will review",
+  "scoreVoidedLabel": "Result cancelled by Actra",
+  "scoreDisputeTitle": "Dispute the score?",
+  "scoreDisputeMsg": "An Actra admin will review it. Ratings do not change until then.",
+  "scoreDisputeReason": "Reason (optional)",
+  "scoreWhoPlayed": "Who played",
+  "scoreSingles": "1 v 1",
+  "scoreDoubles": "2 v 2",
+  "scorePartner": "Your partner",
+  "scoreOpponent": "Opponent",
+  "scoreOpponents": "Opponents",
+  "scoreYourSide": "Your side",
+  "scoreOtherSide": "Other side",
+  "scoreSets": "Sets",
+  "scoreAddSet": "Add set",
+  "scoreRemoveSet": "Remove set",
+  "scoreMoreGames": "More games",
+  "scoreFewerGames": "Fewer games",
+  "pastGames": "Past games",
+  "noPastGames": "No games in the last 30 days"
 }

@@ -156,8 +156,18 @@ class _GamesScreenState extends ConsumerState<GamesScreen> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 16, 10),
-                        child: Text(l.homeGames.toUpperCase(), style: AppText.sectionTitle),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(l.homeGames.toUpperCase(), style: AppText.sectionTitle)),
+                            TextButton.icon(
+                              key: const ValueKey('games-past'),
+                              onPressed: () => context.push('/games/past'),
+                              icon: const Icon(Icons.history_rounded, size: 18),
+                              label: Text(l.pastGames),
+                            ),
+                          ],
+                        ),
                       ),
                       if (shown.isEmpty)
                         EmptyState(icon: Icons.groups_outlined, text: l.noGames)

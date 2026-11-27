@@ -2350,4 +2350,97 @@ class AppLocalizationsUz extends AppLocalizations {
   String notifRatingUpdated(String from, String to) {
     return 'Reytingingiz oʻzgardi: $from → $to';
   }
+
+  @override
+  String get gameFinished => 'Oʻyin tugadi';
+
+  @override
+  String get scoreEnter => 'Hisobni kiritish';
+
+  @override
+  String get scoreHostEnters =>
+      'Hisobni tashkilotchi kiritadi. 24 soatdan keyin buni istalgan oʻyinchi qila oladi';
+
+  @override
+  String get scoreEntryClosed => 'Hisob kiritish yopildi';
+
+  @override
+  String get scoreAwaiting => 'Tasdiqlash kutilmoqda';
+
+  @override
+  String get scoreWaitingOtherSide => 'Qarshi tomon kutilmoqda';
+
+  @override
+  String get scoreConfirm => 'Tasdiqlash';
+
+  @override
+  String get scoreDispute => 'Eʼtiroz bildirish';
+
+  @override
+  String get scoreEdit => 'Tahrirlash';
+
+  @override
+  String get scoreConfirmedLabel => 'Hisob tasdiqlandi';
+
+  @override
+  String get scoreDisputedLabel =>
+      'Eʼtiroz bildirildi — Actra administratori koʻrib chiqadi';
+
+  @override
+  String get scoreVoidedLabel => 'Natija Actra tomonidan bekor qilindi';
+
+  @override
+  String get scoreDisputeTitle => 'Hisobga eʼtiroz bildirasizmi?';
+
+  @override
+  String get scoreDisputeMsg =>
+      'Uni Actra administratori koʻrib chiqadi. Ungacha reytinglar oʻzgarmaydi.';
+
+  @override
+  String get scoreDisputeReason => 'Sabab (ixtiyoriy)';
+
+  @override
+  String get scoreWhoPlayed => 'Kim oʻynadi';
+
+  @override
+  String get scoreSingles => '1 ga 1';
+
+  @override
+  String get scoreDoubles => '2 ga 2';
+
+  @override
+  String get scorePartner => 'Sherigingiz';
+
+  @override
+  String get scoreOpponent => 'Raqib';
+
+  @override
+  String get scoreOpponents => 'Raqiblar';
+
+  @override
+  String get scoreYourSide => 'Sizning tomoningiz';
+
+  @override
+  String get scoreOtherSide => 'Qarshi tomon';
+
+  @override
+  String get scoreSets => 'Setlar';
+
+  @override
+  String get scoreAddSet => 'Set qoʻshish';
+
+  @override
+  String get scoreRemoveSet => 'Setni olib tashlash';
+
+  @override
+  String get scoreMoreGames => 'Koʻproq geym';
+
+  @override
+  String get scoreFewerGames => 'Kamroq geym';
+
+  @override
+  String get pastGames => 'Oʻtgan oʻyinlar';
+
+  @override
+  String get noPastGames => 'Soʻnggi 30 kunda oʻyinlar boʻlmagan';
 }

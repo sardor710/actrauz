@@ -2361,4 +2361,96 @@ class AppLocalizationsKk extends AppLocalizations {
   String notifRatingUpdated(String from, String to) {
     return 'Рейтингіңіз өзгерді: $from → $to';
   }
+
+  @override
+  String get gameFinished => 'Ойын аяқталды';
+
+  @override
+  String get scoreEnter => 'Есепті енгізу';
+
+  @override
+  String get scoreHostEnters =>
+      'Есепті ұйымдастырушы енгізеді. 24 сағаттан кейін мұны кез келген ойыншы жасай алады';
+
+  @override
+  String get scoreEntryClosed => 'Есеп енгізу жабылды';
+
+  @override
+  String get scoreAwaiting => 'Растауды күтуде';
+
+  @override
+  String get scoreWaitingOtherSide => 'Қарсы жақ күтілуде';
+
+  @override
+  String get scoreConfirm => 'Растау';
+
+  @override
+  String get scoreDispute => 'Дау айту';
+
+  @override
+  String get scoreEdit => 'Өзгерту';
+
+  @override
+  String get scoreConfirmedLabel => 'Есеп расталды';
+
+  @override
+  String get scoreDisputedLabel => 'Дау айтылды — Actra әкімшісі қарайды';
+
+  @override
+  String get scoreVoidedLabel => 'Нәтижені Actra болдырмады';
+
+  @override
+  String get scoreDisputeTitle => 'Есепке дау айтасыз ба?';
+
+  @override
+  String get scoreDisputeMsg =>
+      'Оны Actra әкімшісі қарайды. Оған дейін рейтингтер өзгермейді.';
+
+  @override
+  String get scoreDisputeReason => 'Себебі (міндетті емес)';
+
+  @override
+  String get scoreWhoPlayed => 'Кім ойнады';
+
+  @override
+  String get scoreSingles => '1-ге 1';
+
+  @override
+  String get scoreDoubles => '2-ге 2';
+
+  @override
+  String get scorePartner => 'Серіктесіңіз';
+
+  @override
+  String get scoreOpponent => 'Қарсылас';
+
+  @override
+  String get scoreOpponents => 'Қарсыластар';
+
+  @override
+  String get scoreYourSide => 'Сіздің жағыңыз';
+
+  @override
+  String get scoreOtherSide => 'Қарсы жақ';
+
+  @override
+  String get scoreSets => 'Сеттер';
+
+  @override
+  String get scoreAddSet => 'Сет қосу';
+
+  @override
+  String get scoreRemoveSet => 'Сетті алып тастау';
+
+  @override
+  String get scoreMoreGames => 'Көбірек гейм';
+
+  @override
+  String get scoreFewerGames => 'Азырақ гейм';
+
+  @override
+  String get pastGames => 'Өткен ойындар';
+
+  @override
+  String get noPastGames => 'Соңғы 30 күнде ойындар болған жоқ';
 }

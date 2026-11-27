@@ -2381,4 +2381,96 @@ class AppLocalizationsRu extends AppLocalizations {
   String notifRatingUpdated(String from, String to) {
     return 'Ваш рейтинг изменился: $from → $to';
   }
+
+  @override
+  String get gameFinished => 'Игра завершена';
+
+  @override
+  String get scoreEnter => 'Внести счёт';
+
+  @override
+  String get scoreHostEnters =>
+      'Счёт вносит организатор. Через 24 часа это сможет сделать любой игрок';
+
+  @override
+  String get scoreEntryClosed => 'Ввод счёта закрыт';
+
+  @override
+  String get scoreAwaiting => 'Ждёт подтверждения';
+
+  @override
+  String get scoreWaitingOtherSide => 'Ждём другую сторону';
+
+  @override
+  String get scoreConfirm => 'Подтвердить';
+
+  @override
+  String get scoreDispute => 'Оспорить';
+
+  @override
+  String get scoreEdit => 'Изменить';
+
+  @override
+  String get scoreConfirmedLabel => 'Счёт подтверждён';
+
+  @override
+  String get scoreDisputedLabel => 'Оспорен — его проверит администратор Actra';
+
+  @override
+  String get scoreVoidedLabel => 'Результат отменён Actra';
+
+  @override
+  String get scoreDisputeTitle => 'Оспорить счёт?';
+
+  @override
+  String get scoreDisputeMsg =>
+      'Его проверит администратор Actra. До этого рейтинги не изменятся.';
+
+  @override
+  String get scoreDisputeReason => 'Причина (необязательно)';
+
+  @override
+  String get scoreWhoPlayed => 'Кто играл';
+
+  @override
+  String get scoreSingles => '1 на 1';
+
+  @override
+  String get scoreDoubles => '2 на 2';
+
+  @override
+  String get scorePartner => 'Ваш партнёр';
+
+  @override
+  String get scoreOpponent => 'Соперник';
+
+  @override
+  String get scoreOpponents => 'Соперники';
+
+  @override
+  String get scoreYourSide => 'Ваша сторона';
+
+  @override
+  String get scoreOtherSide => 'Другая сторона';
+
+  @override
+  String get scoreSets => 'Сеты';
+
+  @override
+  String get scoreAddSet => 'Добавить сет';
+
+  @override
+  String get scoreRemoveSet => 'Удалить сет';
+
+  @override
+  String get scoreMoreGames => 'Больше геймов';
+
+  @override
+  String get scoreFewerGames => 'Меньше геймов';
+
+  @override
+  String get pastGames => 'Прошедшие игры';
+
+  @override
+  String get noPastGames => 'За последние 30 дней игр не было';
 }

@@ -1,0 +1,317 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/markets.dart';
+import '../../core/theme.dart';
+import '../../data/sample/sample_data.dart';
+import '../../domain/games.dart';
+import '../../domain/models.dart';
+import '../../l10n/gen/app_localizations.dart';
+import '../../state/providers.dart';
+import '../common/formatters.dart';
+import '../common/rating_pill.dart';
+import '../common/widgets.dart';
+import 'host_tools.dart';
+import 'score_sheet.dart';
+
+/// Only the host may enter a score until this long after the end (as the
+/// database's `app.enter_score`).
+const _hostOnlyFor = Duration(hours: 24);
+
+/// Scores close this long after the end.
+const _scoreOpenFor = Duration(days: 7);
+
+/// "Game finished" on the game page (design §5.8): for the players of a game
+/// that has ended and was not cancelled. It holds the score block in a rated
+/// sport; the votes and reports of Part 7b go below it.
+class FinishedSection extends ConsumerWidget {
+  const FinishedSection({super.key, required this.game});
+
+  final Game game;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = game.myStatus;
+    if (game.cancelled || (status != MyGameStatus.host && status != MyGameStatus.participant)) {
+      return const SizedBox.shrink();
+    }
+    // Venue wall-clock time, as the game's start and end.
+    final now = venueNow(cityById(game.cityId), utcNow: ref.watch(clockProvider)());
+    if (!game.endedAt(now)) return const SizedBox.shrink();
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
+    final rated = sports.where((s) => s.id == game.sportId).firstOrNull?.competitiveRating ?? false;
+    // Nothing to show in a simple sport yet.
+    if (!rated) return const SizedBox.shrink();
+
+    return SectionCard(
+      key: const ValueKey('finished-section'),
+      title: context.l.gameFinished,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [_ScoreBlock(game: game, now: now)],
+      ),
+    );
+  }
+}
+
+/// Enter the score, or the score with what the player can do about it.
+class _ScoreBlock extends ConsumerWidget {
+  const _ScoreBlock({required this.game, required this.now});
+
+  final Game game;
+
+  /// Venue wall-clock time.
+  final DateTime now;
+
+  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
+    // My rating moves once a score is confirmed.
+    if (await runGameAction(context, ref, action) && context.mounted) refreshSports(ref);
+  }
+
+  Future<void> _dispute(BuildContext context, WidgetRef ref, MatchResult result) async {
+    final reason = await _askDisputeReason(context);
+    if (reason == null || !context.mounted) return;
+    await _run(context, ref, () => ref.read(gameRepositoryProvider).disputeScore(result.id, reason: reason));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final result = game.result;
+    final open = now.isBefore(game.end.add(_scoreOpenFor));
+
+    if (result == null) {
+      if (!open) return _StatusLine(text: l.scoreEntryClosed, icon: Icons.lock_outline_rounded);
+      final mayEnter = game.myStatus == MyGameStatus.host || !now.isBefore(game.end.add(_hostOnlyFor));
+      if (!mayEnter) return _StatusLine(text: l.scoreHostEnters, icon: Icons.schedule_rounded);
+      return FilledButton.icon(
+        key: const ValueKey('score-enter'),
+        onPressed: () => showScoreSheet(context, game),
+        icon: const Icon(Icons.scoreboard_outlined),
+        label: Text(l.scoreEnter),
+      );
+    }
+
+    final inResult = result.sideA.contains(kMeId) || result.sideB.contains(kMeId);
+    final children = <Widget>[ScoreBoard(game: game, result: result), const SizedBox(height: 12)];
+    switch (result.status) {
+      case ResultStatus.pending:
+        final enteredByMe = result.enteredBy == kMeId;
+        final waiting = enteredByMe || result.confirmedBy.contains(kMeId);
+        children.add(
+          _StatusLine(
+            text: inResult && waiting ? l.scoreWaitingOtherSide : l.scoreAwaiting,
+            icon: Icons.hourglass_empty_rounded,
+          ),
+        );
+        if (enteredByMe && open) {
+          children.addAll([
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const ValueKey('score-edit'),
+              onPressed: () => showScoreSheet(context, game),
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(l.scoreEdit),
+            ),
+          ]);
+        } else if (inResult && !waiting) {
+          children.addAll([
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    key: const ValueKey('score-dispute'),
+                    onPressed: () => _dispute(context, ref, result),
+                    child: Text(l.scoreDispute, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    key: const ValueKey('score-confirm'),
+                    onPressed: () =>
+                        _run(context, ref, () => ref.read(gameRepositoryProvider).confirmScore(result.id)),
+                    child: Text(l.scoreConfirm, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+            ),
+          ]);
+        }
+      case ResultStatus.confirmed:
+        children.add(_StatusLine(text: l.scoreConfirmedLabel, icon: Icons.check_circle_outline_rounded));
+        for (final id in [...result.sideA, ...result.sideB]) {
+          if (result.changes[id] case final change?) {
+            children.add(_ChangeTile(game: game, playerId: id, change: change));
+          }
+        }
+      case ResultStatus.disputed:
+        children.add(_StatusLine(text: l.scoreDisputedLabel, icon: Icons.gavel_rounded, error: true));
+      case ResultStatus.voided:
+        children.add(_StatusLine(text: l.scoreVoidedLabel, icon: Icons.block_rounded, error: true));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+  }
+}
+
+/// The two sides with their games per set; the winning side in bold.
+class ScoreBoard extends StatelessWidget {
+  const ScoreBoard({super.key, required this.game, required this.result});
+
+  final Game game;
+  final MatchResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    Widget side(List<String> ids, bool a) {
+      final won = result.winner == (a ? MatchWinner.a : MatchWinner.b);
+      final style = won ? AppText.bodyStrong : AppText.body;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                [for (final id in ids) memberName(l, game, id)].join(', '),
+                style: style,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            for (final (x, y) in result.sets)
+              SizedBox(
+                width: 30,
+                child: Text('${a ? x : y}', textAlign: TextAlign.center, style: style),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      key: const ValueKey('score-board'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(color: AppColors.field, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        children: [side(result.sideA, true), const Divider(height: 1), side(result.sideB, false)],
+      ),
+    );
+  }
+}
+
+/// A player's name as the game knows it: "You", "Deleted player", or the name.
+String memberName(AppLocalizations l, Game game, String id) {
+  if (id == kMeId) return l.you;
+  final member = game.participants.where((m) => m.id == id).firstOrNull;
+  if (member == null) return '';
+  return playerName(l, member.name, deleted: member.deleted);
+}
+
+/// One player's rating before and after a confirmed result.
+class _ChangeTile extends StatelessWidget {
+  const _ChangeTile({required this.game, required this.playerId, required this.change});
+
+  final Game game;
+  final String playerId;
+  final RatingChange change;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final name = memberName(l, game, playerId);
+    final delta = change.delta;
+    final deleted = playerId != kMeId && (game.participants.where((m) => m.id == playerId).firstOrNull?.deleted ?? false);
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          InitialAvatar(name: name, size: 34, deleted: deleted),
+          const SizedBox(width: 10),
+          Expanded(child: Text(name, style: AppText.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Text(
+            '${formatRating(change.oldRating)} → ${formatRating(change.newRating)}',
+            key: ValueKey('rating-change-$playerId'),
+            style: AppText.body,
+          ),
+          const SizedBox(width: 8),
+          Pill(
+            text: '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(2)}',
+            color: delta < 0 ? AppColors.errorSoft : AppColors.primarySoft,
+            onColor: delta < 0 ? AppColors.error : AppColors.primaryDark,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusLine extends StatelessWidget {
+  const _StatusLine({required this.text, required this.icon, this.error = false});
+
+  final String text;
+  final IconData icon;
+  final bool error;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 20, color: error ? AppColors.error : AppColors.muted),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: error ? AppText.bodyStrong.copyWith(color: AppColors.error) : AppText.muted)),
+    ],
+  );
+}
+
+/// The optional reason for a dispute; null when the player backs out.
+Future<String?> _askDisputeReason(BuildContext context) =>
+    showDialog<String>(context: context, builder: (context) => const _DisputeDialog());
+
+class _DisputeDialog extends StatefulWidget {
+  const _DisputeDialog();
+
+  @override
+  State<_DisputeDialog> createState() => _DisputeDialogState();
+}
+
+class _DisputeDialogState extends State<_DisputeDialog> {
+  final _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    return AlertDialog(
+      title: Text(l.scoreDisputeTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.scoreDisputeMsg),
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('score-dispute-reason'),
+            controller: _reason,
+            maxLength: 300,
+            maxLines: 2,
+            decoration: InputDecoration(labelText: l.scoreDisputeReason),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.cancel)),
+        FilledButton(
+          key: const ValueKey('score-dispute-send'),
+          onPressed: () => Navigator.of(context).pop(_reason.text),
+          child: Text(l.scoreDispute),
+        ),
+      ],
+    );
+  }
+}

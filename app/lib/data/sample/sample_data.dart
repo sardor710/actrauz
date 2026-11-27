@@ -468,7 +468,7 @@ const kGameSeeds = <GameSeed>[
   ),
 ];
 
-/// A padel game that was played yesterday, placed relative to the day the
+/// A game that was played yesterday, placed relative to the day the
 /// sample backend starts, so the score and past-games screens have something
 /// to show. Sample mode only: a game in the past cannot be booked, so these
 /// are not in `supabase/seed.sql`.
@@ -542,6 +542,15 @@ const kFinishedGameSeeds = <FinishedGameSeed>[
       sets: [(6, 3), (6, 4)],
       hoursAgo: 1,
     ),
+  ),
+  // Football, a simple sport: it takes no score.
+  FinishedGameSeed(
+    id: 'gf3',
+    venueId: 'v2',
+    courtId: 'v2c1',
+    hour: 17,
+    minute: 0,
+    participantIds: ['p1', kMeId, 'p2', 'p3'],
   ),
 ];
 

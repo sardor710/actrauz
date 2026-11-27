@@ -705,7 +705,7 @@ void main() {
   group('scores and past games', () {
     Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
 
-    // Sunday 10:00 in Tashkent; gf1 and gf2 were played yesterday.
+    // Sunday 10:00 in Tashkent; gf1, gf2 and gf3 were played yesterday.
     final tashkentNow = DateTime.utc(2026, 11, 22, 10);
     const sixFourTwice = [(6, 4), (6, 4)];
     const aziz = SportRating(rating: 3.5, ratedGames: 12);
@@ -716,7 +716,7 @@ void main() {
 
     test('finished games are past games, newest first, and never in the games list', () async {
       final past = await backend.pastGames();
-      expect(past.map((g) => g.id), ['gf2', 'gf1']);
+      expect(past.map((g) => g.id), ['gf2', 'gf1', 'gf3']);
       expect((await backend.games('tashkent')).map((g) => g.id), isNot(contains('gf1')));
 
       final gf1 = await backend.game('gf1');

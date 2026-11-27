@@ -13,6 +13,7 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
+import 'finished_section.dart';
 import 'host_tools.dart';
 
 /// Game details: who is in, and what the signed-in player can do about it
@@ -261,6 +262,7 @@ class GameScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    FinishedSection(game: game),
                     if (isHost && canAct) JoinRequestsSection(game: game),
                     SectionCard(
                       title: '${l.players} · ${game.participantIds.length}/${game.spots}',
@@ -356,8 +358,23 @@ class _PlayerTile extends ConsumerWidget {
           InitialAvatar(name: name, size: 42, deleted: deleted),
           const SizedBox(width: 12),
           Expanded(child: Text(name, style: manrope(15.5, 700))),
-          if (isHost) Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
-          if (member.name.isNotEmpty) ...[const SizedBox(width: 6), ReliabilityPill(reliability: member.reliability)],
+          // The labels shrink with an ellipsis on a narrow phone.
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (isHost)
+                  Flexible(
+                    child: Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
+                  ),
+                if (member.name.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Flexible(child: ReliabilityPill(reliability: member.reliability)),
+                ],
+              ],
+            ),
+          ),
           if (onRemove != null)
             IconButton(
               tooltip: l.removePlayer,

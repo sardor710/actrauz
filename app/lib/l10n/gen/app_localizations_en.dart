@@ -2353,4 +2353,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifRatingUpdated(String from, String to) {
     return 'Your rating changed: $from → $to';
   }
+
+  @override
+  String get gameFinished => 'Game finished';
+
+  @override
+  String get scoreEnter => 'Enter the score';
+
+  @override
+  String get scoreHostEnters =>
+      'The host enters the score. After 24 hours any player can';
+
+  @override
+  String get scoreEntryClosed => 'Score entry closed';
+
+  @override
+  String get scoreAwaiting => 'Waiting for confirmation';
+
+  @override
+  String get scoreWaitingOtherSide => 'Waiting for the other side';
+
+  @override
+  String get scoreConfirm => 'Confirm';
+
+  @override
+  String get scoreDispute => 'Dispute';
+
+  @override
+  String get scoreEdit => 'Edit';
+
+  @override
+  String get scoreConfirmedLabel => 'Score confirmed';
+
+  @override
+  String get scoreDisputedLabel => 'Disputed — an Actra admin will review';
+
+  @override
+  String get scoreVoidedLabel => 'Result cancelled by Actra';
+
+  @override
+  String get scoreDisputeTitle => 'Dispute the score?';
+
+  @override
+  String get scoreDisputeMsg =>
+      'An Actra admin will review it. Ratings do not change until then.';
+
+  @override
+  String get scoreDisputeReason => 'Reason (optional)';
+
+  @override
+  String get scoreWhoPlayed => 'Who played';
+
+  @override
+  String get scoreSingles => '1 v 1';
+
+  @override
+  String get scoreDoubles => '2 v 2';
+
+  @override
+  String get scorePartner => 'Your partner';
+
+  @override
+  String get scoreOpponent => 'Opponent';
+
+  @override
+  String get scoreOpponents => 'Opponents';
+
+  @override
+  String get scoreYourSide => 'Your side';
+
+  @override
+  String get scoreOtherSide => 'Other side';
+
+  @override
+  String get scoreSets => 'Sets';
+
+  @override
+  String get scoreAddSet => 'Add set';
+
+  @override
+  String get scoreRemoveSet => 'Remove set';
+
+  @override
+  String get scoreMoreGames => 'More games';
+
+  @override
+  String get scoreFewerGames => 'Fewer games';
+
+  @override
+  String get pastGames => 'Past games';
+
+  @override
+  String get noPastGames => 'No games in the last 30 days';
 }

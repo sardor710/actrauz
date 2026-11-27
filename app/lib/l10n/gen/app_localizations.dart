@@ -4193,6 +4193,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your rating changed: {from} → {to}'**
   String notifRatingUpdated(String from, String to);
+
+  /// No description provided for @gameFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Game finished'**
+  String get gameFinished;
+
+  /// No description provided for @scoreEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the score'**
+  String get scoreEnter;
+
+  /// No description provided for @scoreHostEnters.
+  ///
+  /// In en, this message translates to:
+  /// **'The host enters the score. After 24 hours any player can'**
+  String get scoreHostEnters;
+
+  /// No description provided for @scoreEntryClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Score entry closed'**
+  String get scoreEntryClosed;
+
+  /// No description provided for @scoreAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for confirmation'**
+  String get scoreAwaiting;
+
+  /// No description provided for @scoreWaitingOtherSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the other side'**
+  String get scoreWaitingOtherSide;
+
+  /// No description provided for @scoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get scoreConfirm;
+
+  /// No description provided for @scoreDispute.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispute'**
+  String get scoreDispute;
+
+  /// No description provided for @scoreEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get scoreEdit;
+
+  /// No description provided for @scoreConfirmedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Score confirmed'**
+  String get scoreConfirmedLabel;
+
+  /// No description provided for @scoreDisputedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Disputed — an Actra admin will review'**
+  String get scoreDisputedLabel;
+
+  /// No description provided for @scoreVoidedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Result cancelled by Actra'**
+  String get scoreVoidedLabel;
+
+  /// No description provided for @scoreDisputeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispute the score?'**
+  String get scoreDisputeTitle;
+
+  /// No description provided for @scoreDisputeMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'An Actra admin will review it. Ratings do not change until then.'**
+  String get scoreDisputeMsg;
+
+  /// No description provided for @scoreDisputeReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get scoreDisputeReason;
+
+  /// No description provided for @scoreWhoPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Who played'**
+  String get scoreWhoPlayed;
+
+  /// No description provided for @scoreSingles.
+  ///
+  /// In en, this message translates to:
+  /// **'1 v 1'**
+  String get scoreSingles;
+
+  /// No description provided for @scoreDoubles.
+  ///
+  /// In en, this message translates to:
+  /// **'2 v 2'**
+  String get scoreDoubles;
+
+  /// No description provided for @scorePartner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your partner'**
+  String get scorePartner;
+
+  /// No description provided for @scoreOpponent.
+  ///
+  /// In en, this message translates to:
+  /// **'Opponent'**
+  String get scoreOpponent;
+
+  /// No description provided for @scoreOpponents.
+  ///
+  /// In en, this message translates to:
+  /// **'Opponents'**
+  String get scoreOpponents;
+
+  /// No description provided for @scoreYourSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Your side'**
+  String get scoreYourSide;
+
+  /// No description provided for @scoreOtherSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Other side'**
+  String get scoreOtherSide;
+
+  /// No description provided for @scoreSets.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets'**
+  String get scoreSets;
+
+  /// No description provided for @scoreAddSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add set'**
+  String get scoreAddSet;
+
+  /// No description provided for @scoreRemoveSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove set'**
+  String get scoreRemoveSet;
+
+  /// No description provided for @scoreMoreGames.
+  ///
+  /// In en, this message translates to:
+  /// **'More games'**
+  String get scoreMoreGames;
+
+  /// No description provided for @scoreFewerGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer games'**
+  String get scoreFewerGames;
+
+  /// No description provided for @pastGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Past games'**
+  String get pastGames;
+
+  /// No description provided for @noPastGames.
+  ///
+  /// In en, this message translates to:
+  /// **'No games in the last 30 days'**
+  String get noPastGames;
 }
 
 class _AppLocalizationsDelegate

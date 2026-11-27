@@ -19,6 +19,7 @@ import 'features/games/create_request_screen.dart';
 import 'features/games/game_request_screen.dart';
 import 'features/games/game_screen.dart';
 import 'features/games/games_screen.dart';
+import 'features/games/past_games_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/inbox/inbox_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
@@ -152,6 +153,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'new',
                     builder: (context, state) => CreateGameScreen(bookingId: state.uri.queryParameters['booking']),
                   ),
+                  // Past games, also before ':id'.
+                  GoRoute(path: 'past', builder: (context, state) => const PastGamesScreen()),
                   // Game Requests, also before ':id'.
                   GoRoute(path: 'requests/new', builder: (context, state) => const CreateRequestScreen()),
                   GoRoute(
