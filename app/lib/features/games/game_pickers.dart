@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 
 // Pieces the create-game form shares with the Game Request screens: a booking
@@ -220,30 +222,50 @@ class PlaceFields extends ConsumerWidget {
   }
 }
 
-/// "Level 2–4" and the slider that sets it, inside a card.
+/// The whole range of a rating slider.
+const kAllRatings = RangeValues(RatingRules.min, RatingRules.max);
+
+/// "Level 2–4" and the slider that sets it, inside a card. [rated] (padel,
+/// tennis) makes it a rating range, 1.0–7.0 in half steps.
 class LevelRangeCard extends StatelessWidget {
-  const LevelRangeCard({super.key, required this.values, required this.onChanged});
+  const LevelRangeCard({super.key, required this.values, required this.onChanged, this.rated = false});
 
   final RangeValues values;
   final ValueChanged<RangeValues> onChanged;
+  final bool rated;
 
   @override
   Widget build(BuildContext context) {
     final l = context.l;
     return SectionCard(
-      title: l.levelRangeLabel,
+      title: rated ? l.ratingRangeLabel : l.levelRangeLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.levelRange(values.start.round(), values.end.round()), style: AppText.bodyStrong),
-          RangeSlider(
-            values: values,
-            min: 1,
-            max: 5,
-            divisions: 4,
-            labels: RangeLabels('${values.start.round()}', '${values.end.round()}'),
-            onChanged: onChanged,
+          Text(
+            rated ? formatRatingRange(values.start, values.end) : l.levelRange(values.start.round(), values.end.round()),
+            style: AppText.bodyStrong,
           ),
+          if (rated)
+            RangeSlider(
+              key: const ValueKey('rating-range'),
+              values: values,
+              min: RatingRules.min,
+              max: RatingRules.max,
+              divisions: ((RatingRules.max - RatingRules.min) * 2).round(),
+              labels: RangeLabels(formatRatingBound(values.start), formatRatingBound(values.end)),
+              onChanged: onChanged,
+            )
+          else
+            RangeSlider(
+              key: const ValueKey('level-range'),
+              values: values,
+              min: 1,
+              max: 5,
+              divisions: 4,
+              labels: RangeLabels('${values.start.round()}', '${values.end.round()}'),
+              onChanged: onChanged,
+            ),
         ],
       ),
     );

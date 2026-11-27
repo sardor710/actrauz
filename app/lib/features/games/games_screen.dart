@@ -55,10 +55,8 @@ class _GamesScreenState extends ConsumerState<GamesScreen> {
     bool matches(Game g) {
       if (sportId != null && g.sportId != sportId) return false;
       if (day != null && dateOnly(g.start) != today.add(Duration(days: day))) return false;
-      if (_myLevel && me != null) {
-        final level = me.levelFor(g.sportId);
-        if (level < g.minLevel || level > g.maxLevel) return false;
-      }
+      // The rating range in padel and tennis, the level range elsewhere.
+      if (_myLevel && me != null && !fitsRange(g, me)) return false;
       return true;
     }
 

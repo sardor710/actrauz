@@ -2128,4 +2128,196 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get countRegistrations => 'Tournament entries';
+
+  @override
+  String get sportsPromptTitle => 'Pick your sports';
+
+  @override
+  String get sportsPromptText =>
+      'Tell us what you play and how well, so we can show you games that fit.';
+
+  @override
+  String get chooseSports => 'Choose sports';
+
+  @override
+  String get notNow => 'Not now';
+
+  @override
+  String get noSportsYet => 'You have not picked any sports yet';
+
+  @override
+  String get mySportsHint =>
+      'Switch on the sports you play. Padel and tennis start with a short questionnaire.';
+
+  @override
+  String pickLevelTitle(String sport) {
+    return 'Your level in $sport';
+  }
+
+  @override
+  String get ratingProvisional => 'Provisional';
+
+  @override
+  String ratingWithProvisional(String rating) {
+    return '$rating · provisional';
+  }
+
+  @override
+  String ratedGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rated games',
+      one: '1 rated game',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRatingYet => 'No rating yet';
+
+  @override
+  String get retakeQuestionnaire => 'Retake';
+
+  @override
+  String get ratingRangeLabel => 'Rating range';
+
+  @override
+  String ratingRangeValue(String range) {
+    return 'Rating $range';
+  }
+
+  @override
+  String questionnaireTitle(String sport) {
+    return '$sport: starting rating';
+  }
+
+  @override
+  String questionnaireStep(int n, int total) {
+    return 'Question $n of $total';
+  }
+
+  @override
+  String questionnaireResult(String rating) {
+    return 'Your starting rating: $rating';
+  }
+
+  @override
+  String questionnaireResultHint(int games) {
+    return 'It stays provisional for your first $games rated games and moves after every confirmed result.';
+  }
+
+  @override
+  String get backLabel => 'Back';
+
+  @override
+  String get doneLabel => 'Done';
+
+  @override
+  String get adminRatingLocked => 'Set by Actra. Ask engineering to change it.';
+
+  @override
+  String get qYears => 'How long have you played?';
+
+  @override
+  String get qYearsA0 => 'Under 6 months';
+
+  @override
+  String get qYearsA1 => '6–24 months';
+
+  @override
+  String get qYearsA2 => '2–5 years';
+
+  @override
+  String get qYearsA3 => 'Over 5 years';
+
+  @override
+  String get qOften => 'How often do you play?';
+
+  @override
+  String get qOftenA0 => 'Rarely';
+
+  @override
+  String get qOftenA1 => '2–3 times a month';
+
+  @override
+  String get qOftenA2 => 'Weekly';
+
+  @override
+  String get qOftenA3 => 'Several times a week';
+
+  @override
+  String get qCompeted => 'Have you competed?';
+
+  @override
+  String get qCompetedA0 => 'Never';
+
+  @override
+  String get qCompetedA1 => 'Friendly matches with score';
+
+  @override
+  String get qCompetedA2 => 'Amateur tournaments';
+
+  @override
+  String get qCompetedA3 => 'Regular tournaments or league';
+
+  @override
+  String get qPadelWall => 'How do you play off the back wall?';
+
+  @override
+  String get qPadelWallA0 => 'I avoid it';
+
+  @override
+  String get qPadelWallA1 => 'I return slow balls';
+
+  @override
+  String get qPadelWallA2 => 'I return most balls';
+
+  @override
+  String get qPadelWallA3 => 'I attack off the wall';
+
+  @override
+  String get qPadelNet => 'At the net…';
+
+  @override
+  String get qPadelNetA0 => 'I rarely go';
+
+  @override
+  String get qPadelNetA1 => 'I volley easy balls';
+
+  @override
+  String get qPadelNetA2 => 'I hold the net and volley with direction';
+
+  @override
+  String get qPadelNetA3 => 'I finish points with volleys and smashes';
+
+  @override
+  String get qTennisServe => 'How is your serve?';
+
+  @override
+  String get qTennisServeA0 => 'I just start the point';
+
+  @override
+  String get qTennisServeA1 => 'It goes in, slowly';
+
+  @override
+  String get qTennisServeA2 => 'Steady first and second serve';
+
+  @override
+  String get qTennisServeA3 => 'I win points with it';
+
+  @override
+  String get qTennisRally => 'In a rally…';
+
+  @override
+  String get qTennisRallyA0 => 'I keep a few balls in';
+
+  @override
+  String get qTennisRallyA1 => 'I rally at medium pace';
+
+  @override
+  String get qTennisRallyA2 => 'I control direction and depth';
+
+  @override
+  String get qTennisRallyA3 => 'I change pace and spin on purpose';
 }

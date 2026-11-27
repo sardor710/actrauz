@@ -10,6 +10,7 @@ import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import 'host_tools.dart';
@@ -24,6 +25,28 @@ class GameScreen extends ConsumerWidget {
 
   Future<void> _join(BuildContext context, WidgetRef ref) =>
       runGameAction(context, ref, () => ref.read(gameRepositoryProvider).join(gameId));
+
+  /// Joins with one tap inside the range, else asks the host. In padel or
+  /// tennis a player with no rating answers the questionnaire first; the range
+  /// is then checked again with the new rating. Only a hint: the server
+  /// decides, and its refusal is shown as usual.
+  Future<void> _joinOrAsk(BuildContext context, WidgetRef ref, Game game, Sport? sport, {bool invited = false}) async {
+    if (sport != null && !await ensureRated(context, ref, sport)) return;
+    if (!context.mounted) return;
+    Player? me;
+    try {
+      me = await ref.read(playerProvider(kMeId).future);
+    } catch (_) {
+      // Not loaded: try the one-tap join and let the server decide.
+      me = null;
+    }
+    if (!context.mounted) return;
+    if (invited || me == null || fitsRange(game, me)) {
+      await _join(context, ref);
+    } else {
+      await _ask(context, ref);
+    }
+  }
 
   Future<void> _leave(BuildContext context, WidgetRef ref) =>
       runGameAction(context, ref, () => ref.read(gameRepositoryProvider).leave(gameId));
@@ -69,8 +92,8 @@ class GameScreen extends ConsumerWidget {
           final isHost = status == MyGameStatus.host;
           final host = ref.watch(playerProvider(game.hostId)).valueOrNull;
           final hostName = host == null ? '' : playerName(l, host.name, deleted: host.deleted);
-          final myLevel = ref.watch(playerProvider(kMeId)).valueOrNull?.levelFor(game.sportId);
-          final inRange = myLevel == null || (myLevel >= game.minLevel && myLevel <= game.maxLevel);
+          final me = ref.watch(playerProvider(kMeId)).valueOrNull;
+          final inRange = me == null || fitsRange(game, me);
           // A cancelled or started game takes no more joining or hosting changes.
           final canAct = !game.cancelled && game.start.isAfter(gameNow);
           final members = game.participants.isNotEmpty
@@ -97,7 +120,7 @@ class GameScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton(
-                          onPressed: game.isFull ? null : () => _join(context, ref),
+                          onPressed: game.isFull ? null : () => _joinOrAsk(context, ref, game, sport, invited: true),
                           child: Text(game.isFull ? l.errGameFull : l.acceptInvite),
                         ),
                       ),
@@ -114,7 +137,8 @@ class GameScreen extends ConsumerWidget {
                     ],
                   ),
                   null => FilledButton(
-                    onPressed: game.isFull ? null : () => inRange ? _join(context, ref) : _ask(context, ref),
+                    key: const ValueKey('game-join'),
+                    onPressed: game.isFull ? null : () => _joinOrAsk(context, ref, game, sport),
                     child: Text(game.isFull ? l.errGameFull : (inRange ? l.joinGame : l.askToJoin)),
                   ),
                 };
@@ -200,7 +224,13 @@ class GameScreen extends ConsumerWidget {
                                     onColor: game.isFull ? AppColors.error : AppColors.ink,
                                   ),
                                   Pill(
-                                    text: l.levelRange(game.minLevel, game.maxLevel),
+                                    text: gameRangeText(
+                                      l,
+                                      minLevel: game.minLevel,
+                                      maxLevel: game.maxLevel,
+                                      minRating: game.minRating,
+                                      maxRating: game.maxRating,
+                                    ),
                                     icon: Icons.bar_chart_rounded,
                                     color: AppColors.primarySoft,
                                     onColor: AppColors.primaryDark,

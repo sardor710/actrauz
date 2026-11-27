@@ -1,18 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../domain/competitive.dart';
+import '../../state/providers.dart';
 import '../common/formatters.dart';
 
-/// Bottom navigation around the five main sections.
-class HomeShell extends StatelessWidget {
+/// Shared preference: the one-time "Pick your sports" offer has been shown on
+/// this device.
+const kSportsPromptedPref = 'sports_prompted';
+
+/// Bottom navigation around the five main sections. The first time it opens
+/// for a player with no sports it offers "My sports" once (design §5.1); the
+/// offer never blocks the app.
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
+  ConsumerState<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<HomeShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offerSports());
+  }
+
+  /// Shows the offer once, and only when the player's sports have loaded and
+  /// are empty. It counts as seen as soon as it is shown.
+  Future<void> _offerSports() async {
+    final prefs = ref.read(sharedPrefsProvider);
+    if (prefs.getBool(kSportsPromptedPref) ?? false) return;
+    final List<MySport> mine;
+    try {
+      mine = await ref.read(mySportsProvider.future);
+    } catch (_) {
+      // Not loaded (offline, signed out meanwhile): offer it another time.
+      return;
+    }
+    if (mine.isNotEmpty || !mounted || (prefs.getBool(kSportsPromptedPref) ?? false)) return;
+    await prefs.setBool(kSportsPromptedPref, true);
+    if (!mounted) return;
+    final choose = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) => const _SportsPrompt(),
+    );
+    if (choose == true && mounted) context.push('/sports');
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = context.l;
+    final shell = widget.shell;
     final items = [
       (Icons.home_rounded, l.tabHome),
       (Icons.directions_run_rounded, l.tabGames),
@@ -47,6 +92,34 @@ class HomeShell extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Pick your sports": choose now (true) or not now.
+class _SportsPrompt extends StatelessWidget {
+  const _SportsPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.sportsPromptTitle, style: AppText.title),
+            const SizedBox(height: 8),
+            Text(l.sportsPromptText, style: AppText.muted.copyWith(fontSize: 15)),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l.chooseSports)),
+            const SizedBox(height: 4),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.notNow)),
+          ],
         ),
       ),
     );

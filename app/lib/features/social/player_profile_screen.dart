@@ -9,6 +9,7 @@ import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import '../games/host_tools.dart';
@@ -80,11 +81,22 @@ class PlayerProfileScreen extends ConsumerWidget {
                               runSpacing: 8,
                               children: [
                                 for (final entry in player.levels.entries)
-                                  Pill(
-                                    text: '${sportName(entry.key)} · ${l.level(entry.value)}',
-                                    color: AppColors.primarySoft,
-                                    onColor: AppColors.primaryDark,
-                                  ),
+                                  if (player.ratings[entry.key] case final rating?)
+                                    // A rated sport: the rating, its provisional tag and rated games.
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(sportName(entry.key), style: AppText.bodyStrong),
+                                        const SizedBox(width: 8),
+                                        Flexible(child: RatingPill(rating, showGames: true)),
+                                      ],
+                                    )
+                                  else
+                                    Pill(
+                                      text: '${sportName(entry.key)} · ${l.level(entry.value)}',
+                                      color: AppColors.primarySoft,
+                                      onColor: AppColors.primaryDark,
+                                    ),
                               ],
                             ),
                     ),

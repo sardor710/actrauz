@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/community.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
@@ -35,6 +36,9 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   int _toMinute = 21 * 60;
   int _needed = 2;
   RangeValues _levels = const RangeValues(1, 5);
+
+  /// The range of a request in a rated sport (padel, tennis).
+  RangeValues _ratings = kAllRatings;
   bool _busy = false;
   String? _error;
 
@@ -73,6 +77,8 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
     }
     String? blank(String text) => text.trim().isEmpty ? null : text.trim();
     final day = today.add(Duration(days: _dayOffset));
+    final sports = ref.read(sportsProvider).valueOrNull ?? const <Sport>[];
+    final rated = sports.where((s) => s.id == sportId).firstOrNull?.competitiveRating ?? false;
 
     setState(() {
       _busy = true;
@@ -85,8 +91,11 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
             GameRequestDraft(
               sportId: sportId,
               playersNeeded: _needed,
-              minLevel: _levels.start.round(),
-              maxLevel: _levels.end.round(),
+              // In a rated sport the server derives the levels from the rating range, as here.
+              minLevel: rated ? levelOfRating(_ratings.start) : _levels.start.round(),
+              maxLevel: rated ? levelOfRating(_ratings.end) : _levels.end.round(),
+              minRating: rated ? _ratings.start : null,
+              maxRating: rated ? _ratings.end : null,
               start: day.add(Duration(minutes: _fromMinute)),
               end: day.add(Duration(minutes: _toMinute)),
               venueId: _venueId,
@@ -236,7 +245,10 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                       ],
                     ),
                   ),
-                  LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
+                  if (sports.where((s) => s.id == _sportId).firstOrNull?.competitiveRating ?? false)
+                    LevelRangeCard(rated: true, values: _ratings, onChanged: (v) => setState(() => _ratings = v))
+                  else
+                    LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
                   SectionCard(
                     title: l.noteLabel,
                     child: TextField(

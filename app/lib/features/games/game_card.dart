@@ -8,6 +8,7 @@ import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 
 /// One joinable game: time, who is going, title, venue and level.
@@ -115,7 +116,13 @@ class GameCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Pill(
-                    text: l.levelRange(game.minLevel, game.maxLevel),
+                    text: gameRangeText(
+                      l,
+                      minLevel: game.minLevel,
+                      maxLevel: game.maxLevel,
+                      minRating: game.minRating,
+                      maxRating: game.maxRating,
+                    ),
                     icon: Icons.bar_chart_rounded,
                     color: AppColors.primarySoft,
                     onColor: AppColors.primaryDark,

@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../domain/games.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 
@@ -96,7 +97,7 @@ class JoinRequestsSection extends ConsumerWidget {
                               runSpacing: 4,
                               children: [
                                 Pill(
-                                  text: l.level(request.member.level),
+                                  text: memberLevel(context, request.member),
                                   icon: Icons.bar_chart_rounded,
                                   color: AppColors.primarySoft,
                                   onColor: AppColors.primaryDark,

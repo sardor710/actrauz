@@ -1183,5 +1183,120 @@
   "countBookings": "Bookings created",
   "countBookingsNote": "including cancelled",
   "countGames": "Games created",
-  "countRegistrations": "Tournament entries"
+  "countRegistrations": "Tournament entries",
+  "sportsPromptTitle": "Pick your sports",
+  "sportsPromptText": "Tell us what you play and how well, so we can show you games that fit.",
+  "chooseSports": "Choose sports",
+  "notNow": "Not now",
+  "noSportsYet": "You have not picked any sports yet",
+  "mySportsHint": "Switch on the sports you play. Padel and tennis start with a short questionnaire.",
+  "pickLevelTitle": "Your level in {sport}",
+  "@pickLevelTitle": {
+    "placeholders": {
+      "sport": {
+        "type": "String"
+      }
+    }
+  },
+  "ratingProvisional": "Provisional",
+  "ratingWithProvisional": "{rating} · provisional",
+  "@ratingWithProvisional": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "ratedGames": "{count, plural, =1{1 rated game} other{{count} rated games}}",
+  "@ratedGames": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRatingYet": "No rating yet",
+  "retakeQuestionnaire": "Retake",
+  "ratingRangeLabel": "Rating range",
+  "ratingRangeValue": "Rating {range}",
+  "@ratingRangeValue": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "questionnaireTitle": "{sport}: starting rating",
+  "@questionnaireTitle": {
+    "placeholders": {
+      "sport": {
+        "type": "String"
+      }
+    }
+  },
+  "questionnaireStep": "Question {n} of {total}",
+  "@questionnaireStep": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "questionnaireResult": "Your starting rating: {rating}",
+  "@questionnaireResult": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "questionnaireResultHint": "It stays provisional for your first {games} rated games and moves after every confirmed result.",
+  "@questionnaireResultHint": {
+    "placeholders": {
+      "games": {
+        "type": "int"
+      }
+    }
+  },
+  "backLabel": "Back",
+  "doneLabel": "Done",
+  "adminRatingLocked": "Set by Actra. Ask engineering to change it.",
+  "qYears": "How long have you played?",
+  "qYearsA0": "Under 6 months",
+  "qYearsA1": "6–24 months",
+  "qYearsA2": "2–5 years",
+  "qYearsA3": "Over 5 years",
+  "qOften": "How often do you play?",
+  "qOftenA0": "Rarely",
+  "qOftenA1": "2–3 times a month",
+  "qOftenA2": "Weekly",
+  "qOftenA3": "Several times a week",
+  "qCompeted": "Have you competed?",
+  "qCompetedA0": "Never",
+  "qCompetedA1": "Friendly matches with score",
+  "qCompetedA2": "Amateur tournaments",
+  "qCompetedA3": "Regular tournaments or league",
+  "qPadelWall": "How do you play off the back wall?",
+  "qPadelWallA0": "I avoid it",
+  "qPadelWallA1": "I return slow balls",
+  "qPadelWallA2": "I return most balls",
+  "qPadelWallA3": "I attack off the wall",
+  "qPadelNet": "At the net…",
+  "qPadelNetA0": "I rarely go",
+  "qPadelNetA1": "I volley easy balls",
+  "qPadelNetA2": "I hold the net and volley with direction",
+  "qPadelNetA3": "I finish points with volleys and smashes",
+  "qTennisServe": "How is your serve?",
+  "qTennisServeA0": "I just start the point",
+  "qTennisServeA1": "It goes in, slowly",
+  "qTennisServeA2": "Steady first and second serve",
+  "qTennisServeA3": "I win points with it",
+  "qTennisRally": "In a rally…",
+  "qTennisRallyA0": "I keep a few balls in",
+  "qTennisRallyA1": "I rally at medium pace",
+  "qTennisRallyA2": "I control direction and depth",
+  "qTennisRallyA3": "I change pace and spin on purpose"
 }

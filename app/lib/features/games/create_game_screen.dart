@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/markets.dart';
 import '../../core/theme.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 import 'game_pickers.dart';
 import 'host_tools.dart';
@@ -40,6 +42,9 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
   int _duration = 60;
   int? _spots;
   RangeValues _levels = const RangeValues(1, 5);
+
+  /// The range of a game in a rated sport (padel, tennis).
+  RangeValues _ratings = kAllRatings;
   GameVisibility _visibility = GameVisibility.public;
   bool _busy = false;
   String? _error;
@@ -71,14 +76,20 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       setState(() => _error = l.errInvalidArgument);
       return;
     }
+    // A padel or tennis host answers the questionnaire first.
+    if (!await ensureRated(context, ref, sport) || !mounted) return;
 
     String? blank(String text) => text.trim().isEmpty ? null : text.trim();
     final start = today.add(Duration(days: _dayOffset, minutes: _startMinute));
+    final rated = sport.competitiveRating;
     final draft = GameDraft(
       sportId: sport.id,
       spots: _spots ?? sport.defaultPlayers.clamp(SpotsStepper.min, SpotsStepper.max),
-      minLevel: _levels.start.round(),
-      maxLevel: _levels.end.round(),
+      // In a rated sport the server derives the levels from the rating range, as here.
+      minLevel: rated ? levelOfRating(_ratings.start) : _levels.start.round(),
+      maxLevel: rated ? levelOfRating(_ratings.end) : _levels.end.round(),
+      minRating: rated ? _ratings.start : null,
+      maxRating: rated ? _ratings.end : null,
       visibility: _visibility,
       note: blank(_note.text),
       pace: sport.bookable ? null : blank(_place.pace.text),
@@ -214,7 +225,10 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                         ],
                       ),
                     ),
-                    LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
+                    if (sport.competitiveRating)
+                      LevelRangeCard(rated: true, values: _ratings, onChanged: (v) => setState(() => _ratings = v))
+                    else
+                      LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
                     SectionCard(
                       title: l.visibilityLabel,
                       child: SizedBox(

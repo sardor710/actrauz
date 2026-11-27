@@ -325,18 +325,21 @@ Game joinGame(Game game, Player player, {bool invited = false}) {
   if (game.visibility == GameVisibility.inviteOnly && !invited) throw const JoinException(JoinError.notFound);
   if (game.participantIds.contains(player.id)) throw const JoinException(JoinError.alreadyJoined);
   if (game.isFull) throw const JoinException(JoinError.full);
-  if (!invited) {
-    final minRating = game.minRating;
-    final maxRating = game.maxRating;
-    if (minRating != null && maxRating != null) {
-      final rating = player.ratingFor(game.sportId);
-      if (rating < minRating || rating > maxRating) throw const JoinException(JoinError.levelOutOfRange);
-    } else {
-      final level = player.levelFor(game.sportId);
-      if (level < game.minLevel || level > game.maxLevel) throw const JoinException(JoinError.levelOutOfRange);
-    }
-  }
+  if (!invited && !fitsRange(game, player)) throw const JoinException(JoinError.levelOutOfRange);
   return game.copyWith(participantIds: [...game.participantIds, player.id]);
+}
+
+/// Whether [player] is inside the game's rating range (a rated sport) or
+/// level range (otherwise).
+bool fitsRange(Game game, Player player) {
+  final minRating = game.minRating;
+  final maxRating = game.maxRating;
+  if (minRating != null && maxRating != null) {
+    final rating = player.ratingFor(game.sportId);
+    return rating >= minRating && rating <= maxRating;
+  }
+  final level = player.levelFor(game.sportId);
+  return level >= game.minLevel && level <= game.maxLevel;
 }
 
 Game leaveGame(Game game, String playerId) {

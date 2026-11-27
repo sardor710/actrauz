@@ -7,6 +7,7 @@ import '../../domain/community.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 
 /// One Game Request: the window, who wants to play what, how many are in.
@@ -89,7 +90,13 @@ class GameRequestCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Pill(
-                    text: l.levelRange(request.minLevel, request.maxLevel),
+                    text: gameRangeText(
+                      l,
+                      minLevel: request.minLevel,
+                      maxLevel: request.maxLevel,
+                      minRating: request.minRating,
+                      maxRating: request.maxRating,
+                    ),
                     icon: Icons.bar_chart_rounded,
                     color: AppColors.primarySoft,
                     onColor: AppColors.primaryDark,

@@ -9,6 +9,7 @@ import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import 'convert_request_sheet.dart';
@@ -201,7 +202,13 @@ class GameRequestScreen extends ConsumerWidget {
                                     onColor: AppColors.ink,
                                   ),
                                   Pill(
-                                    text: l.levelRange(request.minLevel, request.maxLevel),
+                                    text: gameRangeText(
+                                      l,
+                                      minLevel: request.minLevel,
+                                      maxLevel: request.maxLevel,
+                                      minRating: request.minRating,
+                                      maxRating: request.maxRating,
+                                    ),
                                     icon: Icons.bar_chart_rounded,
                                     color: AppColors.primarySoft,
                                     onColor: AppColors.primaryDark,
@@ -319,7 +326,7 @@ class _MemberTile extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       Pill(
-                        text: l.level(member.level),
+                        text: memberLevel(context, member),
                         icon: Icons.bar_chart_rounded,
                         color: AppColors.primarySoft,
                         onColor: AppColors.primaryDark,

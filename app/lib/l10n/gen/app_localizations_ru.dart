@@ -2154,4 +2154,199 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get countRegistrations => 'Заявок на турниры';
+
+  @override
+  String get sportsPromptTitle => 'Выберите свои виды спорта';
+
+  @override
+  String get sportsPromptText =>
+      'Расскажите, во что и на каком уровне вы играете, — мы покажем подходящие игры.';
+
+  @override
+  String get chooseSports => 'Выбрать виды спорта';
+
+  @override
+  String get notNow => 'Не сейчас';
+
+  @override
+  String get noSportsYet => 'Вы ещё не выбрали виды спорта';
+
+  @override
+  String get mySportsHint =>
+      'Включите виды спорта, в которые играете. Для падела и тенниса — короткая анкета.';
+
+  @override
+  String pickLevelTitle(String sport) {
+    return 'Ваш уровень: $sport';
+  }
+
+  @override
+  String get ratingProvisional => 'Предварительный';
+
+  @override
+  String ratingWithProvisional(String rating) {
+    return '$rating · предварительный';
+  }
+
+  @override
+  String ratedGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count игры в рейтинге',
+      many: '$count игр в рейтинге',
+      few: '$count игры в рейтинге',
+      one: '$count игра в рейтинге',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRatingYet => 'Рейтинга пока нет';
+
+  @override
+  String get retakeQuestionnaire => 'Пройти заново';
+
+  @override
+  String get ratingRangeLabel => 'Диапазон рейтинга';
+
+  @override
+  String ratingRangeValue(String range) {
+    return 'Рейтинг $range';
+  }
+
+  @override
+  String questionnaireTitle(String sport) {
+    return '$sport: стартовый рейтинг';
+  }
+
+  @override
+  String questionnaireStep(int n, int total) {
+    return 'Вопрос $n из $total';
+  }
+
+  @override
+  String questionnaireResult(String rating) {
+    return 'Ваш стартовый рейтинг: $rating';
+  }
+
+  @override
+  String questionnaireResultHint(int games) {
+    return 'Он остаётся предварительным первые $games игр в рейтинге и меняется после каждого подтверждённого результата.';
+  }
+
+  @override
+  String get backLabel => 'Назад';
+
+  @override
+  String get doneLabel => 'Готово';
+
+  @override
+  String get adminRatingLocked =>
+      'Задаётся Actra. Чтобы изменить, обратитесь к разработчикам.';
+
+  @override
+  String get qYears => 'Как давно вы играете?';
+
+  @override
+  String get qYearsA0 => 'Меньше 6 месяцев';
+
+  @override
+  String get qYearsA1 => '6–24 месяца';
+
+  @override
+  String get qYearsA2 => '2–5 лет';
+
+  @override
+  String get qYearsA3 => 'Больше 5 лет';
+
+  @override
+  String get qOften => 'Как часто вы играете?';
+
+  @override
+  String get qOftenA0 => 'Редко';
+
+  @override
+  String get qOftenA1 => '2–3 раза в месяц';
+
+  @override
+  String get qOftenA2 => 'Каждую неделю';
+
+  @override
+  String get qOftenA3 => 'Несколько раз в неделю';
+
+  @override
+  String get qCompeted => 'Вы участвовали в соревнованиях?';
+
+  @override
+  String get qCompetedA0 => 'Никогда';
+
+  @override
+  String get qCompetedA1 => 'Товарищеские матчи со счётом';
+
+  @override
+  String get qCompetedA2 => 'Любительские турниры';
+
+  @override
+  String get qCompetedA3 => 'Регулярные турниры или лига';
+
+  @override
+  String get qPadelWall => 'Как вы играете от задней стенки?';
+
+  @override
+  String get qPadelWallA0 => 'Стараюсь избегать';
+
+  @override
+  String get qPadelWallA1 => 'Возвращаю медленные мячи';
+
+  @override
+  String get qPadelWallA2 => 'Возвращаю большинство мячей';
+
+  @override
+  String get qPadelWallA3 => 'Атакую от стенки';
+
+  @override
+  String get qPadelNet => 'У сетки…';
+
+  @override
+  String get qPadelNetA0 => 'Выхожу редко';
+
+  @override
+  String get qPadelNetA1 => 'Отбиваю с лёта лёгкие мячи';
+
+  @override
+  String get qPadelNetA2 => 'Держу сетку и играю с лёта с направлением';
+
+  @override
+  String get qPadelNetA3 => 'Завершаю розыгрыши ударами с лёта и смэшами';
+
+  @override
+  String get qTennisServe => 'Какая у вас подача?';
+
+  @override
+  String get qTennisServeA0 => 'Просто ввожу мяч в игру';
+
+  @override
+  String get qTennisServeA1 => 'Попадает, но медленно';
+
+  @override
+  String get qTennisServeA2 => 'Стабильная первая и вторая подача';
+
+  @override
+  String get qTennisServeA3 => 'Выигрываю ею очки';
+
+  @override
+  String get qTennisRally => 'В розыгрыше…';
+
+  @override
+  String get qTennisRallyA0 => 'Удерживаю в корте несколько мячей';
+
+  @override
+  String get qTennisRallyA1 => 'Играю в среднем темпе';
+
+  @override
+  String get qTennisRallyA2 => 'Контролирую направление и глубину';
+
+  @override
+  String get qTennisRallyA3 => 'Намеренно меняю темп и вращение';
 }

@@ -9,9 +9,12 @@ import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../../state/ui_providers.dart';
 import '../common/app_header.dart';
+import '../../domain/competitive.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
+import '../games/game_pickers.dart';
 
 /// Teams in the city and players to meet: search by name, sport and level.
 /// Joining a team arrives in a later milestone.
@@ -26,6 +29,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
   final _query = TextEditingController();
   String? _sportId;
   RangeValues _levels = const RangeValues(1, 5);
+
+  /// Used instead of [_levels] when the sport is rated (padel, tennis).
+  RangeValues _ratings = kAllRatings;
 
   @override
   void dispose() {
@@ -45,6 +51,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
       setState(() {
         _sportId = picked.isEmpty ? null : picked;
         _levels = const RangeValues(1, 5);
+        _ratings = kAllRatings;
       });
     }
   }
@@ -53,12 +60,16 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
   Widget build(BuildContext context) {
     final l = context.l;
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
-    final sportName = sports.where((s) => s.id == _sportId).firstOrNull?.name.resolve(context.lang);
+    final sport = sports.where((s) => s.id == _sportId).firstOrNull;
+    final sportName = sport?.name.resolve(context.lang);
+    final rated = sport?.competitiveRating ?? false;
     final text = _query.text.trim();
     final search = (
       sportId: _sportId,
       minLevel: _levels.start.round(),
       maxLevel: _levels.end.round(),
+      minRating: rated ? _ratings.start : null,
+      maxRating: rated ? _ratings.end : null,
       query: text.isEmpty ? null : text,
     );
 
@@ -121,7 +132,21 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                       ],
                     ),
                   ),
-                  if (_sportId != null) ...[
+                  if (rated) ...[
+                    Text(
+                      l.ratingRangeValue(formatRatingRange(_ratings.start, _ratings.end)),
+                      style: AppText.bodyStrong,
+                    ),
+                    RangeSlider(
+                      key: const ValueKey('players-rating'),
+                      values: _ratings,
+                      min: RatingRules.min,
+                      max: RatingRules.max,
+                      divisions: ((RatingRules.max - RatingRules.min) * 2).round(),
+                      labels: RangeLabels(formatRatingBound(_ratings.start), formatRatingBound(_ratings.end)),
+                      onChanged: (v) => setState(() => _ratings = v),
+                    ),
+                  ] else if (_sportId != null) ...[
                     Text(l.levelRange(_levels.start.round(), _levels.end.round()), style: AppText.bodyStrong),
                     RangeSlider(
                       key: const ValueKey('players-level'),
@@ -240,6 +265,10 @@ class _PlayerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l;
     String sportName(String id) => sports.where((s) => s.id == id).firstOrNull?.name.resolve(context.lang) ?? id;
+    String levelText(String id, int level) => switch (sports.where((s) => s.id == id).firstOrNull) {
+      final sport? => levelOrRating(context, sport, level: level, rating: player.ratings[id]),
+      null => l.level(level),
+    };
 
     return InkWell(
       onTap: () => context.push('/players/${player.id}'),
@@ -261,7 +290,7 @@ class _PlayerRow extends StatelessWidget {
                     children: [
                       ReliabilityPill(reliability: player.reliability),
                       for (final entry in player.levels.entries)
-                        Pill(text: '${sportName(entry.key)} · ${l.level(entry.value)}'),
+                        Pill(text: '${sportName(entry.key)} · ${levelText(entry.key, entry.value)}'),
                     ],
                   ),
                 ],

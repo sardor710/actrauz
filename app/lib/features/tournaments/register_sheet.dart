@@ -181,6 +181,8 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
       sportId: widget.tournament.sportId,
       minLevel: c.minLevel,
       maxLevel: c.maxLevel,
+      minRating: null,
+      maxRating: null,
       query: text.isEmpty ? null : text,
     );
     return Column(

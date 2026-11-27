@@ -3803,6 +3803,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tournament entries'**
   String get countRegistrations;
+
+  /// No description provided for @sportsPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your sports'**
+  String get sportsPromptTitle;
+
+  /// No description provided for @sportsPromptText.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what you play and how well, so we can show you games that fit.'**
+  String get sportsPromptText;
+
+  /// No description provided for @chooseSports.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose sports'**
+  String get chooseSports;
+
+  /// No description provided for @notNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notNow;
+
+  /// No description provided for @noSportsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not picked any sports yet'**
+  String get noSportsYet;
+
+  /// No description provided for @mySportsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch on the sports you play. Padel and tennis start with a short questionnaire.'**
+  String get mySportsHint;
+
+  /// No description provided for @pickLevelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level in {sport}'**
+  String pickLevelTitle(String sport);
+
+  /// No description provided for @ratingProvisional.
+  ///
+  /// In en, this message translates to:
+  /// **'Provisional'**
+  String get ratingProvisional;
+
+  /// No description provided for @ratingWithProvisional.
+  ///
+  /// In en, this message translates to:
+  /// **'{rating} · provisional'**
+  String ratingWithProvisional(String rating);
+
+  /// No description provided for @ratedGames.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 rated game} other{{count} rated games}}'**
+  String ratedGames(int count);
+
+  /// No description provided for @noRatingYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No rating yet'**
+  String get noRatingYet;
+
+  /// No description provided for @retakeQuestionnaire.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get retakeQuestionnaire;
+
+  /// No description provided for @ratingRangeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating range'**
+  String get ratingRangeLabel;
+
+  /// No description provided for @ratingRangeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating {range}'**
+  String ratingRangeValue(String range);
+
+  /// No description provided for @questionnaireTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{sport}: starting rating'**
+  String questionnaireTitle(String sport);
+
+  /// No description provided for @questionnaireStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {n} of {total}'**
+  String questionnaireStep(int n, int total);
+
+  /// No description provided for @questionnaireResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Your starting rating: {rating}'**
+  String questionnaireResult(String rating);
+
+  /// No description provided for @questionnaireResultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'It stays provisional for your first {games} rated games and moves after every confirmed result.'**
+  String questionnaireResultHint(int games);
+
+  /// No description provided for @backLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get backLabel;
+
+  /// No description provided for @doneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get doneLabel;
+
+  /// No description provided for @adminRatingLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Set by Actra. Ask engineering to change it.'**
+  String get adminRatingLocked;
+
+  /// No description provided for @qYears.
+  ///
+  /// In en, this message translates to:
+  /// **'How long have you played?'**
+  String get qYears;
+
+  /// No description provided for @qYearsA0.
+  ///
+  /// In en, this message translates to:
+  /// **'Under 6 months'**
+  String get qYearsA0;
+
+  /// No description provided for @qYearsA1.
+  ///
+  /// In en, this message translates to:
+  /// **'6–24 months'**
+  String get qYearsA1;
+
+  /// No description provided for @qYearsA2.
+  ///
+  /// In en, this message translates to:
+  /// **'2–5 years'**
+  String get qYearsA2;
+
+  /// No description provided for @qYearsA3.
+  ///
+  /// In en, this message translates to:
+  /// **'Over 5 years'**
+  String get qYearsA3;
+
+  /// No description provided for @qOften.
+  ///
+  /// In en, this message translates to:
+  /// **'How often do you play?'**
+  String get qOften;
+
+  /// No description provided for @qOftenA0.
+  ///
+  /// In en, this message translates to:
+  /// **'Rarely'**
+  String get qOftenA0;
+
+  /// No description provided for @qOftenA1.
+  ///
+  /// In en, this message translates to:
+  /// **'2–3 times a month'**
+  String get qOftenA1;
+
+  /// No description provided for @qOftenA2.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get qOftenA2;
+
+  /// No description provided for @qOftenA3.
+  ///
+  /// In en, this message translates to:
+  /// **'Several times a week'**
+  String get qOftenA3;
+
+  /// No description provided for @qCompeted.
+  ///
+  /// In en, this message translates to:
+  /// **'Have you competed?'**
+  String get qCompeted;
+
+  /// No description provided for @qCompetedA0.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get qCompetedA0;
+
+  /// No description provided for @qCompetedA1.
+  ///
+  /// In en, this message translates to:
+  /// **'Friendly matches with score'**
+  String get qCompetedA1;
+
+  /// No description provided for @qCompetedA2.
+  ///
+  /// In en, this message translates to:
+  /// **'Amateur tournaments'**
+  String get qCompetedA2;
+
+  /// No description provided for @qCompetedA3.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular tournaments or league'**
+  String get qCompetedA3;
+
+  /// No description provided for @qPadelWall.
+  ///
+  /// In en, this message translates to:
+  /// **'How do you play off the back wall?'**
+  String get qPadelWall;
+
+  /// No description provided for @qPadelWallA0.
+  ///
+  /// In en, this message translates to:
+  /// **'I avoid it'**
+  String get qPadelWallA0;
+
+  /// No description provided for @qPadelWallA1.
+  ///
+  /// In en, this message translates to:
+  /// **'I return slow balls'**
+  String get qPadelWallA1;
+
+  /// No description provided for @qPadelWallA2.
+  ///
+  /// In en, this message translates to:
+  /// **'I return most balls'**
+  String get qPadelWallA2;
+
+  /// No description provided for @qPadelWallA3.
+  ///
+  /// In en, this message translates to:
+  /// **'I attack off the wall'**
+  String get qPadelWallA3;
+
+  /// No description provided for @qPadelNet.
+  ///
+  /// In en, this message translates to:
+  /// **'At the net…'**
+  String get qPadelNet;
+
+  /// No description provided for @qPadelNetA0.
+  ///
+  /// In en, this message translates to:
+  /// **'I rarely go'**
+  String get qPadelNetA0;
+
+  /// No description provided for @qPadelNetA1.
+  ///
+  /// In en, this message translates to:
+  /// **'I volley easy balls'**
+  String get qPadelNetA1;
+
+  /// No description provided for @qPadelNetA2.
+  ///
+  /// In en, this message translates to:
+  /// **'I hold the net and volley with direction'**
+  String get qPadelNetA2;
+
+  /// No description provided for @qPadelNetA3.
+  ///
+  /// In en, this message translates to:
+  /// **'I finish points with volleys and smashes'**
+  String get qPadelNetA3;
+
+  /// No description provided for @qTennisServe.
+  ///
+  /// In en, this message translates to:
+  /// **'How is your serve?'**
+  String get qTennisServe;
+
+  /// No description provided for @qTennisServeA0.
+  ///
+  /// In en, this message translates to:
+  /// **'I just start the point'**
+  String get qTennisServeA0;
+
+  /// No description provided for @qTennisServeA1.
+  ///
+  /// In en, this message translates to:
+  /// **'It goes in, slowly'**
+  String get qTennisServeA1;
+
+  /// No description provided for @qTennisServeA2.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady first and second serve'**
+  String get qTennisServeA2;
+
+  /// No description provided for @qTennisServeA3.
+  ///
+  /// In en, this message translates to:
+  /// **'I win points with it'**
+  String get qTennisServeA3;
+
+  /// No description provided for @qTennisRally.
+  ///
+  /// In en, this message translates to:
+  /// **'In a rally…'**
+  String get qTennisRally;
+
+  /// No description provided for @qTennisRallyA0.
+  ///
+  /// In en, this message translates to:
+  /// **'I keep a few balls in'**
+  String get qTennisRallyA0;
+
+  /// No description provided for @qTennisRallyA1.
+  ///
+  /// In en, this message translates to:
+  /// **'I rally at medium pace'**
+  String get qTennisRallyA1;
+
+  /// No description provided for @qTennisRallyA2.
+  ///
+  /// In en, this message translates to:
+  /// **'I control direction and depth'**
+  String get qTennisRallyA2;
+
+  /// No description provided for @qTennisRallyA3.
+  ///
+  /// In en, this message translates to:
+  /// **'I change pace and spin on purpose'**
+  String get qTennisRallyA3;
 }
 
 class _AppLocalizationsDelegate

@@ -246,8 +246,11 @@ class _SportSheetState extends ConsumerState<_SportSheet> {
               ButtonSegment(value: true, label: Text(l.ratingCompetitive)),
             ],
             selected: {_draft.competitiveRating},
-            onSelectionChanged: (v) => setState(() => _draft.competitiveRating = v.first),
+            // Rated sports need their own questionnaire and scoring (design §5.1): not a switch.
+            onSelectionChanged: null,
           ),
+          const SizedBox(height: 6),
+          Text(l.adminRatingLocked, style: AppText.caption),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

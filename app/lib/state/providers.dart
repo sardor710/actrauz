@@ -186,10 +186,26 @@ final gameRequestProvider = FutureProvider.family<GameRequest, String>(
   (ref, id) => ref.watch(gameRepositoryProvider).request(id),
 );
 
-/// A search in the Find players list: the city is the current one.
-typedef PlayerSearch = ({String? sportId, int minLevel, int maxLevel, String? query});
+/// A search in the Find players list: the city is the current one. A rating
+/// bound is only for a rated sport (padel, tennis), where it replaces the level
+/// range.
+typedef PlayerSearch = ({
+  String? sportId,
+  int minLevel,
+  int maxLevel,
+  double? minRating,
+  double? maxRating,
+  String? query,
+});
 
-const PlayerSearch kAllPlayers = (sportId: null, minLevel: 1, maxLevel: 5, query: null);
+const PlayerSearch kAllPlayers = (
+  sportId: null,
+  minLevel: 1,
+  maxLevel: 5,
+  minRating: null,
+  maxRating: null,
+  query: null,
+);
 
 final playersProvider = FutureProvider.family<List<PlayerProfile>, PlayerSearch>(
   (ref, search) => ref
@@ -199,6 +215,8 @@ final playersProvider = FutureProvider.family<List<PlayerProfile>, PlayerSearch>
         sportId: search.sportId,
         minLevel: search.minLevel,
         maxLevel: search.maxLevel,
+        minRating: search.minRating,
+        maxRating: search.maxRating,
         query: search.query,
       ),
 );

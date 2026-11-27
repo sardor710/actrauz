@@ -273,7 +273,10 @@ void main() {
 
     await tap(tester, find.byType(InitialAvatar).first);
     expect(find.text('MY SPORTS'), findsOneWidget);
-    expect(find.text('Padel · Level 3'), findsOneWidget);
+    expect(find.text('Football · Level 3'), findsOneWidget);
+    // Padel and tennis show the 3.50 rating set above, not a level.
+    expect(find.text('3.50'), findsNWidgets(2));
+    expect(find.text('Padel · Level 3'), findsNothing);
 
     await tap(tester, find.text('Language'));
     for (final name in ['Oʻzbekcha', 'Русский', 'Қазақша', 'English']) {

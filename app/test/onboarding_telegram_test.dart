@@ -100,8 +100,10 @@ class FakeAuth implements AuthRepository {
   }
 }
 
+/// The one-time "Pick your sports" offer counts as seen (`sports_prompted`),
+/// so it does not cover the screens these tests use.
 Future<List<Uri>> pumpApp(WidgetTester tester, FakeAuth auth, {Map<String, Object> prefs = const {}}) async {
-  SharedPreferences.setMockInitialValues(prefs);
+  SharedPreferences.setMockInitialValues({'sports_prompted': true, ...prefs});
   final sharedPrefs = await SharedPreferences.getInstance();
   await initializeDateFormatting();
 

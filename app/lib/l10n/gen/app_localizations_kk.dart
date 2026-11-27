@@ -2137,4 +2137,197 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get countRegistrations => 'Турнирге қатысулар';
+
+  @override
+  String get sportsPromptTitle => 'Спорт түрлеріңізді таңдаңыз';
+
+  @override
+  String get sportsPromptText =>
+      'Немен және қай деңгейде ойнайтыныңызды көрсетіңіз — сізге сай ойындарды ұсынамыз.';
+
+  @override
+  String get chooseSports => 'Спорт түрлерін таңдау';
+
+  @override
+  String get notNow => 'Қазір емес';
+
+  @override
+  String get noSportsYet => 'Сіз әлі спорт түрлерін таңдамадыңыз';
+
+  @override
+  String get mySportsHint =>
+      'Өзіңіз ойнайтын спорт түрлерін қосыңыз. Падел мен теннис қысқа сауалнамадан басталады.';
+
+  @override
+  String pickLevelTitle(String sport) {
+    return '$sport: деңгейіңіз';
+  }
+
+  @override
+  String get ratingProvisional => 'Алдын ала';
+
+  @override
+  String ratingWithProvisional(String rating) {
+    return '$rating · алдын ала';
+  }
+
+  @override
+  String ratedGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Рейтингте $count ойын',
+      one: 'Рейтингте $count ойын',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noRatingYet => 'Әзірге рейтинг жоқ';
+
+  @override
+  String get retakeQuestionnaire => 'Қайта өту';
+
+  @override
+  String get ratingRangeLabel => 'Рейтинг аралығы';
+
+  @override
+  String ratingRangeValue(String range) {
+    return 'Рейтинг $range';
+  }
+
+  @override
+  String questionnaireTitle(String sport) {
+    return '$sport: бастапқы рейтинг';
+  }
+
+  @override
+  String questionnaireStep(int n, int total) {
+    return '$total сұрақтың $n-сі';
+  }
+
+  @override
+  String questionnaireResult(String rating) {
+    return 'Бастапқы рейтингіңіз: $rating';
+  }
+
+  @override
+  String questionnaireResultHint(int games) {
+    return 'Ол алғашқы $games рейтингтік ойында алдын ала болып қалады және әр расталған нәтижеден кейін өзгереді.';
+  }
+
+  @override
+  String get backLabel => 'Артқа';
+
+  @override
+  String get doneLabel => 'Дайын';
+
+  @override
+  String get adminRatingLocked =>
+      'Actra белгілейді. Өзгерту үшін әзірлеушілерге хабарласыңыз.';
+
+  @override
+  String get qYears => 'Қанша уақыттан бері ойнайсыз?';
+
+  @override
+  String get qYearsA0 => '6 айдан аз';
+
+  @override
+  String get qYearsA1 => '6–24 ай';
+
+  @override
+  String get qYearsA2 => '2–5 жыл';
+
+  @override
+  String get qYearsA3 => '5 жылдан артық';
+
+  @override
+  String get qOften => 'Қаншалықты жиі ойнайсыз?';
+
+  @override
+  String get qOftenA0 => 'Сирек';
+
+  @override
+  String get qOftenA1 => 'Айына 2–3 рет';
+
+  @override
+  String get qOftenA2 => 'Апта сайын';
+
+  @override
+  String get qOftenA3 => 'Аптасына бірнеше рет';
+
+  @override
+  String get qCompeted => 'Жарыстарға қатысқансыз ба?';
+
+  @override
+  String get qCompetedA0 => 'Ешқашан';
+
+  @override
+  String get qCompetedA1 => 'Есеппен өтетін жолдастық ойындар';
+
+  @override
+  String get qCompetedA2 => 'Әуесқой турнирлер';
+
+  @override
+  String get qCompetedA3 => 'Тұрақты турнирлер немесе лига';
+
+  @override
+  String get qPadelWall => 'Артқы қабырғадан қалай ойнайсыз?';
+
+  @override
+  String get qPadelWallA0 => 'Одан қашқақтаймын';
+
+  @override
+  String get qPadelWallA1 => 'Баяу доптарды қайтарамын';
+
+  @override
+  String get qPadelWallA2 => 'Доптардың көбін қайтарамын';
+
+  @override
+  String get qPadelWallA3 => 'Қабырғадан шабуыл жасаймын';
+
+  @override
+  String get qPadelNet => 'Тор алдында…';
+
+  @override
+  String get qPadelNetA0 => 'Сирек шығамын';
+
+  @override
+  String get qPadelNetA1 => 'Жеңіл доптарды ауада қайтарамын';
+
+  @override
+  String get qPadelNetA2 => 'Торды ұстап, бағыттап ауада соғамын';
+
+  @override
+  String get qPadelNetA3 => 'Ұпайды ауадан соққы мен смэшпен аяқтаймын';
+
+  @override
+  String get qTennisServe => 'Подачаңыз қандай?';
+
+  @override
+  String get qTennisServeA0 => 'Жай ғана ойынды бастаймын';
+
+  @override
+  String get qTennisServeA1 => 'Түседі, бірақ баяу';
+
+  @override
+  String get qTennisServeA2 => 'Тұрақты бірінші және екінші подача';
+
+  @override
+  String get qTennisServeA3 => 'Онымен ұпай ұтамын';
+
+  @override
+  String get qTennisRally => 'Доп алмасуда…';
+
+  @override
+  String get qTennisRallyA0 => 'Бірнеше допты алаңда ұстаймын';
+
+  @override
+  String get qTennisRallyA1 => 'Орташа қарқынмен ойнаймын';
+
+  @override
+  String get qTennisRallyA2 => 'Бағыт пен тереңдікті бақылаймын';
+
+  @override
+  String get qTennisRallyA3 => 'Қарқын мен айналымды әдейі өзгертемін';
 }

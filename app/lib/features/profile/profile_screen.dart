@@ -6,6 +6,7 @@ import '../../core/languages.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/admin_providers.dart';
@@ -13,6 +14,7 @@ import '../../state/owner_providers.dart';
 import '../../state/providers.dart';
 import '../common/app_header.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import 'delete_account.dart';
@@ -29,7 +31,6 @@ class ProfileScreen extends ConsumerWidget {
     final city = ref.watch(currentCityProvider);
     final name = session.userName ?? '';
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
-    final me = ref.watch(playerProvider(kMeId)).valueOrNull;
     final reliability = ref.watch(communitySettingsProvider).valueOrNull?.reliability;
 
     final bookings = ref.watch(myBookingsProvider).valueOrNull ?? const <Booking>[];
@@ -96,52 +97,52 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          if (me != null && sports.isNotEmpty) ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l.mySports.toUpperCase(), style: AppText.sectionTitle),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 42,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        clipBehavior: Clip.none,
-                        children: [
-                          for (final sport in sports)
-                            Container(
-                              margin: const EdgeInsets.only(right: 10),
-                              padding: const EdgeInsets.fromLTRB(8, 6, 14, 6),
-                              // White with a border: pale icons such as the volleyball stay visible.
-                              decoration: BoxDecoration(
-                                color: AppColors.card,
-                                border: Border.all(color: AppColors.line),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SportBadge(sportId: sport.id, size: 26),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${sport.name.resolve(context.lang)} · ${l.level(me.levelFor(sport.id))}',
-                                    style: manrope(13.5, 700),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 8, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(l.mySports.toUpperCase(), style: AppText.sectionTitle)),
+                      TextButton(
+                        key: const ValueKey('edit-my-sports'),
+                        onPressed: () => context.push('/sports'),
+                        child: Text(l.editLabel),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: AsyncBody(
+                      value: ref.watch(mySportsProvider),
+                      builder: (mine) => mine.isEmpty
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(l.noSportsYet, style: AppText.muted.copyWith(fontSize: 15)),
+                                const SizedBox(height: 12),
+                                OutlinedButton(onPressed: () => context.push('/sports'), child: Text(l.chooseSports)),
+                              ],
+                            )
+                          : Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                for (final m in mine)
+                                  if (sports.where((s) => s.id == m.sportId).firstOrNull case final sport?)
+                                    _MySportChip(sport: sport, mine: m),
+                              ],
+                            ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-          ],
+          ),
+          const SizedBox(height: 16),
           Card(
             child: Column(
               children: [
@@ -211,6 +212,46 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => confirmDeleteAccount(context, ref),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One of the player's sports: its level, or its rating with the
+/// provisional tag.
+class _MySportChip extends StatelessWidget {
+  const _MySportChip({required this.sport, required this.mine});
+
+  final Sport sport;
+  final MySport mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = sport.name.resolve(context.lang);
+    final rating = mine.rating;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 14, 6),
+      // White with a border: pale icons such as the volleyball stay visible.
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      // On a narrow phone the rating, its tag and the count wrap inside the chip.
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SportBadge(sportId: sport.id, size: 26),
+          const SizedBox(width: 8),
+          if (rating != null) ...[
+            Text(name, style: manrope(13.5, 700)),
+            const SizedBox(width: 8),
+            Flexible(child: RatingPill(rating, showGames: true)),
+          ] else
+            Flexible(
+              child: Text('$name · ${levelOrRating(context, sport, level: mine.level)}', style: manrope(13.5, 700)),
+            ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/domain/community.dart';
 import 'package:actra/domain/games.dart';
+import 'package:actra/features/common/rating_pill.dart';
 import 'package:actra/features/games/game_request_screen.dart';
 import 'package:actra/features/games/game_screen.dart';
 import 'package:actra/features/social/player_profile_screen.dart';
@@ -51,7 +52,9 @@ void main() {
     expect(find.text('GAME REQUESTS'), findsOneWidget);
     expect(find.text('Aziz wants to play Padel'), findsOneWidget);
     expect(find.text('1 of 2 interested'), findsOneWidget);
-    expect(find.text('Level 2–4'), findsWidgets);
+    // A padel request shows its rating range.
+    final rq1 = await containerOf(tester).read(gameRepositoryProvider).request('rq1');
+    expect(find.text(formatRatingRange(rq1.minRating!, rq1.maxRating!)), findsWidgets);
 
     await tap(tester, find.descendant(of: find.byKey(const ValueKey('home-requests')), matching: find.text('See all')));
     // The Games tab, on its Requests list.
@@ -217,18 +220,25 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('player-search')), '');
     await tester.pumpAndSettle();
 
-    // Padel, level 2 and up: players without a padel level count as level 1.
+    // Football takes the level slider.
+    await tap(tester, find.byKey(const ValueKey('players-sport')));
+    await tap(tester, find.text('Football'));
+    expect(find.byKey(const ValueKey('players-level')), findsOneWidget);
+    expect(find.text('Level 1–5'), findsOneWidget);
+
+    // Padel, rating 2.5 and up: players without a padel rating count as 1.0.
     await tap(tester, find.byKey(const ValueKey('players-sport')));
     await tap(tester, find.text('Padel'));
+    expect(find.byKey(const ValueKey('players-level')), findsNothing);
     expect(find.text('Timur'), findsOneWidget);
 
-    final slider = find.byType(RangeSlider);
+    final slider = find.byKey(const ValueKey('players-rating'));
     final box = tester.getRect(slider);
-    // Drag the lower thumb a quarter of the way along the track: level 2.
+    // Drag the lower thumb a quarter of the way along the 1.0–7.0 track: 2.5.
     await tester.dragFrom(Offset(box.left + 24, box.center.dy), Offset((box.width - 48) * 0.25, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text('Level 2–5'), findsOneWidget);
+    expect(find.text('Rating 2.5–7.0'), findsOneWidget);
     expect(find.text('Aziz'), findsOneWidget);
     expect(find.text('Dilnoza'), findsOneWidget);
     expect(find.text('Bekzod'), findsOneWidget);
@@ -244,7 +254,13 @@ void main() {
 
     expect(find.byType(PlayerProfileScreen), findsOneWidget);
     expect(find.text('Bekzod'), findsWidgets);
-    expect(find.text('Padel · Level 4'), findsOneWidget);
+    // Padel is rated: the rating, and no provisional tag after 12 rated games.
+    final padel = kSamplePlayers.firstWhere((p) => p.id == 'p7').ratings['padel']!;
+    expect(padel.provisional, isFalse);
+    expect(find.text('Padel'), findsOneWidget);
+    expect(find.text(formatRating(padel.rating)), findsOneWidget);
+    expect(find.text('${padel.ratedGames} rated games'), findsOneWidget);
+    expect(find.text('Provisional'), findsNothing);
     expect(find.text('Football · Level 3'), findsOneWidget);
     expect(find.text('New player'), findsOneWidget);
     expect(find.text('0 games played'), findsOneWidget);
