@@ -392,6 +392,21 @@ test('all unrated start at 2.50', async () => {
   assert.equal(await ratingOf(players[2]), '2.37');
 });
 
+test('auto-confirm gives unrated players their starting rating', async () => {
+  const a = await rated('Auto three', '3.00');
+  const b = await rated('Auto four', '4.00');
+  const c = await rated('Auto five', '5.00');
+  const d = await player('Auto new');
+  const mixed = await doubles([a, b, c, d], [[6, 4], [6, 4]]);
+  const fresh = await Promise.all(['N1', 'N2', 'N3', 'N4'].map((n) => player(n)));
+  const unrated = await doubles(fresh, [[6, 4], [6, 4]]);
+  assert.equal(await autoConfirm(plus(24)), 2);
+  assert.equal((await eventOf(mixed.resultId, d)).old, '4.00');
+  assert.equal((await ratingRow(d)).source, 'first_result');
+  for (const u of fresh) assert.equal((await eventOf(unrated.resultId, u)).old, '2.50');
+  assert.equal(await ratingOf(fresh[0]), '2.63');
+});
+
 test('rating stays within 1.00–7.00', async () => {
   const low = await rated('Lowest', '1.00');
   const other = await rated('Other', '1.00');

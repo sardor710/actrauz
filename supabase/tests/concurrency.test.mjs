@@ -254,8 +254,8 @@ async function ratedPlayer(name, rating = '3.50') {
   return id;
 }
 
-/** A doubles tennis game that ended an hour before `now`, its score entered by the first player. */
-async function enteredResult([a, b, c, d]) {
+/** A doubles tennis game that ended an hour before `now`, its score entered by the first player at `at`. */
+async function enteredResult([a, b, c, d], at = now) {
   const { rows } = await pool.query(
     `insert into games (sport_id, city_id, venue_id, host_id, during, utc_offset_minutes, spots)
      values ('tennis', 'tashkent', $1, $2, tstzrange('2026-11-22 17:30+05', '2026-11-22 19:00+05'), 300, 4) returning id`,
@@ -268,10 +268,12 @@ async function enteredResult([a, b, c, d]) {
     gameId,
     [a, b],
     [c, d],
-    now,
+    at,
   ]);
   return r.rows[0].id;
 }
+
+const later = (seconds) => new Date(Date.parse(now) + seconds * 1000).toISOString();
 
 const plus24 = new Date(Date.parse(now) + 24 * 3600 * 1000).toISOString();
 const eventCount = async (resultId) =>
@@ -331,5 +333,57 @@ test('two results sharing a player', async () => {
     assert.equal(rows[0].events, 2);
     assert.equal(rows[0].games, 2);
     assert.equal(rows[0].rating, rows[0].expected);
+  }
+});
+
+test('auto-confirm and a confirm on another result do not deadlock', async () => {
+  // Low and high are two players with low < high in uuid order. The auto run
+  // applies result 1 (with high) first, then fillers, then result 2 (with
+  // low); result 3 (low and high, not yet due) is confirmed meanwhile on a
+  // second connection, locking low then high. An auto run that locked per
+  // result would hold high and wait for low while the confirm holds low and
+  // waits for high. (That code never deadlocked here in practice: the
+  // confirm's insert of missing ratings already waits for the auto run once
+  // it has updated high, so the window is microseconds wide. This guards
+  // the lock order against regressions.)
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const pair = [await ratedPlayer(`Pair ${attempt}.1`), await ratedPlayer(`Pair ${attempt}.2`)].sort();
+    const [low, high] = pair;
+    const fresh = async (n) => {
+      const out = [];
+      for (let i = 0; i < n; i++) out.push(await ratedPlayer(`Fresh ${attempt}.${Math.random()}`));
+      return out;
+    };
+    const [a1, b1, c1] = await fresh(3);
+    const first = await enteredResult([a1, high, b1, c1], now);
+    // The fillers widen the window between the two; they share four players.
+    const fillerPlayers = await fresh(4);
+    const fillers = [];
+    for (let i = 0; i < 25; i++) fillers.push(await enteredResult(fillerPlayers, later(1 + i)));
+    const [a2, b2, c2] = await fresh(3);
+    const second = await enteredResult([a2, low, b2, c2], later(60));
+    const [host3, opp3] = await fresh(2);
+    // Entered an hour later: not due for the auto run below.
+    const third = await enteredResult([host3, low, high, opp3], later(3600));
+
+    const delay = (attempt * 3) % 40;
+    const [auto, confirmed] = await Promise.all([
+      errorOf(pool.query(`select app.auto_confirm_scores($1)`, [later(24 * 3600 + 120)])),
+      new Promise((resolve) => setTimeout(resolve, delay)).then(() =>
+        errorOf(pool.query(`select app.confirm_score($1, $2, $3)`, [high, third, later(3600)])),
+      ),
+    ]);
+    assert.equal(auto, null, `attempt ${attempt}: auto ${auto}`);
+    assert.equal(confirmed, null, `attempt ${attempt}: confirm ${confirmed}`);
+
+    for (const resultId of [first, ...fillers, second, third]) {
+      const { rows } = await pool.query(`select status from match_results where id = $1`, [resultId]);
+      assert.equal(rows[0].status, 'confirmed', `attempt ${attempt}`);
+      const per = await pool.query(
+        `select count(*)::int as n, count(distinct user_id)::int as players from rating_events where result_id = $1`,
+        [resultId],
+      );
+      assert.deepEqual(per.rows[0], { n: 4, players: 4 });
+    }
   }
 });

@@ -381,30 +381,61 @@ begin
 end $$;
 
 -- Confirms every pending result whose 24 hours are over; returns how many.
--- A result another call holds right now is left to that call (or the next
--- run), so this never waits on a player's confirmation.
+-- It touches several results, so it takes every lock up front in the global
+-- order, as a single confirm does for one result:
+--   1. the due result rows (skip locked: a result another call holds right
+--      now is left to that call, or to the next run);
+--   2. the starting ratings of players who have none, in one insert ordered
+--      by user_id (each from the first of its results, as app.apply_result
+--      would compute it), so apply_result later inserts nothing;
+--   3. all their players' rating rows, in one statement ordered by user_id.
+-- app.apply_result then finds every lock already held.
 create function app.auto_confirm_scores(p_now timestamptz) returns integer
 language plpgsql
 set search_path = ''
 as $$
 declare
+  v_ids uuid[];
   v_id uuid;
-  v_count integer := 0;
 begin
-  for v_id in
-    select r.id from public.match_results r
-    where r.status = 'pending' and r.confirm_deadline <= p_now
-    order by r.confirm_deadline, r.id
-  loop
-    perform 1 from public.match_results r
-    where r.id = v_id and r.status = 'pending' and r.confirm_deadline <= p_now
-    for update skip locked;
-    if found then
-      perform app.apply_result(v_id, p_now);
-      v_count := v_count + 1;
-    end if;
+  select array_agg(t.id order by t.id) into v_ids
+  from (select r.id from public.match_results r
+        where r.status = 'pending' and r.confirm_deadline <= p_now
+        order by r.id
+        for update skip locked) t;
+  if v_ids is null then return 0; end if;
+
+  insert into public.player_ratings (user_id, sport_id, rating, rated_games, source, created_at, updated_at)
+  select s.user_id, s.sport_id, s.rating, 0, 'first_result', p_now, p_now
+  from (
+    select distinct on (p.user_id, g.sport_id)
+      p.user_id, g.sport_id,
+      least(coalesce(
+        (select round(avg(pr.rating), 2) from public.match_result_players q
+         join public.player_ratings pr on pr.user_id = q.user_id and pr.sport_id = g.sport_id
+         where q.result_id = p.result_id),
+        app.rating_const('unrated_default')), app.rating_const('questionnaire_cap')) as rating
+    from public.match_result_players p
+    join public.match_results r on r.id = p.result_id
+    join public.games g on g.id = r.game_id
+    where p.result_id = any (v_ids)
+      and not exists (select 1 from public.player_ratings x where x.user_id = p.user_id and x.sport_id = g.sport_id)
+    order by p.user_id, g.sport_id, p.result_id) s
+  order by s.user_id, s.sport_id
+  on conflict (user_id, sport_id) do nothing;
+
+  perform 1 from public.player_ratings pr
+  where exists (select 1 from public.match_result_players p
+                join public.match_results r on r.id = p.result_id
+                join public.games g on g.id = r.game_id
+                where p.result_id = any (v_ids) and p.user_id = pr.user_id and g.sport_id = pr.sport_id)
+  order by pr.user_id, pr.sport_id
+  for update;
+
+  foreach v_id in array v_ids loop
+    perform app.apply_result(v_id, p_now);
   end loop;
-  return v_count;
+  return cardinality(v_ids);
 end $$;
 
 -- confirm: a disputed result as entered. correct: a disputed result with the
