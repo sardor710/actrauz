@@ -619,10 +619,65 @@ test('my next match', async () => {
   b = await bracket(me);
   assert.equal(b.my_next_match, null);
   assert.equal(b.finished, true);
-  // A category with entries but no draw yet: the tournament is not finished.
+  // A category with entries but no draw is left out: still finished.
   const extra = await addCategory(pool, t);
   await addEntries(pool, extra, [await player('X1'), await player('X2')]);
+  assert.equal((await bracket(me)).finished, true);
+  // Once it has a draw (a draft), it counts and is not finished.
+  await pool.query(`select app.make_draw($1, $2, 'knockout', null, null, $3)`, [admin, extra, now]);
   assert.equal((await bracket(me)).finished, false);
+});
+
+test('a correction never reopens a match against a withdrawn entry', async () => {
+  // SF2 done: the final became a walkover for its winner once both
+  // semi-finalists of SF1 had withdrawn. Correcting QF1 is refused.
+  const t = await tournament();
+  const { cat } = await published(t, { n: 8 });
+  const [q1, q2, q3, q4] = await knockout(cat, 1);
+  await score(organizer, q1.id, 'played', null, [[6, 1], [6, 1]]);
+  await withdraw(organizer, q2.side_a);
+  let [sf1] = await knockout(cat, 2);
+  assert.deepEqual([sf1.side_a, sf1.side_b, sf1.status], [q1.side_a, q2.side_b, 'ready']);
+  await withdraw(organizer, q1.side_a);
+  await score(organizer, q3.id, 'played', null, [[6, 1], [6, 1]]);
+  await score(organizer, q4.id, 'played', null, [[6, 1], [6, 1]]);
+  let [, sf2] = await knockout(cat, 2);
+  await score(organizer, sf2.id, 'played', null, [[6, 1], [6, 1]]);
+  await withdraw(organizer, q2.side_b);
+  [sf1] = await knockout(cat, 2);
+  assert.deepEqual([sf1.status, sf1.outcome, sf1.winner], ['done', 'none', null]);
+  let [final] = await knockout(cat, 3);
+  assert.deepEqual([final.status, final.outcome, winnerOf(final)], ['done', 'walkover', q3.side_a]);
+
+  await expectError(score(organizer, q1.id, 'played', null, [[1, 6], [1, 6]]), 'next_match_played');
+  [sf1] = await knockout(cat, 2);
+  [final] = await knockout(cat, 3);
+  assert.deepEqual([sf1.status, sf1.outcome], ['done', 'none']);
+  assert.deepEqual([final.status, winnerOf(final)], ['done', q3.side_a]);
+  assert.equal((await drawJson(cat)).winner, q3.side_a);
+
+  // SF2 not played yet: the correction goes through and Y gets SF1 as a
+  // walkover (its opponent has withdrawn), so Y waits in the final.
+  const t2 = await tournament();
+  const { cat: c2 } = await published(t2, { n: 8 });
+  const [r1, r2] = await knockout(c2, 1);
+  await score(organizer, r1.id, 'played', null, [[6, 1], [6, 1]]);
+  await withdraw(organizer, r2.side_a);
+  await withdraw(organizer, r1.side_a);
+  await withdraw(organizer, r2.side_b);
+  assert.equal((await knockout(c2, 2))[0].outcome, 'none');
+  await score(organizer, r1.id, 'played', null, [[1, 6], [1, 6]]);
+  const [semi] = await knockout(c2, 2);
+  assert.deepEqual([semi.status, semi.outcome, winnerOf(semi)], ['done', 'walkover', r1.side_b]);
+  const [f2] = await knockout(c2, 3);
+  assert.deepEqual([f2.side_a, f2.a_empty, f2.status], [r1.side_b, false, 'waiting']);
+  for (const x of await allMatches(c2)) {
+    if (x.status === 'ready') {
+      for (const side of [x.side_a, x.side_b]) {
+        assert.equal((await drawJson(c2)).entries.find((e) => e.registration_id === side).withdrawn, false);
+      }
+    }
+  }
 });
 
 test('organiser plays', async () => {

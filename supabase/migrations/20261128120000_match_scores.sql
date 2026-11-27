@@ -101,6 +101,10 @@ begin
     if v_next.side_b is not distinct from v_entry and v_next.b_empty = v_empty then return; end if;
     update public.tournament_matches m set side_b = v_entry, b_empty = v_empty where m.id = v_next.id;
   end if;
+  -- A next match that already has a result never changes a side under it.
+  if v_next.status = 'done' and v_next.outcome in ('played', 'walkover', 'retired', 'decider') then
+    raise exception 'next_match_played';
+  end if;
   perform app.settle_match(v_next.id, p_now);
 end $$;
 
@@ -116,16 +120,22 @@ declare
   v_status text;
   v_outcome text;
   v_winner text;
+  v_a_gone boolean;
+  v_b_gone boolean;
 begin
   select m.* into v_match from public.tournament_matches m where m.id = p_match_id;
   if not found or v_match.stage <> 'knockout' then return; end if;
   if v_match.status = 'done' and v_match.outcome not in ('bye', 'none') then return; end if;
+  -- A withdrawn entry still on a side (a match made 'none' when both sides
+  -- withdrew) counts as an empty side.
+  v_a_gone := v_match.a_empty or (v_match.side_a is not null and app.entry_withdrawn(v_match.side_a));
+  v_b_gone := v_match.b_empty or (v_match.side_b is not null and app.entry_withdrawn(v_match.side_b));
 
-  if v_match.a_empty and v_match.b_empty then
+  if v_a_gone and v_b_gone then
     v_status := 'done'; v_outcome := 'none'; v_winner := null;
-  elsif v_match.a_empty and v_match.side_b is not null then
+  elsif v_a_gone and v_match.side_b is not null then
     v_status := 'done'; v_outcome := case when v_match.round = 1 then 'bye' else 'walkover' end; v_winner := 'b';
-  elsif v_match.b_empty and v_match.side_a is not null then
+  elsif v_b_gone and v_match.side_a is not null then
     v_status := 'done'; v_outcome := case when v_match.round = 1 then 'bye' else 'walkover' end; v_winner := 'a';
   elsif v_match.side_a is not null and v_match.side_b is not null then
     v_status := 'ready'; v_outcome := null; v_winner := null;
@@ -854,8 +864,9 @@ end $$;
 -- Redefined from 20261128110000_schedule.sql: "my_next_match" (the caller's
 -- first match still to play in a published draw, by start time, then group
 -- before knockout, round and position: match_json plus "category_id", or
--- null) and "finished" (every category of the tournament has a published
--- draw that is finished).
+-- null) and "finished" (at least one category has a draw, and every
+-- category with a draw has a published one that is finished; categories
+-- without a draw are left out).
 create or replace function app.tournament_bracket(p_user uuid, p_tournament_id uuid) returns jsonb
 language plpgsql
 set search_path = ''
@@ -894,8 +905,9 @@ begin
       order by m.starts_at nulls last, m.stage, m.round, c.sort_order, c.created_at, c.id, m.position
       limit 1),
     'finished', (
-      select count(*) > 0 and bool_and((app.category_result(c.id) ->> 'finished')::boolean)
-      from public.tournament_categories c
+      select count(*) > 0 and bool_and((app.category_result(d.category_id) ->> 'finished')::boolean)
+      from public.tournament_draws d
+      join public.tournament_categories c on c.id = d.category_id
       where c.tournament_id = p_tournament_id));
 end $$;
 
