@@ -636,6 +636,33 @@ test('a member the host removed no longer sees the team game listed', async () =
   assert.ok((await listedIds(other)).includes(g.id));
 });
 
+test('captain who hosts an upcoming team game is deleted', async () => {
+  const [cap, oldest, newer, loner] = await players('Host cap', 'Host oldest', 'Host newer', 'Host loner');
+  const team = await teamWith(cap, [oldest, newer], { sport_id: 'running' });
+  const g = await createGame(cap, run({ team_id: team.id, note: 'Bring water' }));
+  await joinGame(oldest, g.id);
+  // A team of one with a game of its own.
+  const alone = await create(loner, spec('Host alone', { sport_id: 'running' }));
+  const own = await createGame(loner, run({ team_id: alone.id, starts_local: '2026-11-25T20:00:00', ends_local: '2026-11-25T21:00:00' }));
+  await pool.query('delete from notifications');
+
+  await pool.query(`select app.delete_account($1, $2)`, [cap, now]);
+  await pool.query(`select app.delete_account($1, $2)`, [loner, now]);
+
+  const game = await one(`select status, note, team_id from games where id = $1`, [g.id]);
+  assert.equal(game.status, 'cancelled');
+  assert.equal(game.note, null);
+  assert.equal(game.team_id, team.id);
+  assert.ok((await notices('game_cancelled')).some((n) => n.user_id === oldest));
+  assert.equal((await one(`select captain_id from teams where id = $1`, [team.id])).captain_id, oldest);
+  assert.deepEqual(await memberIds(team.id), sorted([oldest, newer]));
+
+  // The team of one goes; its game stays, cancelled, as an ordinary game.
+  assert.equal((await one(`select count(*)::int as n from teams where id = $1`, [alone.id])).n, 0);
+  const ownGame = await one(`select status, team_id from games where id = $1`, [own.id]);
+  assert.deepEqual(ownGame, { status: 'cancelled', team_id: null });
+});
+
 test('team page lists its games', async () => {
   const [cap, m, outsider] = await players('Page cap', 'Page member', 'Page outsider');
   const team = await teamWith(cap, [m], { sport_id: 'running' });

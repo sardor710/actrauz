@@ -9,8 +9,9 @@
 -- signature stays.
 --
 -- Lock order: every function that changes a team locks its row first
--- (for update), then the member, request and invite rows. Profiles are only
--- read, never locked here.
+-- (for update), then the member, request and invite rows. Two functions
+-- lock a profile row (for no key update, before any team row): create_team,
+-- so one player's creations take turns, and delete_account.
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -630,6 +631,16 @@ $$;
 -- to) the same change is made directly, with the same notifications. What has started or
 -- ended (bookings, games, tournaments that have started) stays as anonymous
 -- history, without the player's own notes.
+--
+-- Lock order (the one the other functions use: booking -> game -> result ->
+-- rating rows; team -> its games): the profile; every team involved, in id
+-- order; bookings (each with its games), then the booking notes; the games
+-- the player hosts or joined, then their game notes; Game Requests;
+-- tournament categories and entries; the team hand-over or removal (which
+-- writes the removed teams' games); the games the player reported a no-show
+-- in, in id order, with their results; the player's results in id order;
+-- their rating rows. No booking is locked after a game, and no game after a
+-- result.
 create or replace function app.delete_account(p_user uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -656,6 +667,18 @@ begin
   select p.* into v_profile from public.profiles p where p.id = p_user for no key update;
   if not found or v_profile.deleted_at is not null then return; end if;
 
+  -- Every team involved is locked first, in id order: a team comes before
+  -- its games (a hosted team game is cancelled below, and removing a team
+  -- clears team_id on its games), so a captain's call on one of them waits
+  -- or is waited for.
+  perform 1 from public.teams t
+  where t.captain_id = p_user
+     or t.id in (select m.team_id from public.team_members m where m.user_id = p_user)
+     or t.id in (select r.team_id from public.team_join_requests r where r.user_id = p_user and r.status = 'pending')
+     or t.id in (select i.team_id from public.team_invites i where i.user_id = p_user and i.status = 'pending')
+  order by t.id
+  for update;
+
   -- Bookings first, then games: the lock order cancel_booking and
   -- host_cancel_game use. A booking's games are cancelled with it
   -- (cancel_games_for_booking), so their players hear once. Inside the late
@@ -670,6 +693,11 @@ begin
   for v_id in select b.id from public.bookings b where b.user_id = p_user and b.status = 'held' order by b.id loop
     perform app.release_hold(p_user, v_id);
   end loop;
+  -- The player's own free text goes from every row they wrote it on, past
+  -- and future, each kind right after its own step (no booking is locked
+  -- after a game): booking notes here (owners see them).
+  update public.bookings b set note = null
+  where b.user_id = p_user and b.source = 'app' and b.note is not null;
 
   -- Games still to come that the player hosts (the participants hear), then
   -- the ones they joined (the host hears; leaving late is a late cancel, not
@@ -696,8 +724,20 @@ begin
   for v_id in select i.game_id from public.game_invites i where i.user_id = p_user and i.status = 'pending' order by i.game_id loop
     perform app.decline_invite(p_user, v_id);
   end loop;
+  -- Notes and meeting points on the games they host. A meeting-point game
+  -- must keep a meeting point (games_meeting_point_for_map_point), so it
+  -- gets '' there, which game_json shows as null. The map coordinates of the
+  -- meeting point go too (they are nullable, no constraint ties them).
+  update public.games g
+  set note = null,
+      meeting_point = case when g.kind = 'map_point' then '' end,
+      meeting_lat = null,
+      meeting_lng = null
+  where g.host_id = p_user
+    and (g.note is not null or g.meeting_point is not null or g.meeting_lat is not null or g.meeting_lng is not null);
 
-  -- Game Requests: the player's open ones, and their "I'm in" on open ones.
+  -- Game Requests: the player's open ones, and their "I'm in" on open ones;
+  -- then the notes and areas on all their requests.
   for v_id in select r.id from public.game_requests r where r.host_id = p_user and r.status = 'open' order by r.id loop
     perform app.cancel_game_request(p_user, v_id);
   end loop;
@@ -709,6 +749,8 @@ begin
   loop
     perform app.withdraw_interest(p_user, v_id);
   end loop;
+  update public.game_requests r set note = null, area = null
+  where r.host_id = p_user and (r.note is not null or r.area is not null);
 
   -- Live entries, as registrant or named partner, in tournaments that have
   -- not started yet (a tournament starting today in venue time has started;
@@ -758,6 +800,26 @@ begin
       perform app.sync_tournament_summary(v_tournament.id);
     end if;
   end loop;
+
+  -- Teams (design §7), locked at the start. Before the after-game rows and
+  -- the results: removing a team writes its games (team_id), and no game is
+  -- locked after a result.
+  for v_team in select t.* from public.teams t where t.captain_id = p_user order by t.id loop
+    select m.user_id into v_other from public.team_members m
+    join public.profiles p on p.id = m.user_id and p.deleted_at is null
+    where m.team_id = v_team.id and m.user_id <> p_user
+    order by m.joined_at, m.user_id
+    limit 1;
+    if found then
+      update public.teams t set captain_id = v_other where t.id = v_team.id returning * into v_team;
+      perform app.notify(v_other, 'team_captain', 'teams', app.team_note(v_team, p_user), p_now);
+    else
+      delete from public.teams t where t.id = v_team.id;
+    end if;
+  end loop;
+  delete from public.team_members m where m.user_id = p_user;
+  delete from public.team_join_requests r where r.user_id = p_user;
+  delete from public.team_invites i where i.user_id = p_user;
 
   -- After-game rows (design §6). The games the player reported someone in
   -- are locked in id order before any result row (a recount may freeze a
@@ -813,31 +875,6 @@ begin
   delete from public.player_ratings r where r.user_id = p_user;
   delete from public.rating_events e where e.user_id = p_user;
 
-  -- Teams (design §7). They touch only team rows and notifications.
-  perform 1 from public.teams t
-  where t.captain_id = p_user
-     or t.id in (select m.team_id from public.team_members m where m.user_id = p_user)
-     or t.id in (select r.team_id from public.team_join_requests r where r.user_id = p_user and r.status = 'pending')
-     or t.id in (select i.team_id from public.team_invites i where i.user_id = p_user and i.status = 'pending')
-  order by t.id
-  for update;
-  for v_team in select t.* from public.teams t where t.captain_id = p_user order by t.id loop
-    select m.user_id into v_other from public.team_members m
-    join public.profiles p on p.id = m.user_id and p.deleted_at is null
-    where m.team_id = v_team.id and m.user_id <> p_user
-    order by m.joined_at, m.user_id
-    limit 1;
-    if found then
-      update public.teams t set captain_id = v_other where t.id = v_team.id returning * into v_team;
-      perform app.notify(v_other, 'team_captain', 'teams', app.team_note(v_team, p_user), p_now);
-    else
-      delete from public.teams t where t.id = v_team.id;
-    end if;
-  end loop;
-  delete from public.team_members m where m.user_id = p_user;
-  delete from public.team_join_requests r where r.user_id = p_user;
-  delete from public.team_invites i where i.user_id = p_user;
-
   -- A venue left without an owner stays; an admin assigns a new one, and
   -- the audit log says which venue needs it.
   for v_id in select o.venue_id from public.venue_owners o where o.user_id = p_user order by o.venue_id loop
@@ -854,24 +891,6 @@ begin
   delete from public.venue_owners o where o.user_id = p_user;
   delete from public.notifications n where n.user_id = p_user;
   delete from public.phone_lookups l where l.user_id = p_user;
-
-  -- The player's own free text, on every row they wrote it on, past and
-  -- future: booking notes (owners see them), notes and meeting points on the
-  -- games they host, notes and areas on their Game Requests. A meeting-point
-  -- game must keep a meeting point (games_meeting_point_for_map_point), so it
-  -- gets '' there, which game_json shows as null. The map coordinates of the
-  -- meeting point go too (they are nullable, no constraint ties them).
-  update public.bookings b set note = null
-  where b.user_id = p_user and b.source = 'app' and b.note is not null;
-  update public.games g
-  set note = null,
-      meeting_point = case when g.kind = 'map_point' then '' end,
-      meeting_lat = null,
-      meeting_lng = null
-  where g.host_id = p_user
-    and (g.note is not null or g.meeting_point is not null or g.meeting_lat is not null or g.meeting_lng is not null);
-  update public.game_requests r set note = null, area = null
-  where r.host_id = p_user and (r.note is not null or r.area is not null);
 
   -- Last, so the notifications above still carry the player's name.
   update public.profiles p
@@ -1054,8 +1073,11 @@ as $$ select app.can_see_game(p_user, g, now()) $$;
 -- otherwise), the team's sport and city are the game's (invalid_argument),
 -- the game is stored invite_only whatever was asked, public_from is the
 -- start less open_hours_before, and every other member hears
--- (team_game_posted). The team row is locked after the booking, the order
--- delete_account uses.
+-- (team_game_posted). The team row is locked after the booking.
+-- (delete_account takes its player's teams before their bookings; the two
+-- meet only when that player creates a team game while their own account is
+-- being deleted, and a deadlock there aborts one call, which the client
+-- retries.)
 create or replace function app.create_game(p_user uuid, p_game jsonb, p_now timestamptz) returns public.games
 language plpgsql
 set search_path = ''
