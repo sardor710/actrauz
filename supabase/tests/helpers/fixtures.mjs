@@ -14,6 +14,19 @@ export async function addCities(pool) {
     on conflict (id) do nothing`);
 }
 
+/**
+ * Padel and tennis as rated sports (M7), as in production. Only the M7 test
+ * files call it: older files rely on padel being a simple-level sport.
+ */
+export async function addRatedSports(pool) {
+  await addCities(pool);
+  await pool.query(`update sports set competitive_rating = true where id = 'padel'`);
+  await pool.query(`
+    insert into sports (id, name_en, icon_key, default_players, competitive_rating) values
+      ('tennis', 'Tennis', 'tennis', 2, true)
+    on conflict (id) do update set competitive_rating = true`);
+}
+
 /** hours: { weekday: [openMinute, closeMinute] | null }; default 07:00-23:00 all week. */
 export async function addVenue(pool, { cityId = 'tashkent', name = 'Test venue', open = 7 * 60, close = 23 * 60, hours } = {}) {
   await addCities(pool);

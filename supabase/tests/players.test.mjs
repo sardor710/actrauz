@@ -46,7 +46,7 @@ test('list_players: city, hidden, caller, name query and the sport/level filter'
   assert.ok(!all.some((p) => p.name === 'Hidden Hana' || p.name === 'Far Away'));
 
   const a = all.find((p) => p.id === anna);
-  assert.deepEqual(Object.keys(a).sort(), ['city_id', 'games_played', 'id', 'levels', 'name', 'reliability']);
+  assert.deepEqual(Object.keys(a).sort(), ['city_id', 'games_played', 'id', 'levels', 'name', 'ratings', 'reliability']);
   assert.deepEqual(a.levels, { football: 3, padel: 2 });
   assert.equal(a.city_id, 'tashkent');
   assert.equal(a.games_played, 0);
