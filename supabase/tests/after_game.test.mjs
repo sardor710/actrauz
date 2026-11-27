@@ -390,6 +390,50 @@ test('no-show against a player in a result', async () => {
   assert.equal((await resultRow(singles.id)).status, 'pending');
 });
 
+test('a score cannot name a recorded no-show', async () => {
+  const [h, a, b, t] = await players('Late score host', 'Late score A', 'Late score B', 'Late score T');
+  const gameId = await finishedGame([h, a, b, t]);
+  await noShow(a, gameId, t);
+  await noShow(b, gameId, t);
+  const enter = (sideA, sideB) =>
+    pool.query(`select app.enter_score($1, $2, $3::uuid[], $4::uuid[], '[[6, 4]]', $5)`, [h, gameId, sideA, sideB, now]);
+  await expectError(enter([h, a], [b, t]), 'invalid_argument');
+  await expectError(enter([h, t], [a, b]), 'invalid_argument');
+  // Without them the score goes in as usual.
+  await enter([h], [a]);
+  assert.equal((await one(`select status from match_results where game_id = $1`, [gameId])).status, 'pending');
+});
+
+test('venue mark after a peer majority leaves one penalty', async () => {
+  const admin = await addAdmin(pool, await player('Mark admin'));
+  const [h, a, b, c] = await players('Mark host', 'Mark A', 'Mark B', 'Mark C');
+  const end = plus(-30);
+  const booking = await one(
+    `insert into bookings (user_id, venue_id, court_id, during, utc_offset_minutes, slot_count, total_price, currency, status)
+     values ($1, $2, $3, tstzrange($4, $5), 300, 1, 180000, 'UZS', 'confirmed') returning id`,
+    [h, venueId, courtId, plus(-1.5, end), end],
+  );
+  const gameId = await finishedGame([h, a, b, c], { end, bookingId: booking.id });
+  await noShow(a, gameId, h);
+  await noShow(b, gameId, h);
+  assert.deepEqual(await gameEvents(h, gameId), ['no_show -20']);
+
+  const mark = (outcome) => pool.query(`select app.owner_mark_booking($1, $2, $3, $4)`, [admin, booking.id, outcome, now]);
+  const noShows = () =>
+    pool
+      .query(`select ref from reliability_events where user_id = $1 and kind = 'no_show'`, [h])
+      .then((r) => r.rows.map((x) => x.ref));
+  await mark('no_show');
+  assert.deepEqual(await noShows(), [booking.id]);
+  // A later report finds the venue's mark and adds nothing.
+  await noShow(c, gameId, h);
+  assert.deepEqual(await noShows(), [booking.id]);
+  // Changed to paid: the venue's penalty goes, the peer one does not come back.
+  await mark('paid');
+  assert.deepEqual(await noShows(), []);
+  assert.deepEqual(await gameEvents(h, booking.id), ['booking_paid 2']);
+});
+
 // --- abuse reports -------------------------------------------------------------
 
 test('abuse report', async () => {
@@ -526,6 +570,74 @@ test('admin review lists and closes', async () => {
   assert.deepEqual(listed.map((x) => x.result.id), [ns.id]);
   assert.equal(listed[0].result.dispute_reason, 'no_show');
   assert.equal(listed[0].disputed_by_name, null);
+});
+
+const enterScore = (user, gameId, a, b) =>
+  one(`select r.* from app.enter_score($1, $2, $3::uuid[], $4::uuid[], '[[6, 4]]', $5) r`, [user, gameId, a, b, now]);
+const resolve = (user, resultId, action) =>
+  pool.query(`select app.admin_resolve_score($1, $2, $3, null, $4)`, [user, resultId, action, now]);
+
+/** A confirmed doubles result in a fresh game, then flagged by a no-show majority against its last player. */
+async function flaggedResult(prefix) {
+  const [h, a, b, t] = await players(`${prefix} host`, `${prefix} A`, `${prefix} B`, `${prefix} T`);
+  const gameId = await finishedGame([h, a, b, t]);
+  const r = await enterScore(h, gameId, [h, a], [b, t]);
+  await pool.query(`select app.confirm_score($1, $2, $3)`, [b, r.id, now]);
+  await noShow(h, gameId, t);
+  await noShow(a, gameId, t);
+  return { resultId: r.id, gameId, players: [h, a, b, t] };
+}
+
+test('admin keeps a flagged result', async () => {
+  const admin = await addAdmin(pool, await player('Keep admin'));
+  const { resultId, players: ids } = await flaggedResult('Keep');
+  const ratings = () =>
+    pool
+      .query(`select user_id, rating::text, rated_games from player_ratings where user_id = any ($1) order by user_id`, [ids])
+      .then((r) => r.rows);
+  const before = await ratings();
+  assert.equal((await review(admin)).counts.disputes, 1);
+  await pool.query('delete from notifications');
+
+  await resolve(admin, resultId, 'keep');
+  const kept = await resultRow(resultId);
+  assert.equal(kept.status, 'confirmed');
+  assert.equal(kept.flagged_no_show, false);
+  assert.equal(kept.resolved_by, admin);
+  assert.equal(new Date(kept.resolved_at).toISOString(), new Date(now).toISOString());
+  assert.deepEqual(await ratings(), before);
+  assert.equal((await one(`select count(*)::int as n from rating_events where result_id = $1`, [resultId])).n, 4);
+  assert.deepEqual(
+    (await pool.query(`select actor_id, action from audit_log where entity_id = $1`, [resultId])).rows,
+    [{ actor_id: admin, action: 'score_keep' }],
+  );
+  assert.equal((await one(`select count(*)::int as n from notifications`)).n, 0);
+  const after = await review(admin);
+  assert.deepEqual(after.disputes, []);
+  assert.equal(after.counts.disputes, 0);
+  // Kept once: a second keep finds nothing to keep.
+  await expectError(resolve(admin, resultId, 'keep'), 'not_found');
+
+  // Void still works on a flagged result, and takes it off the list too.
+  const other = await flaggedResult('Void');
+  await resolve(admin, other.resultId, 'void');
+  assert.equal((await resultRow(other.resultId)).status, 'void');
+  assert.equal((await review(admin)).counts.disputes, 0);
+});
+
+test('keep needs a flagged confirmed result', async () => {
+  const admin = await addAdmin(pool, await player('Keep check admin'));
+  const [h, o, h2, o2, h3, o3] = await players('KP host', 'KP opp', 'KD host', 'KD opp', 'KC host', 'KC opp');
+  const pending = await enterScore(h, await finishedGame([h, o]), [h], [o]);
+  const disputed = await enterScore(h2, await finishedGame([h2, o2]), [h2], [o2]);
+  await pool.query(`select app.dispute_score($1, $2, null, $3)`, [o2, disputed.id, now]);
+  const confirmed = await enterScore(h3, await finishedGame([h3, o3]), [h3], [o3]);
+  await pool.query(`select app.confirm_score($1, $2, $3)`, [o3, confirmed.id, now]);
+  for (const r of [pending, disputed, confirmed]) await expectError(resolve(admin, r.id, 'keep'), 'not_found');
+  await expectError(resolve(h, confirmed.id, 'keep'), 'not_allowed');
+  assert.equal((await resultRow(pending.id)).status, 'pending');
+  assert.equal((await resultRow(disputed.id)).status, 'disputed');
+  assert.equal((await one(`select count(*)::int as n from audit_log`)).n, 0);
 });
 
 // --- what the app calls ----------------------------------------------------------

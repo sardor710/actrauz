@@ -2,10 +2,11 @@
 -- their majority rule, abuse reports, the sportsmanship summary and the admin
 -- review (design 2026-11-27-actra-m7-competitive §6).
 --
--- Additive: new server-only tables and functions. app.game_json and
--- app.delete_account are copied from 20261127110000_scores.sql,
--- app.complete_games from the same file, app.player_json from
--- 20261127100000_ratings.sql; every signature stays.
+-- Additive: new server-only tables and functions. app.game_json,
+-- app.delete_account, app.complete_games, app.enter_score and
+-- app.admin_resolve_score are copied from 20261127110000_scores.sql,
+-- app.player_json from 20261127100000_ratings.sql, app.owner_mark_booking
+-- from 20261124100000_community_core.sql; every signature stays.
 --
 -- Lock order: a no-show report locks the game row, then (if the reported
 -- player is in the game's result) the match_results row; never a
@@ -787,6 +788,233 @@ begin
       last_seen_at = null,
       deleted_at = p_now
   where p.id = p_user;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Scores and venue marks against the no-show rule
+-- ---------------------------------------------------------------------------
+
+-- Redefined from 20261127110000_scores.sql: a score cannot name a player a
+-- no-show majority was recorded against for this game (invalid_argument),
+-- so a score entered after the majority never counts them as having played.
+create or replace function app.enter_score(
+  p_user uuid, p_game_id uuid, p_side_a uuid[], p_side_b uuid[], p_sets jsonb, p_now timestamptz)
+returns public.match_results
+language plpgsql
+set search_path = ''
+as $$
+declare
+  c_open_for constant interval := interval '7 days';
+  c_host_only constant interval := interval '24 hours';
+  c_confirm_within constant interval := interval '24 hours';
+
+  v_game public.games;
+  v_players uuid[];
+  v_result public.match_results;
+  v_sets jsonb;
+  v_winner text;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+
+  select g.* into v_game from public.games g where g.id = p_game_id for update;
+  if not found or v_game.status = 'cancelled' or not app.is_rated_sport(v_game.sport_id)
+     or not exists (select 1 from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user) then
+    raise exception 'not_found';
+  end if;
+  if p_now < upper(v_game.during) or p_now >= upper(v_game.during) + c_open_for then
+    raise exception 'score_closed';
+  end if;
+  if v_game.host_id <> p_user and p_now < upper(v_game.during) + c_host_only then
+    raise exception 'not_allowed';
+  end if;
+
+  -- 1 against 1 or 2 against 2, distinct participants, the caller among them.
+  if p_side_a is null or p_side_b is null
+     or coalesce(array_ndims(p_side_a), 0) <> 1 or coalesce(array_ndims(p_side_b), 0) <> 1
+     or cardinality(p_side_a) not in (1, 2) or cardinality(p_side_a) <> cardinality(p_side_b) then
+    raise exception 'invalid_argument';
+  end if;
+  v_players := p_side_a || p_side_b;
+  if array_position(v_players, null) is not null
+     or (select count(distinct u) from unnest(v_players) u) <> cardinality(v_players)
+     or not (p_user = any (v_players))
+     or (select count(*) from public.game_participants p where p.game_id = p_game_id and p.user_id = any (v_players))
+        <> cardinality(v_players)
+     -- A deleted account stays a participant of past games but plays no more results.
+     or exists (select 1 from public.profiles pr where pr.id = any (v_players) and pr.deleted_at is not null)
+     -- Nor does a player recorded as not having shown up (app.recount_no_show).
+     or exists (select 1 from public.reliability_events e
+                where e.user_id = any (v_players) and e.kind = 'no_show' and e.ref = p_game_id::text) then
+    raise exception 'invalid_argument';
+  end if;
+  v_sets := app.whole_sets(p_sets);
+  v_winner := app.score_winner(v_sets);
+
+  select r.* into v_result from public.match_results r where r.game_id = p_game_id for update;
+  if not found then
+    insert into public.match_results (game_id, entered_by, status, sets, winner, entered_at, confirm_deadline)
+    values (p_game_id, p_user, 'pending', v_sets, v_winner, p_now, p_now + c_confirm_within)
+    returning * into v_result;
+  elsif v_result.status <> 'pending' then
+    raise exception 'already_exists';
+  elsif v_result.entered_by <> p_user then
+    raise exception 'not_allowed';
+  else
+    update public.match_results r
+    set sets = v_sets, winner = v_winner, entered_at = p_now, confirm_deadline = p_now + c_confirm_within
+    where r.id = v_result.id
+    returning * into v_result;
+    delete from public.match_result_players p where p.result_id = v_result.id;
+  end if;
+
+  insert into public.match_result_players (result_id, user_id, side)
+  select v_result.id, u, 'a' from unnest(p_side_a) u
+  union all
+  select v_result.id, u, 'b' from unnest(p_side_b) u;
+
+  perform app.notify(p.user_id, 'score_entered', 'ratings', app.result_note(v_result), p_now)
+  from public.match_result_players p
+  where p.result_id = v_result.id and p.user_id <> p_user;
+  return v_result;
+end $$;
+
+-- Redefined from 20261127110000_scores.sql: a fourth action, keep, for a
+-- confirmed result flagged by a no-show majority (design §6.2): the flag is
+-- cleared and the result stays in force; audited as score_keep, no rating
+-- changes, nobody is told. Unchanged otherwise:
+-- confirm: a disputed result as entered. correct: a disputed result with the
+-- admin's sets. void: a pending, disputed or confirmed result; a confirmed
+-- one has each player's change taken off their current rating. Each is
+-- audited and the players are told.
+create or replace function app.admin_resolve_score(
+  p_user uuid, p_result_id uuid, p_action text, p_sets jsonb, p_now timestamptz) returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_result public.match_results;
+  v_before public.match_results;
+  v_sets jsonb;
+  v_sport text;
+  v_event record;
+begin
+  perform app.require_admin(p_user);
+  if p_action is null or p_action not in ('confirm', 'correct', 'void', 'keep') then raise exception 'invalid_argument'; end if;
+
+  select r.* into v_result from public.match_results r where r.id = p_result_id for update;
+  if not found then raise exception 'not_found'; end if;
+  v_before := v_result;
+
+  if p_action = 'keep' then
+    if v_result.status <> 'confirmed' or not v_result.flagged_no_show then raise exception 'not_found'; end if;
+    update public.match_results r set flagged_no_show = false, resolved_by = p_user, resolved_at = p_now
+    where r.id = p_result_id
+    returning * into v_result;
+    perform app.audit(p_user, 'score_keep', 'match_result', p_result_id::text,
+      to_jsonb(v_before), to_jsonb(v_result), p_now);
+    return;
+  end if;
+
+  if p_action in ('confirm', 'correct') then
+    if v_result.status <> 'disputed' then raise exception 'not_found'; end if;
+    if p_action = 'correct' then
+      v_sets := app.whole_sets(p_sets);
+      update public.match_results r set sets = v_sets, winner = app.score_winner(v_sets) where r.id = p_result_id;
+    end if;
+    perform app.apply_result(p_result_id, p_now);
+  else
+    if v_result.status not in ('pending', 'disputed', 'confirmed') then raise exception 'not_found'; end if;
+    if v_result.status = 'confirmed' then
+      select g.sport_id into v_sport from public.games g where g.id = v_result.game_id;
+      perform 1 from public.player_ratings pr
+      where pr.sport_id = v_sport
+        and pr.user_id in (select e.user_id from public.rating_events e where e.result_id = p_result_id)
+      order by pr.user_id
+      for update;
+      for v_event in
+        select e.user_id, e.delta from public.rating_events e where e.result_id = p_result_id order by e.user_id
+      loop
+        update public.player_ratings pr
+        set rating = least(app.rating_const('max'), greatest(app.rating_const('min'), pr.rating - v_event.delta)),
+            rated_games = greatest(0, pr.rated_games - 1),
+            updated_at = p_now
+        where pr.user_id = v_event.user_id and pr.sport_id = v_sport;
+        perform app.sync_level(v_event.user_id, v_sport);
+      end loop;
+      delete from public.rating_events e where e.result_id = p_result_id;
+    end if;
+    update public.match_results r set status = 'void' where r.id = p_result_id;
+  end if;
+
+  update public.match_results r set resolved_by = p_user, resolved_at = p_now
+  where r.id = p_result_id
+  returning * into v_result;
+
+  -- A confirm that apply_result turned into a void (a deleted player in the
+  -- result) is audited as one; apply_result has already told the players.
+  if p_action in ('confirm', 'correct') and v_result.status = 'void' then
+    perform app.audit(p_user, 'score_void', 'match_result', p_result_id::text,
+      to_jsonb(v_before), to_jsonb(v_result), p_now);
+    return;
+  end if;
+  perform app.audit(p_user, 'score_' || p_action, 'match_result', p_result_id::text,
+    to_jsonb(v_before), to_jsonb(v_result), p_now);
+  perform app.notify(p.user_id, 'score_resolved', 'ratings',
+    app.result_note(v_result) || jsonb_build_object('action', p_action), p_now)
+  from public.match_result_players p
+  where p.result_id = p_result_id;
+end $$;
+
+-- Redefined from 20261124100000_community_core.sql: a venue no-show mark for
+-- a player who already has a peer no-show (app.recount_no_show) for a game
+-- on this booking takes its place, so the player carries one penalty. The
+-- booking's games are locked first (booking, then game, as everywhere), so
+-- a recount running at the same time either sees the venue's event or has
+-- written its own before this removes it. Changing the mark back to paid
+-- removes the venue's event as before and does not bring the peer event
+-- back: the game's reports stay, and a later report inside the 48 hours
+-- would record it again.
+create or replace function app.owner_mark_booking(p_user uuid, p_booking_id uuid, p_outcome text, p_now timestamptz)
+returns public.bookings
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_before public.bookings;
+  v_after public.bookings;
+begin
+  select * into v_before from app.lock_managed_booking(p_user, p_booking_id);
+  if p_outcome is null or p_outcome not in ('paid', 'no_show') then raise exception 'invalid_argument'; end if;
+  if v_before.source = 'block'
+     or v_before.status not in ('confirmed', 'completed', 'unverified', 'paid', 'no_show')
+     or lower(v_before.during) > p_now then
+    raise exception 'not_markable';
+  end if;
+
+  update public.bookings b
+  set status = p_outcome,
+      payment_status = case p_outcome when 'paid' then 'paid' else 'unpaid' end
+  where b.id = p_booking_id
+  returning * into v_after;
+
+  perform app.audit(p_user, 'mark_booking', 'booking', v_after.id::text, to_jsonb(v_before), to_jsonb(v_after), p_now);
+
+  -- App bookings only: the new outcome replaces the other one's event, so
+  -- flipping back and forth never stacks.
+  if v_after.source = 'app' and v_after.user_id is not null then
+    delete from public.reliability_events e
+    where e.user_id = v_after.user_id and e.ref = v_after.id::text
+      and e.kind = case p_outcome when 'paid' then 'no_show' else 'booking_paid' end;
+    perform app.reliability_event(
+      v_after.user_id, case p_outcome when 'paid' then 'booking_paid' else 'no_show' end, v_after.id::text, p_now);
+    if p_outcome = 'no_show' then
+      perform 1 from public.games g where g.booking_id = v_after.id order by g.id for update;
+      delete from public.reliability_events e
+      where e.user_id = v_after.user_id and e.kind = 'no_show'
+        and e.ref in (select g.id::text from public.games g where g.booking_id = v_after.id);
+    end if;
+  end if;
+  return v_after;
 end $$;
 
 -- ---------------------------------------------------------------------------
