@@ -1,7 +1,7 @@
 # Actra M8a — Tournament Brackets and Results: Design
 
 **Date:** 2026-11-27
-**Status:** draft for founder approval (read by an independent reviewer; its gaps are settled in §14a)
+**Status:** approved by the founder on 2026-11-28 (read by an independent reviewer; its gaps are settled in §14a)
 **Spec:** [docs/actra-product-spec.md](../../actra-product-spec.md) §10.2 (brackets and results), §10.1 (registration), §11 (owner calendar)
 **Roadmap row:** M8 in [2026-11-22-actra-roadmap.md](../plans/2026-11-22-actra-roadmap.md), the "tournament brackets and results" half. Online payments are M8b, a separate design.
 
