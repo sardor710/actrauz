@@ -363,4 +363,206 @@ void main() {
       expect(next.map((e) => e.at.minute), [2, 1]);
     });
   });
+
+  group('review of scores and reports', () {
+    Future<double?> padel(String id) async => (await backend.profile(id)).ratings['padel']?.rating;
+    Future<int?> rated(String id) async => (await backend.profile(id)).ratings['padel']?.ratedGames;
+    Future<String> nameOf(String id) async => (await backend.profile(id)).name;
+
+    test('a disputed score is listed with who disputed it, an empty review otherwise', () async {
+      expect((await admin.review()).openCount, 0);
+      await backend.disputeScoreAs('p2', 'r-gf2', reason: 'We won the second set');
+      final review = await admin.review();
+      expect(review.disputes, hasLength(1));
+      final dispute = review.disputes.single;
+      expect(dispute.result.id, 'r-gf2');
+      expect(dispute.result.status, ResultStatus.disputed);
+      expect(dispute.result.disputeReason, 'We won the second set');
+      expect(dispute.disputedByName, await nameOf('p2'));
+      expect(dispute.game.gameId, 'gf2');
+      expect(dispute.game.sportId, 'padel');
+      expect(dispute.nameOf('p1'), await nameOf('p1'));
+      expect(dispute.flagged, isFalse);
+      expect(review.openCount, 1);
+    });
+
+    test('a no-show freeze has no disputer, a flagged confirmed score is listed too', () async {
+      await backend.reportNoShowAs('p1', 'gf2', kMeId, reported: true);
+      await backend.reportNoShowAs('p3', 'gf2', kMeId, reported: true);
+      var dispute = (await admin.review()).disputes.single;
+      expect(dispute.result.disputeReason, 'no_show');
+      expect(dispute.disputedByName, isNull);
+
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      final review = await admin.review();
+      expect(review.disputes, hasLength(2));
+      dispute = review.disputes.firstWhere((d) => d.result.id == 'r-gf1');
+      expect(dispute.flagged, isTrue);
+      expect(dispute.result.flaggedNoShow, isTrue);
+    });
+
+    test('confirm applies the ratings, tells the players, is audited and leaves the list', () async {
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      final before = {for (final id in ['p1', 'p2', 'p3']) id: await padel(id)};
+      await admin.resolveScore('r-gf2', 'confirm');
+
+      expect((await admin.review()).disputes, isEmpty);
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.changes.keys, containsAll(['p1', 'p2', 'p3', kMeId]));
+      for (final id in ['p1', 'p2', 'p3']) {
+        expect(await padel(id), result.changes[id]!.newRating);
+        expect(await padel(id), isNot(before[id]));
+      }
+      final notice = (await backend.inbox()).firstWhere((n) => n.kind == 'score_resolved');
+      expect(notice.payload['action'], 'confirm');
+      final entry = (await admin.auditLog()).first;
+      expect((entry.action, entry.entity, entry.entityId), ('score_confirm', 'match_result', 'r-gf2'));
+      expect(entry.before!['status'], 'disputed');
+      expect(entry.after!['status'], 'confirmed');
+    });
+
+    test('correct replaces the sets, then applies them', () async {
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      await admin.resolveScore('r-gf2', 'correct', sets: const [(3, 6), (6, 4), (4, 6)]);
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.sets, const [(3, 6), (6, 4), (4, 6)]);
+      expect(result.winner, MatchWinner.b);
+      final entry = (await admin.auditLog()).first;
+      expect(entry.action, 'score_correct');
+      expect(entry.after!['sets'], [
+        [3, 6],
+        [6, 4],
+        [4, 6],
+      ]);
+    });
+
+    test('correct needs valid sets; confirm and correct only work on a disputed score', () async {
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'confirm')), BookingError.notFound, reason: 'pending');
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'correct')), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'correct', sets: const [])), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'correct', sets: const [(0, 0)])), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'correct', sets: const [(31, 2)])), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'bogus')), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.resolveScore('r-nope', 'confirm')), BookingError.notFound);
+      expect((await admin.review()).disputes, hasLength(1), reason: 'refused calls change nothing');
+      expect(await admin.auditLog(), isEmpty);
+
+      await admin.resolveScore('r-gf2', 'confirm');
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'confirm')), BookingError.notFound, reason: 'confirmed');
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'correct', sets: const [(6, 0)])), BookingError.notFound);
+    });
+
+    test('void on a confirmed score takes its rating changes back, once', () async {
+      final ratings = {for (final id in ['p1', 'p2', 'p3']) id: await padel(id)};
+      final games = {for (final id in ['p1', 'p2', 'p3']) id: await rated(id)};
+      await backend.confirmScoreAs('p2', 'r-gf2');
+      expect((await backend.game('gf2')).result!.status, ResultStatus.confirmed);
+      expect(await padel('p1'), isNot(ratings['p1']));
+
+      await admin.resolveScore('r-gf2', 'void');
+      expect((await backend.game('gf2')).result!.status, ResultStatus.voided);
+      for (final id in ['p1', 'p2']) {
+        expect(await padel(id), ratings[id], reason: id);
+        expect(await rated(id), games[id], reason: id);
+      }
+      // Nobody had rated p3: the rating they started with stays, and no rated game.
+      expect(ratings['p3'], isNull);
+      expect(await rated('p3'), 0);
+      final entry = (await admin.auditLog()).first;
+      expect((entry.action, entry.after!['status']), ('score_void', 'void'));
+      expect((await backend.inbox()).where((n) => n.kind == 'score_resolved' && n.payload['action'] == 'void'), hasLength(1));
+      expect(await errorOf(() => admin.resolveScore('r-gf2', 'void')), BookingError.notFound, reason: 'already void');
+      expect(await padel('p1'), ratings['p1'], reason: 'not taken back twice');
+    });
+
+    test('void works on a pending score, which moves no ratings', () async {
+      final before = await padel('p1');
+      await admin.resolveScore('r-gf2', 'void');
+      expect((await backend.game('gf2')).result!.status, ResultStatus.voided);
+      expect(await padel('p1'), before);
+    });
+
+    test('keep clears the flag of a confirmed score and nothing else', () async {
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      expect(await errorOf(() => admin.resolveScore('r-gf1', 'keep')), BookingError.notFound, reason: 'not flagged');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      final ratings = await padel('p1');
+      final notices = (await backend.inbox()).length;
+
+      await admin.resolveScore('r-gf1', 'keep');
+      final result = (await backend.game('gf1')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.flaggedNoShow, isFalse);
+      expect(await padel('p1'), ratings);
+      expect((await admin.review()).disputes, isEmpty);
+      expect(await backend.inbox(), hasLength(notices), reason: 'keep tells nobody');
+      expect((await admin.auditLog()).first.action, 'score_keep');
+      expect(await errorOf(() => admin.resolveScore('r-gf1', 'keep')), BookingError.notFound);
+    });
+
+    test('a flagged score can be voided: its rating changes are reversed', () async {
+      final before = await padel('p1');
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      await admin.resolveScore('r-gf1', 'void');
+      expect(await padel('p1'), before);
+      expect((await admin.review()).disputes, isEmpty);
+    });
+
+    test('a report lists the game and its score; closing it removes it and is audited', () async {
+      await backend.reportPlayerAs('p2', kMeId, gameId: 'gf2', reason: ReportReason.falseScore, details: 'Not 6-3');
+      await backend.reportPlayerAs('p1', 'p3', reason: ReportReason.language);
+      final review = await admin.review();
+      expect(review.reports, hasLength(2));
+      final first = review.reports.first;
+      expect(first.reason, ReportReason.falseScore);
+      expect(first.details, 'Not 6-3');
+      expect(first.reporterId, 'p2');
+      expect(first.targetId, kMeId);
+      expect(first.game!.gameId, 'gf2');
+      expect(first.result!.id, 'r-gf2');
+      expect(first.hasLiveScore, isTrue);
+      expect(review.reports.last.game, isNull);
+      expect(review.reports.last.hasLiveScore, isFalse);
+      expect(review.openCount, 2);
+
+      await admin.closeReport(first.id, note: '  Checked, fine  ');
+      expect((await admin.review()).reports.map((r) => r.id), [review.reports.last.id]);
+      final entry = (await admin.auditLog()).first;
+      expect((entry.action, entry.entity, entry.entityId), ('report_closed', 'abuse_report', first.id));
+      expect(entry.after!['admin_note'], 'Checked, fine');
+
+      // Closed, a report can be made again.
+      await backend.reportPlayerAs('p2', kMeId, gameId: 'gf2', reason: ReportReason.other);
+      expect((await admin.review()).reports, hasLength(2));
+    });
+
+    test('closing a report: unknown or closed is not found, an overlong note is refused', () async {
+      await backend.reportPlayerAs('p1', 'p3', reason: ReportReason.other);
+      final id = (await admin.review()).reports.single.id;
+      expect(await errorOf(() => admin.closeReport(id, note: 'x' * 501)), BookingError.invalidArgument);
+      expect(await errorOf(() => admin.closeReport('nope')), BookingError.notFound);
+      await admin.closeReport(id);
+      expect(await errorOf(() => admin.closeReport(id)), BookingError.notFound);
+      expect((await admin.auditLog()).single.after!['admin_note'], isNull);
+    });
+
+    test('a voided score is not offered on a report', () async {
+      await backend.reportPlayerAs('p1', 'p3', gameId: 'gf2', reason: ReportReason.falseScore);
+      await admin.resolveScore('r-gf2', 'void');
+      final report = (await admin.review()).reports.single;
+      expect(report.result!.status, ResultStatus.voided);
+      expect(report.hasLiveScore, isFalse);
+    });
+  });
 }

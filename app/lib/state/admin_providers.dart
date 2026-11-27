@@ -28,6 +28,10 @@ final adminSportsProvider = FutureProvider<List<AdminSport>>((ref) => ref.watch(
 /// Every banner, by sort order.
 final adminBannersProvider = FutureProvider<List<AdminBanner>>((ref) => ref.watch(adminRepositoryProvider).banners());
 
+/// Disputed and flagged scores and open reports, for the Review screen and
+/// the count on the admin home.
+final adminReviewProvider = FutureProvider<AdminReview>((ref) => ref.watch(adminRepositoryProvider).review());
+
 /// The newest 50 audit entries.
 final adminAuditProvider = FutureProvider<List<AuditEntry>>((ref) => ref.watch(adminRepositoryProvider).auditLog());
 
@@ -57,6 +61,7 @@ void refreshAdmin(WidgetRef ref) {
   ref.invalidate(adminSportsProvider);
   ref.invalidate(adminBannersProvider);
   ref.invalidate(adminAuditProvider);
+  ref.invalidate(adminReviewProvider);
   ref.invalidate(adminTournamentsProvider);
   ref.invalidate(adminRegistrationsProvider);
   ref.invalidate(adminDashboardProvider);

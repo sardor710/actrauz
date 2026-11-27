@@ -316,9 +316,13 @@ class _ScoreBlock extends ConsumerWidget {
 
 /// The two sides with their games per set; the winning side in bold.
 class ScoreBoard extends StatelessWidget {
-  const ScoreBoard({super.key, required this.game, required this.result});
+  const ScoreBoard({super.key, required Game this.game, required this.result}) : names = null;
 
-  final Game game;
+  /// For a screen that has no [Game] of the result: the names by player id.
+  const ScoreBoard.named({super.key, required Map<String, String> this.names, required this.result}) : game = null;
+
+  final Game? game;
+  final Map<String, String>? names;
   final MatchResult result;
 
   @override
@@ -333,7 +337,7 @@ class ScoreBoard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                [for (final id in ids) memberName(l, game, id)].join(', '),
+                [for (final id in ids) names?[id] ?? memberName(l, game!, id)].join(', '),
                 style: style,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

@@ -1406,5 +1406,88 @@
         "type": "int"
       }
     }
+  },
+  "adminReview": "Review",
+  "adminReviewOpen": "{count, plural, =0{Nothing waiting} other{{count} open}}",
+  "@adminReviewOpen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewScoresTab": "Scores · {count}",
+  "@reviewScoresTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewReportsTab": "Reports · {count}",
+  "@reviewReportsTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewNoScores": "No scores to review",
+  "reviewNoReports": "No open reports",
+  "reviewDisputedBy": "Disputed by {name}: {reason}",
+  "@reviewDisputedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewDisputedByNoReason": "Disputed by {name}",
+  "@reviewDisputedByNoReason": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewNoShowFrozen": "Frozen: no-show",
+  "reviewFlaggedNoShow": "Flagged: no-show",
+  "reviewConfirm": "Confirm",
+  "reviewCorrect": "Correct",
+  "reviewVoid": "Void",
+  "reviewKeep": "Keep",
+  "reviewClose": "Close",
+  "reviewVoidScore": "Void this score",
+  "reviewConfirmTitle": "Confirm this score?",
+  "reviewConfirmMsg": "It counts as entered: ratings change and the players are told.",
+  "reviewVoidTitle": "Void this score?",
+  "reviewVoidMsg": "The result is cancelled for good. Any rating changes are taken back and the players are told.",
+  "reviewKeepTitle": "Keep this score?",
+  "reviewKeepMsg": "It stays as it is and leaves this list.",
+  "reviewCorrectTitle": "Correct the score",
+  "reviewCorrectHint": "Enter the right sets. Ratings change as entered here and the players are told.",
+  "reviewCloseTitle": "Close the report",
+  "reviewNote": "Note (optional)",
+  "reviewReportLine": "{reporter} reported {target}",
+  "@reviewReportLine": {
+    "placeholders": {
+      "reporter": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewScoreLine": "Score: {sets}",
+  "@reviewScoreLine": {
+    "placeholders": {
+      "sets": {
+        "type": "String"
+      }
+    }
   }
 }

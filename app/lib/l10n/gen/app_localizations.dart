@@ -4499,6 +4499,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{percent}% · {count, plural, one{{count} vote} other{{count} votes}}'**
   String sportsmanshipSummary(int percent, int count);
+
+  /// No description provided for @adminReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get adminReview;
+
+  /// No description provided for @adminReviewOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing waiting} other{{count} open}}'**
+  String adminReviewOpen(int count);
+
+  /// No description provided for @reviewScoresTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Scores · {count}'**
+  String reviewScoresTab(int count);
+
+  /// No description provided for @reviewReportsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports · {count}'**
+  String reviewReportsTab(int count);
+
+  /// No description provided for @reviewNoScores.
+  ///
+  /// In en, this message translates to:
+  /// **'No scores to review'**
+  String get reviewNoScores;
+
+  /// No description provided for @reviewNoReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No open reports'**
+  String get reviewNoReports;
+
+  /// No description provided for @reviewDisputedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Disputed by {name}: {reason}'**
+  String reviewDisputedBy(String name, String reason);
+
+  /// No description provided for @reviewDisputedByNoReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Disputed by {name}'**
+  String reviewDisputedByNoReason(String name);
+
+  /// No description provided for @reviewNoShowFrozen.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen: no-show'**
+  String get reviewNoShowFrozen;
+
+  /// No description provided for @reviewFlaggedNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged: no-show'**
+  String get reviewFlaggedNoShow;
+
+  /// No description provided for @reviewConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get reviewConfirm;
+
+  /// No description provided for @reviewCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get reviewCorrect;
+
+  /// No description provided for @reviewVoid.
+  ///
+  /// In en, this message translates to:
+  /// **'Void'**
+  String get reviewVoid;
+
+  /// No description provided for @reviewKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get reviewKeep;
+
+  /// No description provided for @reviewClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get reviewClose;
+
+  /// No description provided for @reviewVoidScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Void this score'**
+  String get reviewVoidScore;
+
+  /// No description provided for @reviewConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm this score?'**
+  String get reviewConfirmTitle;
+
+  /// No description provided for @reviewConfirmMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'It counts as entered: ratings change and the players are told.'**
+  String get reviewConfirmMsg;
+
+  /// No description provided for @reviewVoidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Void this score?'**
+  String get reviewVoidTitle;
+
+  /// No description provided for @reviewVoidMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'The result is cancelled for good. Any rating changes are taken back and the players are told.'**
+  String get reviewVoidMsg;
+
+  /// No description provided for @reviewKeepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this score?'**
+  String get reviewKeepTitle;
+
+  /// No description provided for @reviewKeepMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'It stays as it is and leaves this list.'**
+  String get reviewKeepMsg;
+
+  /// No description provided for @reviewCorrectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct the score'**
+  String get reviewCorrectTitle;
+
+  /// No description provided for @reviewCorrectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the right sets. Ratings change as entered here and the players are told.'**
+  String get reviewCorrectHint;
+
+  /// No description provided for @reviewCloseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the report'**
+  String get reviewCloseTitle;
+
+  /// No description provided for @reviewNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get reviewNote;
+
+  /// No description provided for @reviewReportLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{reporter} reported {target}'**
+  String reviewReportLine(String reporter, String target);
+
+  /// No description provided for @reviewScoreLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {sets}'**
+  String reviewScoreLine(String sets);
 }
 
 class _AppLocalizationsDelegate

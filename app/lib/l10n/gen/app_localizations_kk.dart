@@ -2540,4 +2540,111 @@ class AppLocalizationsKk extends AppLocalizations {
     );
     return '$percent% · $_temp0';
   }
+
+  @override
+  String get adminReview => 'Тексеру';
+
+  @override
+  String adminReviewOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ашық: $count',
+      zero: 'Ештеңе күтіп тұрған жоқ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reviewScoresTab(int count) {
+    return 'Есеп · $count';
+  }
+
+  @override
+  String reviewReportsTab(int count) {
+    return 'Шағымдар · $count';
+  }
+
+  @override
+  String get reviewNoScores => 'Тексеретін есеп жоқ';
+
+  @override
+  String get reviewNoReports => 'Ашық шағым жоқ';
+
+  @override
+  String reviewDisputedBy(String name, String reason) {
+    return '$name дау айтты: $reason';
+  }
+
+  @override
+  String reviewDisputedByNoReason(String name) {
+    return '$name дау айтты';
+  }
+
+  @override
+  String get reviewNoShowFrozen => 'Тоқтатылған: келмеген';
+
+  @override
+  String get reviewFlaggedNoShow => 'Белгіленген: келмеген';
+
+  @override
+  String get reviewConfirm => 'Растау';
+
+  @override
+  String get reviewCorrect => 'Түзету';
+
+  @override
+  String get reviewVoid => 'Болдырмау';
+
+  @override
+  String get reviewKeep => 'Қалдыру';
+
+  @override
+  String get reviewClose => 'Жабу';
+
+  @override
+  String get reviewVoidScore => 'Есепті болдырмау';
+
+  @override
+  String get reviewConfirmTitle => 'Бұл есеп расталсын ба?';
+
+  @override
+  String get reviewConfirmMsg =>
+      'Есеп енгізілгендей есептеледі: рейтингтер өзгереді, ойыншыларға хабарланады.';
+
+  @override
+  String get reviewVoidTitle => 'Бұл есепті болдырмау керек пе?';
+
+  @override
+  String get reviewVoidMsg =>
+      'Нәтиже біржола жойылады. Рейтинг өзгерістері қайтарылады, ойыншыларға хабарланады.';
+
+  @override
+  String get reviewKeepTitle => 'Бұл есепті қалдыру керек пе?';
+
+  @override
+  String get reviewKeepMsg => 'Ол өзгеріссіз қалады және осы тізімнен шығады.';
+
+  @override
+  String get reviewCorrectTitle => 'Есепті түзету';
+
+  @override
+  String get reviewCorrectHint =>
+      'Дұрыс сеттерді енгізіңіз. Рейтингтер осы есеппен өзгереді, ойыншыларға хабарланады.';
+
+  @override
+  String get reviewCloseTitle => 'Шағымды жабу';
+
+  @override
+  String get reviewNote => 'Ескертпе (міндетті емес)';
+
+  @override
+  String reviewReportLine(String reporter, String target) {
+    return '$reporter — $target туралы шағым';
+  }
+
+  @override
+  String reviewScoreLine(String sets) {
+    return 'Есеп: $sets';
+  }
 }

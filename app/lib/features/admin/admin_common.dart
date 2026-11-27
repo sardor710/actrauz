@@ -153,8 +153,9 @@ class InactivePill extends StatelessWidget {
   );
 }
 
-/// Opens an admin form sheet: scrollable, above the keyboard.
-Future<bool?> showAdminSheet(BuildContext context, WidgetBuilder builder) => showModalBottomSheet<bool>(
+/// Opens an admin form sheet: scrollable, above the keyboard. Resolves with
+/// what the sheet pops, null when it is dismissed.
+Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) => showModalBottomSheet<T>(
   context: context,
   useRootNavigator: true,
   isScrollControlled: true,

@@ -2532,4 +2532,111 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$percent% · $_temp0';
   }
+
+  @override
+  String get adminReview => 'Review';
+
+  @override
+  String adminReviewOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count open',
+      zero: 'Nothing waiting',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reviewScoresTab(int count) {
+    return 'Scores · $count';
+  }
+
+  @override
+  String reviewReportsTab(int count) {
+    return 'Reports · $count';
+  }
+
+  @override
+  String get reviewNoScores => 'No scores to review';
+
+  @override
+  String get reviewNoReports => 'No open reports';
+
+  @override
+  String reviewDisputedBy(String name, String reason) {
+    return 'Disputed by $name: $reason';
+  }
+
+  @override
+  String reviewDisputedByNoReason(String name) {
+    return 'Disputed by $name';
+  }
+
+  @override
+  String get reviewNoShowFrozen => 'Frozen: no-show';
+
+  @override
+  String get reviewFlaggedNoShow => 'Flagged: no-show';
+
+  @override
+  String get reviewConfirm => 'Confirm';
+
+  @override
+  String get reviewCorrect => 'Correct';
+
+  @override
+  String get reviewVoid => 'Void';
+
+  @override
+  String get reviewKeep => 'Keep';
+
+  @override
+  String get reviewClose => 'Close';
+
+  @override
+  String get reviewVoidScore => 'Void this score';
+
+  @override
+  String get reviewConfirmTitle => 'Confirm this score?';
+
+  @override
+  String get reviewConfirmMsg =>
+      'It counts as entered: ratings change and the players are told.';
+
+  @override
+  String get reviewVoidTitle => 'Void this score?';
+
+  @override
+  String get reviewVoidMsg =>
+      'The result is cancelled for good. Any rating changes are taken back and the players are told.';
+
+  @override
+  String get reviewKeepTitle => 'Keep this score?';
+
+  @override
+  String get reviewKeepMsg => 'It stays as it is and leaves this list.';
+
+  @override
+  String get reviewCorrectTitle => 'Correct the score';
+
+  @override
+  String get reviewCorrectHint =>
+      'Enter the right sets. Ratings change as entered here and the players are told.';
+
+  @override
+  String get reviewCloseTitle => 'Close the report';
+
+  @override
+  String get reviewNote => 'Note (optional)';
+
+  @override
+  String reviewReportLine(String reporter, String target) {
+    return '$reporter reported $target';
+  }
+
+  @override
+  String reviewScoreLine(String sets) {
+    return 'Score: $sets';
+  }
 }

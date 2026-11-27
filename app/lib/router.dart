@@ -6,6 +6,7 @@ import 'features/admin/admin_audit_screen.dart';
 import 'features/admin/admin_banners_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
 import 'features/admin/admin_home_screen.dart';
+import 'features/admin/admin_review_screen.dart';
 import 'features/admin/admin_sports_screen.dart';
 import 'features/admin/admin_tournaments_screen.dart';
 import 'features/admin/admin_venues_screen.dart';
@@ -116,6 +117,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'sports', builder: (context, state) => const AdminSportsScreen()),
           GoRoute(path: 'banners', builder: (context, state) => const AdminBannersScreen()),
           GoRoute(path: 'audit', builder: (context, state) => const AdminAuditScreen()),
+          GoRoute(path: 'review', builder: (context, state) => const AdminReviewScreen()),
           GoRoute(
             path: 'tournaments',
             builder: (context, state) => const AdminTournamentsScreen(),

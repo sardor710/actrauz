@@ -622,6 +622,50 @@ MatchResult matchResultFromJson(Row json, {required String? myUserId}) {
   );
 }
 
+/// `admin_review()`: `{disputes: [{result, game, players, disputed_by_name}],
+/// reports: [...], counts}`. Other keys are ignored.
+AdminReview adminReviewFromJson(Row json, {required String? myUserId}) => AdminReview(
+  disputes: [
+    for (final d in _rows(json['disputes']))
+      AdminDispute(
+        result: matchResultFromJson(Map<String, dynamic>.from(d['result'] as Map), myUserId: myUserId),
+        game: _adminGameNote(d['game'] as Map),
+        names: {for (final p in _rows(d['players'])) _userId(p['id'], myUserId): p['name'] as String? ?? ''},
+        disputedByName: d['disputed_by_name'] as String?,
+      ),
+  ],
+  reports: [
+    for (final r in _rows(json['reports']))
+      AdminReport(
+        id: r['id'] as String,
+        reporterId: _userId(r['reporter_id'], myUserId),
+        reporterName: r['reporter_name'] as String? ?? '',
+        targetId: _userId(r['target_id'], myUserId),
+        targetName: r['target_name'] as String? ?? '',
+        reason: switch (r['reason']) {
+          'language' => ReportReason.language,
+          'aggression' => ReportReason.aggression,
+          'false_score' => ReportReason.falseScore,
+          'other' => ReportReason.other,
+          final other => throw FormatException('Unknown report reason "$other"'),
+        },
+        details: r['details'] as String?,
+        createdAt: _instant(r['created_at']),
+        game: r['game'] == null ? null : _adminGameNote(r['game'] as Map),
+        result: r['result'] == null
+            ? null
+            : matchResultFromJson(Map<String, dynamic>.from(r['result'] as Map), myUserId: myUserId),
+      ),
+  ],
+);
+
+/// `app.game_note`: `{game_id, sport_id, starts_local}`.
+AdminGameNote _adminGameNote(Map json) => AdminGameNote(
+  gameId: json['game_id'] as String,
+  sportId: json['sport_id'] as String,
+  startsLocal: wallClock(json['starts_local'] as String),
+);
+
 /// The sets of `enter_score`: `[[6, 4], [3, 6]]`.
 List<List<int>> setsJson(List<(int, int)> sets) => [for (final (a, b) in sets) [a, b]];
 

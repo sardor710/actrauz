@@ -28,9 +28,6 @@ class ScoreSheet extends ConsumerStatefulWidget {
 }
 
 class _ScoreSheetState extends ConsumerState<ScoreSheet> {
-  static const _maxSets = 5;
-  static const _maxGames = 30;
-
   /// The other participants the player can pick, in the game's order.
   late final List<String> _others = [
     for (final id in widget.game.participantIds)
@@ -93,12 +90,7 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     final sidesOk = _doubles
         ? _partner != null && _opponents.length == 2 && !_opponents.contains(_partner)
         : _opponents.length == 1;
-    bool games(int n) => n >= 0 && n <= _maxGames;
-    final setsOk =
-        _sets.isNotEmpty &&
-        _sets.length <= _maxSets &&
-        _sets.every((s) => games(s.$1) && games(s.$2) && (s.$1 != 0 || s.$2 != 0));
-    return sidesOk && setsOk;
+    return sidesOk && SetsEditor.valid(_sets);
   }
 
   void _pickFormat(bool doubles) => setState(() {
@@ -125,11 +117,6 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     } else if (_opponents.length < 2) {
       _opponents = [..._opponents, id];
     }
-  });
-
-  void _setGames(int index, {int? mine, int? theirs}) => setState(() {
-    final (a, b) = _sets[index];
-    _sets = [..._sets]..[index] = (mine ?? a, theirs ?? b);
   });
 
   /// Shown in the sheet: a snackbar would be hidden behind it.
@@ -225,63 +212,11 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
               const SizedBox(height: 18),
               Text(l.scoreSets.toUpperCase(), style: AppText.sectionTitle),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Text(l.scoreYourSide, textAlign: TextAlign.center, style: AppText.caption, maxLines: 2),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(l.scoreOtherSide, textAlign: TextAlign.center, style: AppText.caption, maxLines: 2),
-                  ),
-                  const SizedBox(width: 36),
-                ],
-              ),
-              for (final (i, (mine, theirs)) in _sets.indexed)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 24, child: Text('${i + 1}', style: AppText.caption)),
-                      Expanded(
-                        child: _GamesStepper(
-                          keyPrefix: 'set-$i-mine',
-                          value: mine,
-                          onChanged: (v) => _setGames(i, mine: v),
-                        ),
-                      ),
-                      SizedBox(width: 12, child: Text('–', textAlign: TextAlign.center, style: AppText.bodyStrong)),
-                      Expanded(
-                        child: _GamesStepper(
-                          keyPrefix: 'set-$i-theirs',
-                          value: theirs,
-                          onChanged: (v) => _setGames(i, theirs: v),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 36,
-                        child: _sets.length > 1
-                            ? IconButton(
-                                key: ValueKey('set-$i-remove'),
-                                tooltip: l.scoreRemoveSet,
-                                padding: EdgeInsets.zero,
-                                onPressed: () => setState(() => _sets = [..._sets]..removeAt(i)),
-                                icon: const Icon(Icons.close_rounded, color: AppColors.muted),
-                              )
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  key: const ValueKey('score-add-set'),
-                  onPressed: _sets.length < _maxSets ? () => setState(() => _sets = [..._sets, (0, 0)]) : null,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(l.scoreAddSet),
-                ),
+              SetsEditor(
+                sets: _sets,
+                firstSide: l.scoreYourSide,
+                secondSide: l.scoreOtherSide,
+                onChanged: (sets) => setState(() => _sets = sets),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 4),
@@ -297,6 +232,104 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The games won per set, 1 to 5 sets: a header naming the two sides, a stepper
+/// pair per set, and Add set. Shared by the score sheet and the admin's
+/// correction of a score.
+class SetsEditor extends StatelessWidget {
+  const SetsEditor({
+    super.key,
+    required this.sets,
+    required this.onChanged,
+    required this.firstSide,
+    required this.secondSide,
+  });
+
+  static const maxSets = 5;
+  static const maxGames = 30;
+
+  /// 1 to [maxSets] sets of 0 to [maxGames] games, none 0–0.
+  static bool valid(List<(int, int)> sets) =>
+      sets.isNotEmpty &&
+      sets.length <= maxSets &&
+      sets.every((s) => s.$1 >= 0 && s.$1 <= maxGames && s.$2 >= 0 && s.$2 <= maxGames && (s.$1 != 0 || s.$2 != 0));
+
+  final List<(int, int)> sets;
+  final ValueChanged<List<(int, int)>> onChanged;
+
+  /// What the two columns are called.
+  final String firstSide;
+  final String secondSide;
+
+  void _setGames(int index, {int? first, int? second}) {
+    final (a, b) = sets[index];
+    onChanged([...sets]..[index] = (first ?? a, second ?? b));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const SizedBox(width: 24),
+            Expanded(child: Text(firstSide, textAlign: TextAlign.center, style: AppText.caption, maxLines: 2)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(secondSide, textAlign: TextAlign.center, style: AppText.caption, maxLines: 2)),
+            const SizedBox(width: 36),
+          ],
+        ),
+        for (final (i, (first, second)) in sets.indexed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(width: 24, child: Text('${i + 1}', style: AppText.caption)),
+                Expanded(
+                  child: _GamesStepper(
+                    keyPrefix: 'set-$i-mine',
+                    value: first,
+                    onChanged: (v) => _setGames(i, first: v),
+                  ),
+                ),
+                SizedBox(width: 12, child: Text('–', textAlign: TextAlign.center, style: AppText.bodyStrong)),
+                Expanded(
+                  child: _GamesStepper(
+                    keyPrefix: 'set-$i-theirs',
+                    value: second,
+                    onChanged: (v) => _setGames(i, second: v),
+                  ),
+                ),
+                SizedBox(
+                  width: 36,
+                  child: sets.length > 1
+                      ? IconButton(
+                          key: ValueKey('set-$i-remove'),
+                          tooltip: l.scoreRemoveSet,
+                          padding: EdgeInsets.zero,
+                          onPressed: () => onChanged([...sets]..removeAt(i)),
+                          icon: const Icon(Icons.close_rounded, color: AppColors.muted),
+                        )
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('score-add-set'),
+            onPressed: sets.length < maxSets ? () => onChanged([...sets, (0, 0)]) : null,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(l.scoreAddSet),
+          ),
+        ),
+      ],
     );
   }
 }

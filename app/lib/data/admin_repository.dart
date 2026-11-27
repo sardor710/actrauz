@@ -98,4 +98,20 @@ abstract class AdminRepository {
 
   /// [cityId] `null` = every city. [from] to [to] inclusive, at most 366 days.
   Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to});
+
+  // ---- Review (design §6.4) ----
+
+  /// The disputed and flagged scores and the open abuse reports, oldest
+  /// first.
+  Future<AdminReview> review();
+
+  /// [action]: `confirm` or `correct` (with [sets]) on a disputed score,
+  /// `void` on a pending, disputed or confirmed one (a confirmed score's
+  /// rating changes are reversed), `keep` on a confirmed score flagged
+  /// because of a no-show (the flag goes, nothing else changes). Anything
+  /// else is `notFound`. The players are told, except for `keep`.
+  Future<void> resolveScore(String resultId, String action, {List<(int, int)>? sets});
+
+  /// Closes an open report with an optional note of at most 500 characters.
+  Future<void> closeReport(String reportId, {String? note});
 }

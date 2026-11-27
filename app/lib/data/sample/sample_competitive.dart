@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../domain/admin.dart';
 import '../../domain/competitive.dart';
 import '../../domain/games.dart';
@@ -128,6 +130,14 @@ class SampleScores {
   /// A pending score nobody disputed confirms itself after this long.
   static const confirmWithin = Duration(hours: 24);
 
+  /// 1 to 5 sets of 0–30 games, none 0–0 (as `app.whole_sets`).
+  static bool wholeSets(List<(int, int)> sets) {
+    bool games(int n) => n >= 0 && n <= 30;
+    return sets.isNotEmpty &&
+        sets.length <= 5 &&
+        sets.every((s) => games(s.$1) && games(s.$2) && (s.$1 != 0 || s.$2 != 0));
+  }
+
   /// Deadlines are kept in UTC.
   final DateTime Function() utcNow;
 
@@ -181,10 +191,7 @@ class SampleScores {
         players.any((id) => noShowIn(game.id, id))) {
       throw const JoinException(JoinError.invalidArgument);
     }
-    bool games(int n) => n >= 0 && n <= 30;
-    if (sets.isEmpty || sets.length > 5 || sets.any((s) => !games(s.$1) || !games(s.$2) || (s.$1 == 0 && s.$2 == 0))) {
-      throw const JoinException(JoinError.invalidArgument);
-    }
+    if (!wholeSets(sets)) throw const JoinException(JoinError.invalidArgument);
 
     final existing = _byGame[game.id];
     // already_exists and not_allowed in the database.
@@ -237,6 +244,7 @@ class SampleScores {
     final text = reason?.trim() ?? '';
     result
       ..status = ResultStatus.disputed
+      ..disputedBy = userId
       ..disputeReason = text.isEmpty ? null : (text.length > 300 ? text.substring(0, 300) : text);
     for (final id in result.players) {
       if (id != userId) notify(id, 'score_disputed', 'ratings', result.note);
@@ -261,6 +269,69 @@ class SampleScores {
     } else if (result.status == ResultStatus.confirmed) {
       result.flaggedNoShow = true;
     }
+  }
+
+  /// What an admin has to look at, as `app.admin_review` lists it: disputed
+  /// results, and confirmed ones flagged by a no-show majority. [disputedBy]
+  /// is null for a no-show freeze.
+  List<({MatchResult result, String gameId, String? disputedBy})> awaitingAdmin() => [
+    for (final r in _byGame.values)
+      if (r.status == ResultStatus.disputed || (r.status == ResultStatus.confirmed && r.flaggedNoShow))
+        (result: r.view, gameId: r.gameId, disputedBy: r.disputedBy),
+  ];
+
+  /// An admin's decision, as `app.admin_resolve_score`; returns the result as
+  /// it was and as it is now.
+  /// [action] is `confirm` or `correct` (a disputed result; `correct` takes
+  /// [sets]), `void` (a pending, disputed or confirmed one: a confirmed one's
+  /// rating changes are taken back) or `keep` (a confirmed, flagged one).
+  /// Everyone in the result is told, except for `keep`. A failed call is
+  /// [JoinError.invalidArgument] or [JoinError.notFound].
+  ({MatchResult before, MatchResult after}) resolve(String resultId, String action, {List<(int, int)>? sets}) {
+    if (!const {'confirm', 'correct', 'void', 'keep'}.contains(action)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    final result = _byGame.values.where((r) => r.id == resultId).firstOrNull;
+    if (result == null) throw const JoinException(JoinError.notFound);
+    final before = result.view;
+
+    switch (action) {
+      case 'keep':
+        if (result.status != ResultStatus.confirmed || !result.flaggedNoShow) {
+          throw const JoinException(JoinError.notFound);
+        }
+        result.flaggedNoShow = false;
+        return (before: before, after: result.view);
+      case 'confirm' || 'correct':
+        if (result.status != ResultStatus.disputed) throw const JoinException(JoinError.notFound);
+        if (action == 'correct') {
+          if (sets == null || !wholeSets(sets)) throw const JoinException(JoinError.invalidArgument);
+          result.sets = [...sets];
+        }
+        _apply(result);
+        // A deleted player in it made it void, and _apply told the others.
+        if (result.status == ResultStatus.voided) return (before: before, after: result.view);
+      default:
+        if (result.status == ResultStatus.voided) throw const JoinException(JoinError.notFound);
+        if (result.status == ResultStatus.confirmed) _takeBack(result);
+        result.status = ResultStatus.voided;
+    }
+    for (final id in result.players) {
+      notify(id, 'score_resolved', 'ratings', {...result.note, 'action': action});
+    }
+    return (before: before, after: result.view);
+  }
+
+  /// Subtracts each player's own change in the result from their rating, and
+  /// one rated game, as the database does with the result's rating events.
+  void _takeBack(_SampleResult result) {
+    for (final MapEntry(key: id, value: change) in result.changes.entries) {
+      final current = ratingOf(id, result.sportId);
+      if (current == null) continue;
+      final rating = math.min(RatingRules.max, math.max(RatingRules.min, roundRating(current.rating - change.delta)));
+      setRating(id, result.sportId, SportRating(rating: rating, ratedGames: math.max(0, current.ratedGames - 1)));
+    }
+    result.changes.clear();
   }
 
   /// Confirms every pending result whose 24 hours are over; returns how many.
@@ -328,6 +399,9 @@ class _SampleResult {
   List<(int, int)> sets = const [];
   final List<String> confirmedBy = [];
   String? disputeReason;
+
+  /// Who disputed it; null for a no-show freeze.
+  String? disputedBy;
   bool flaggedNoShow = false;
   DateTime deadline = DateTime.utc(2000);
   final Map<String, RatingChange> changes = {};

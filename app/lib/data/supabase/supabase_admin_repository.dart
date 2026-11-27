@@ -89,11 +89,29 @@ class SupabaseAdminRepository implements AdminRepository {
     params: {'p_limit': limit, 'p_before': before?.toUtc().toIso8601String()},
   );
 
-  // ---- Tournaments ----
-
   String? get _me => _client.auth.currentUser?.id;
 
   Map<String, dynamic> _map(Object? json) => Map<String, dynamic>.from(json as Map);
+
+  // ---- Review ----
+
+  @override
+  Future<AdminReview> review() => guardBooking(
+    () async => adminReviewFromJson(_map(await _client.rpc('admin_review')), myUserId: _me),
+  );
+
+  @override
+  Future<void> resolveScore(String resultId, String action, {List<(int, int)>? sets}) => _call('admin_resolve_score', {
+    'p_result_id': resultId,
+    'p_action': action,
+    'p_sets': sets == null ? null : setsJson(sets),
+  });
+
+  @override
+  Future<void> closeReport(String reportId, {String? note}) =>
+      _call('admin_close_report', {'p_report_id': reportId, 'p_note': note});
+
+  // ---- Tournaments ----
 
   Future<AdminRegistration> _entry(String fn, Map<String, dynamic> params) => guardTournament(
     () async => adminRegistrationFromJson(_map(await _client.rpc(fn, params: params)), myUserId: _me),

@@ -2564,4 +2564,112 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$percent% · $_temp0';
   }
+
+  @override
+  String get adminReview => 'Проверка';
+
+  @override
+  String adminReviewOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Открыто: $count',
+      zero: 'Ничего не ждёт',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reviewScoresTab(int count) {
+    return 'Счёт · $count';
+  }
+
+  @override
+  String reviewReportsTab(int count) {
+    return 'Жалобы · $count';
+  }
+
+  @override
+  String get reviewNoScores => 'Нет счетов на проверку';
+
+  @override
+  String get reviewNoReports => 'Нет открытых жалоб';
+
+  @override
+  String reviewDisputedBy(String name, String reason) {
+    return 'Оспорил $name: $reason';
+  }
+
+  @override
+  String reviewDisputedByNoReason(String name) {
+    return 'Оспорил $name';
+  }
+
+  @override
+  String get reviewNoShowFrozen => 'Заморожен: неявка';
+
+  @override
+  String get reviewFlaggedNoShow => 'Отмечен: неявка';
+
+  @override
+  String get reviewConfirm => 'Подтвердить';
+
+  @override
+  String get reviewCorrect => 'Исправить';
+
+  @override
+  String get reviewVoid => 'Аннулировать';
+
+  @override
+  String get reviewKeep => 'Оставить';
+
+  @override
+  String get reviewClose => 'Закрыть';
+
+  @override
+  String get reviewVoidScore => 'Аннулировать счёт';
+
+  @override
+  String get reviewConfirmTitle => 'Подтвердить этот счёт?';
+
+  @override
+  String get reviewConfirmMsg =>
+      'Он засчитается как введён: рейтинги изменятся, игроки получат уведомление.';
+
+  @override
+  String get reviewVoidTitle => 'Аннулировать этот счёт?';
+
+  @override
+  String get reviewVoidMsg =>
+      'Результат будет отменён окончательно. Изменения рейтингов вернутся, игроки получат уведомление.';
+
+  @override
+  String get reviewKeepTitle => 'Оставить этот счёт?';
+
+  @override
+  String get reviewKeepMsg =>
+      'Он останется как есть и пропадёт из этого списка.';
+
+  @override
+  String get reviewCorrectTitle => 'Исправить счёт';
+
+  @override
+  String get reviewCorrectHint =>
+      'Введите верные сеты. Рейтинги изменятся по введённому счёту, игроки получат уведомление.';
+
+  @override
+  String get reviewCloseTitle => 'Закрыть жалобу';
+
+  @override
+  String get reviewNote => 'Заметка (необязательно)';
+
+  @override
+  String reviewReportLine(String reporter, String target) {
+    return '$reporter — жалоба на $target';
+  }
+
+  @override
+  String reviewScoreLine(String sets) {
+    return 'Счёт: $sets';
+  }
 }

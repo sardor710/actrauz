@@ -2202,6 +2202,86 @@ class _SampleAdminRepository implements AdminRepository {
     return _b._audit.reversed.where((e) => before == null || e.at.isBefore(before)).take(limit).toList();
   }
 
+  // ---- Review (design §6.4): `app.admin_review`, `app.admin_resolve_score`,
+  // `app.admin_close_report` in supabase/migrations/20261127120000_after_game.sql ----
+
+  AdminGameNote? _gameNote(String? gameId) {
+    final g = gameId == null ? null : _b._games[gameId];
+    return g == null ? null : AdminGameNote(gameId: g.id, sportId: g.sportId, startsLocal: g.start);
+  }
+
+  static String _statusText(ResultStatus status) => status == ResultStatus.voided ? 'void' : status.name;
+
+  @override
+  Future<AdminReview> review() async {
+    _b._tick();
+    return AdminReview(
+      disputes: [
+        for (final d in _b._scores.awaitingAdmin())
+          AdminDispute(
+            result: d.result,
+            game: _gameNote(d.gameId)!,
+            names: {for (final id in [...d.result.sideA, ...d.result.sideB]) id: _b._nameOf(id)},
+            disputedByName: d.disputedBy == null ? null : _b._nameOf(d.disputedBy!),
+          ),
+      ],
+      reports: [
+        for (final r in _b._abuseReports)
+          if (r.open)
+            AdminReport(
+              id: r.id,
+              reporterId: r.reporterId,
+              reporterName: _b._nameOf(r.reporterId),
+              targetId: r.targetId,
+              targetName: _b._nameOf(r.targetId),
+              reason: r.reason,
+              details: r.details,
+              createdAt: r.createdAt,
+              game: _gameNote(r.gameId),
+              result: r.gameId == null ? null : _b._scores.resultOf(r.gameId!),
+            ),
+      ],
+    );
+  }
+
+  @override
+  Future<void> resolveScore(String resultId, String action, {List<(int, int)>? sets}) async {
+    final ({MatchResult before, MatchResult after}) change;
+    try {
+      change = _b._scores.resolve(resultId, action, sets: sets);
+    } on JoinException catch (e) {
+      throw BookingException(e.error == JoinError.invalidArgument ? BookingError.invalidArgument : BookingError.notFound);
+    }
+    // A confirm that turned void because a player's account is gone is a void.
+    final voided = change.after.status == ResultStatus.voided;
+    final logged = (action == 'confirm' || action == 'correct') && voided ? 'void' : action;
+    Map<String, dynamic> state(MatchResult r) => {
+      'status': _statusText(r.status),
+      'sets': [for (final (a, b) in r.sets) [a, b]],
+      'flagged_no_show': r.flaggedNoShow,
+    };
+    _b._log('score_$logged', 'match_result', resultId, before: state(change.before), after: state(change.after));
+  }
+
+  @override
+  Future<void> closeReport(String reportId, {String? note}) async {
+    final text = note?.trim() ?? '';
+    // Characters, as the database counts them.
+    if (text.runes.length > 500) _invalid();
+    final report = _b._abuseReports.where((r) => r.id == reportId && r.open).firstOrNull;
+    if (report == null) _notFound();
+    report
+      ..open = false
+      ..adminNote = text.isEmpty ? null : text;
+    _b._log(
+      'report_closed',
+      'abuse_report',
+      reportId,
+      before: {'status': 'open', 'admin_note': null},
+      after: {'status': 'closed', 'admin_note': report.adminNote},
+    );
+  }
+
   // ---- Tournaments ----
 
   SampleTournaments get _t => _b._rules;
@@ -2425,4 +2505,5 @@ class _AbuseReport {
   final String? details;
   final DateTime createdAt;
   bool open = true;
+  String? adminNote;
 }

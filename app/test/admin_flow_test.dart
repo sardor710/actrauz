@@ -1,6 +1,12 @@
 import 'package:actra/app.dart';
 import 'package:actra/data/admin_repository.dart';
+import 'package:actra/data/sample/sample_data.dart' show kMeId;
 import 'package:actra/domain/admin.dart';
+import 'package:actra/domain/competitive.dart';
+import 'package:actra/domain/games.dart';
+import 'package:actra/features/admin/admin_review_screen.dart';
+import 'package:actra/features/social/player_profile_screen.dart';
+import 'package:actra/data/sample/sample_repositories.dart' show SampleBackend;
 import 'package:actra/features/admin/admin_audit_screen.dart';
 import 'package:actra/features/admin/admin_home_screen.dart';
 import 'package:actra/features/common/widgets.dart';
@@ -15,6 +21,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_flow_test.dart';
+import 'games_host_flow_test.dart' show containerOf;
 
 /// In sample mode the signed-in demo player is an admin.
 Future<void> openAdmin(WidgetTester tester) async {
@@ -85,7 +92,7 @@ void main() {
     expect(find.text('My venues'), findsOneWidget);
     expect(find.text('Admin'), findsNothing);
 
-    for (final path in ['/admin', '/admin/venues', '/admin/venues/v1', '/admin/sports', '/admin/banners', '/admin/audit', '/admin/tournaments', '/admin/tournaments/new', '/admin/tournaments/t1', '/admin/tournaments/t1/participants', '/admin/dashboard']) {
+    for (final path in ['/admin', '/admin/venues', '/admin/venues/v1', '/admin/sports', '/admin/banners', '/admin/audit', '/admin/review', '/admin/tournaments', '/admin/tournaments/new', '/admin/tournaments/t1', '/admin/tournaments/t1/participants', '/admin/dashboard']) {
       await goTo(tester, path);
       expect(find.text('Only Actra administrators can open this page'), findsOneWidget, reason: path);
     }
@@ -405,6 +412,188 @@ void main() {
     final details = tester.getTopLeft(key('venue-name-en'));
     final courts = tester.getTopLeft(key('add-court'));
     expect(courts.dx, greaterThan(details.dx + 300));
+  });
+
+  group('review', () {
+    /// The sample backend of the running app.
+    SampleBackend backendOf(WidgetTester tester) => containerOf(tester).read(sampleBackendProvider);
+
+    Future<void> openReview(WidgetTester tester) async {
+      await goTo(tester, '/admin');
+      await tap(tester, key('admin-review'));
+      expect(find.byType(AdminReviewScreen), findsOneWidget);
+    }
+
+    testWidgets('the admin home counts what waits for review', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      await goTo(tester, '/admin');
+      expect(find.text('Review'), findsOneWidget);
+      expect(find.text('Nothing waiting'), findsOneWidget);
+
+      final backend = backendOf(tester);
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      await backend.reportPlayerAs('p1', 'p3', reason: ReportReason.language);
+      containerOf(tester).invalidate(adminReviewProvider);
+      await tester.pumpAndSettle();
+      expect(find.text('2 open'), findsOneWidget);
+    });
+
+    testWidgets('admin confirms a disputed score', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.disputeScoreAs('p2', 'r-gf2', reason: 'We won the second set');
+      await openReview(tester);
+
+      expect(find.byKey(const ValueKey('score-board')), findsOneWidget);
+      expect(find.textContaining('We won the second set'), findsOneWidget);
+      expect(key('review-keep-r-gf2'), findsNothing, reason: 'keep is for a flagged score');
+      expect(key('review-correct-r-gf2'), findsOneWidget);
+
+      await tap(tester, key('review-confirm-r-gf2'));
+      expect(find.text('Confirm this score?'), findsOneWidget);
+      await tap(tester, find.text('Cancel'));
+      expect((await backend.game('gf2')).result!.status, ResultStatus.disputed, reason: 'cancelled');
+
+      await tap(tester, key('review-confirm-r-gf2'));
+      await tap(tester, key('review-dialog-ok'));
+      expect((await backend.game('gf2')).result!.status, ResultStatus.confirmed);
+      expect(key('review-score-r-gf2'), findsNothing);
+      expect(find.text('No scores to review'), findsOneWidget);
+      expect((await backend.admin.auditLog()).first.action, 'score_confirm');
+    });
+
+    testWidgets('admin corrects a disputed score with the set editor', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      await openReview(tester);
+
+      await tap(tester, key('review-correct-r-gf2'));
+      expect(find.text('Correct the score'), findsOneWidget);
+      // The entered score, 6–3 6–4, is the start; the first set was 6–4.
+      expect(tester.widget<Text>(key('set-0-mine')).data, '6');
+      expect(tester.widget<Text>(key('set-0-theirs')).data, '3');
+      await tap(tester, key('set-0-theirs-plus'));
+      await tap(tester, key('review-correct-save'));
+
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.sets, const [(6, 4), (6, 4)]);
+      expect(find.text('No scores to review'), findsOneWidget);
+    });
+
+    testWidgets('admin voids a disputed score', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.disputeScoreAs('p2', 'r-gf2');
+      await openReview(tester);
+      await tap(tester, key('review-void-r-gf2'));
+      expect(find.text('Void this score?'), findsOneWidget);
+      await tap(tester, key('review-dialog-ok'));
+      expect((await backend.game('gf2')).result!.status, ResultStatus.voided);
+      expect(find.text('No scores to review'), findsOneWidget);
+    });
+
+    testWidgets('a flagged confirmed score offers Keep and Void, not Confirm', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.confirmScoreAs(kMeId, 'r-gf2');
+      await backend.reportNoShowAs('p1', 'gf2', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf2', 'p3', reported: true);
+      expect((await backend.game('gf2')).result!.flaggedNoShow, isTrue);
+      await openReview(tester);
+
+      expect(find.text('Flagged: no-show'), findsOneWidget);
+      expect(key('review-confirm-r-gf2'), findsNothing);
+      expect(key('review-correct-r-gf2'), findsNothing);
+      await tap(tester, key('review-keep-r-gf2'));
+      expect(find.text('Keep this score?'), findsOneWidget);
+      await tap(tester, key('review-dialog-ok'));
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.flaggedNoShow, isFalse);
+      expect(find.text('No scores to review'), findsOneWidget);
+    });
+
+    testWidgets('a no-show freeze reads as one', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.reportNoShowAs('p1', 'gf2', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf2', 'p3', reported: true);
+      await openReview(tester);
+      expect(find.text('Frozen: no-show'), findsOneWidget);
+      expect(key('review-confirm-r-gf2'), findsOneWidget);
+    });
+
+    testWidgets('admin closes a report with a note', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.reportPlayerAs('p1', 'p3', reason: ReportReason.language, details: 'Shouted at everyone');
+      final id = (await backend.admin.review()).reports.single.id;
+      await openReview(tester);
+      expect(find.text('No scores to review'), findsOneWidget);
+
+      await tap(tester, key('review-tab-reports'));
+      expect(key('review-report-$id'), findsOneWidget);
+      expect(find.text('Abusive language'), findsOneWidget);
+      expect(find.text('Shouted at everyone'), findsOneWidget);
+      expect(key('review-void-score-$id'), findsNothing, reason: 'not about a game');
+
+      await tap(tester, key('review-close-$id'));
+      await tester.enterText(key('review-note'), 'Warned them');
+      await tap(tester, key('review-close-save'));
+      expect(key('review-report-$id'), findsNothing);
+      expect(find.text('No open reports'), findsOneWidget);
+      final entry = (await backend.admin.auditLog()).first;
+      expect((entry.action, entry.after!['admin_note']), ('report_closed', 'Warned them'));
+    });
+
+    testWidgets('a report about a game shows its score, which the admin can void', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.reportPlayerAs('p2', 'p1', gameId: 'gf2', reason: ReportReason.falseScore);
+      final id = (await backend.admin.review()).reports.single.id;
+      await openReview(tester);
+      await tap(tester, key('review-tab-reports'));
+
+      expect(find.text('Score: 6–3, 6–4'), findsOneWidget);
+      await tap(tester, key('review-void-score-$id'));
+      expect(find.text('Void this score?'), findsOneWidget);
+      await tap(tester, key('review-dialog-ok'));
+      expect((await backend.game('gf2')).result!.status, ResultStatus.voided);
+      // The report stays open; it just no longer offers the score.
+      expect(key('review-report-$id'), findsOneWidget);
+      expect(find.textContaining('Score:'), findsNothing);
+      expect(key('review-void-score-$id'), findsNothing);
+    });
+
+    testWidgets('the review fits a phone, with its sheets', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.disputeScoreAs('p2', 'r-gf2', reason: 'We won the second set and the third, the score is wrong');
+      await backend.reportPlayerAs('p2', 'p1', gameId: 'gf2', reason: ReportReason.aggression, details: 'x' * 300);
+      await openReview(tester);
+      tester.view.physicalSize = const Size(375, 812);
+      await tester.pumpAndSettle();
+
+      await tap(tester, key('review-correct-r-gf2'));
+      await tap(tester, key('set-0-mine-plus'));
+      await closeSheet(tester);
+      await tap(tester, key('review-tab-reports'));
+      await tap(tester, key('review-close-ar1'));
+      await closeSheet(tester);
+    });
+
+    testWidgets('the reported player opens their profile', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final backend = backendOf(tester);
+      await backend.reportPlayerAs('p1', 'p3', reason: ReportReason.other);
+      final id = (await backend.admin.review()).reports.single.id;
+      await openReview(tester);
+      await tap(tester, key('review-tab-reports'));
+      await tap(tester, key('review-target-$id'));
+      expect(find.byType(PlayerProfileScreen), findsOneWidget);
+    });
   });
 
   testWidgets('the admin screens read in Russian and Uzbek', (tester) async {

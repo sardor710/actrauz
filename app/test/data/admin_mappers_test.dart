@@ -2,7 +2,9 @@ import 'package:actra/core/localized_text.dart';
 import 'package:actra/data/supabase/errors.dart';
 import 'package:actra/data/supabase/mappers.dart';
 import 'package:actra/domain/admin.dart';
+import 'package:actra/data/sample/sample_data.dart' show kMeId;
 import 'package:actra/domain/booking_engine.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -295,6 +297,140 @@ void main() {
       expect(e.actorName, isNull);
       expect(e.entityId, isNull);
       expect(e.before, {'status': 'confirmed'});
+    });
+  });
+
+  group('admin review', () {
+    Map<String, dynamic> resultJson(String id, String status, {String? reason, bool flagged = false}) => {
+      'id': id,
+      'status': status,
+      'sets': [
+        [6, 4],
+        [3, 6],
+        [7, 5],
+      ],
+      'winner': 'a',
+      'entered_by': 'u-host',
+      'side_a': ['u-host', 'u-me'],
+      'side_b': ['u-x', 'u-y'],
+      'confirmed_by': <String>[],
+      'dispute_reason': reason,
+      'flagged_no_show': flagged,
+      'changes': <String, Object>{},
+    };
+
+    Map<String, dynamic> reviewJson() => {
+      'disputes': [
+        {
+          'result': resultJson('r1', 'disputed', reason: 'Wrong score'),
+          'game': {'game_id': 'g1', 'sport_id': 'padel', 'starts_local': '2026-11-21T18:00:00'},
+          'players': [
+            {'id': 'u-host', 'name': 'Aziz', 'side': 'a'},
+            {'id': 'u-me', 'name': 'Demo Admin', 'side': 'a'},
+            {'id': 'u-x', 'name': 'Bobur', 'side': 'b'},
+            {'id': 'u-y', 'name': 'Dilnoza', 'side': 'b'},
+          ],
+          'disputed_by_name': 'Bobur',
+        },
+        {
+          'result': resultJson('r2', 'disputed', reason: 'no_show'),
+          'game': {'game_id': 'g2', 'sport_id': 'tennis', 'starts_local': '2026-11-20T09:30:00'},
+          'players': <Object>[],
+          'disputed_by_name': null,
+        },
+        {
+          'result': resultJson('r3', 'confirmed', flagged: true),
+          'game': {'game_id': 'g3', 'sport_id': 'padel', 'starts_local': '2026-11-19T20:00:00'},
+          'players': <Object>[],
+          'disputed_by_name': null,
+        },
+      ],
+      'reports': [
+        {
+          'id': 'rep1',
+          'reporter_id': 'u-me',
+          'reporter_name': 'Demo Admin',
+          'target_id': 'u-x',
+          'target_name': 'Bobur',
+          'game_id': 'g1',
+          'game': {'game_id': 'g1', 'sport_id': 'padel', 'starts_local': '2026-11-21T18:00:00'},
+          'result': resultJson('r1', 'void'),
+          'reason': 'false_score',
+          'details': 'It was 6-0',
+          'created_at': '2026-11-22T08:00:00+00:00',
+        },
+        {
+          'id': 'rep2',
+          'reporter_id': 'u-x',
+          'reporter_name': 'Bobur',
+          'target_id': 'u-y',
+          'target_name': 'Dilnoza',
+          'game_id': null,
+          'game': null,
+          'result': null,
+          'reason': 'language',
+          'details': null,
+          'created_at': '2026-11-22T09:00:00+00:00',
+        },
+      ],
+      'counts': {'disputes': 3, 'reports': 2},
+    };
+
+    test('disputes: result, game, names, who disputed; the signed-in user becomes me', () {
+      final review = adminReviewFromJson(reviewJson(), myUserId: 'u-me');
+      expect(review.disputes, hasLength(3));
+      final d = review.disputes.first;
+      expect(d.result.id, 'r1');
+      expect(d.result.status, ResultStatus.disputed);
+      expect(d.result.disputeReason, 'Wrong score');
+      expect(d.result.sets, const [(6, 4), (3, 6), (7, 5)]);
+      expect(d.result.sideA, ['u-host', kMeId]);
+      expect(d.game.gameId, 'g1');
+      expect(d.game.sportId, 'padel');
+      expect(d.game.startsLocal, DateTime.utc(2026, 11, 21, 18));
+      expect(d.names, {'u-host': 'Aziz', kMeId: 'Demo Admin', 'u-x': 'Bobur', 'u-y': 'Dilnoza'});
+      expect(d.nameOf('u-x'), 'Bobur');
+      expect(d.disputedByName, 'Bobur');
+      expect(d.flagged, isFalse);
+    });
+
+    test('a no-show dispute has no disputer; a confirmed flagged result is flagged', () {
+      final review = adminReviewFromJson(reviewJson(), myUserId: null);
+      expect(review.disputes[1].result.disputeReason, 'no_show');
+      expect(review.disputes[1].disputedByName, isNull);
+      expect(review.disputes[2].flagged, isTrue);
+      expect(review.disputes[2].result.flaggedNoShow, isTrue);
+      expect(review.disputes[0].names.containsKey('u-me'), isTrue, reason: 'no signed-in id: ids stay as sent');
+    });
+
+    test('reports: reason, text, date, game and score, or neither', () {
+      final review = adminReviewFromJson(reviewJson(), myUserId: 'u-me');
+      expect(review.reports, hasLength(2));
+      final r = review.reports.first;
+      expect(r.id, 'rep1');
+      expect(r.reporterId, kMeId);
+      expect(r.reporterName, 'Demo Admin');
+      expect(r.targetId, 'u-x');
+      expect(r.targetName, 'Bobur');
+      expect(r.reason, ReportReason.falseScore);
+      expect(r.details, 'It was 6-0');
+      expect(r.createdAt, DateTime.utc(2026, 11, 22, 8));
+      expect(r.game!.gameId, 'g1');
+      expect(r.result!.status, ResultStatus.voided);
+      expect(r.hasLiveScore, isFalse);
+      final bare = review.reports.last;
+      expect(bare.reason, ReportReason.language);
+      expect(bare.details, isNull);
+      expect(bare.game, isNull);
+      expect(bare.result, isNull);
+      expect(review.openCount, 5);
+    });
+
+    test('an empty review, unknown keys and a missing teams key are fine', () {
+      expect(adminReviewFromJson({'disputes': [], 'reports': [], 'counts': {}}, myUserId: null).openCount, 0);
+      expect(adminReviewFromJson(<String, dynamic>{}, myUserId: null).openCount, 0);
+      final json = reviewJson()..['teams'] = [{'id': 't1'}]..['something_new'] = 1;
+      expect(adminReviewFromJson(json, myUserId: null).openCount, 5);
     });
   });
 

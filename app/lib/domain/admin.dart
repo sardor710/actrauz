@@ -1,5 +1,6 @@
 import '../core/localized_text.dart';
 import '../core/markets.dart';
+import 'competitive.dart';
 import 'models.dart';
 
 /// Admin view of the catalog (product spec §12): every venue, court, sport
@@ -224,4 +225,81 @@ class AuditEntry {
   final DateTime at;
   final Map<String, dynamic>? before;
   final Map<String, dynamic>? after;
+}
+
+/// The game a score or a report is about, as the review lists show it.
+class AdminGameNote {
+  const AdminGameNote({required this.gameId, required this.sportId, required this.startsLocal});
+
+  final String gameId;
+  final String sportId;
+
+  /// Venue wall-clock time.
+  final DateTime startsLocal;
+}
+
+/// A score waiting for an admin (design §6.4): a disputed result, or a
+/// confirmed one flagged because a player in it was marked as a no-show.
+class AdminDispute {
+  const AdminDispute({required this.result, required this.game, required this.names, this.disputedByName});
+
+  final MatchResult result;
+  final AdminGameNote game;
+  /// Player id → name, for everyone in the result.
+  final Map<String, String> names;
+
+  /// Null when the no-show rule raised it (`result.disputeReason == 'no_show'`).
+  final String? disputedByName;
+
+  /// A confirmed score kept in force until an admin keeps or voids it.
+  bool get flagged => result.status == ResultStatus.confirmed;
+
+  String nameOf(String playerId) => names[playerId] ?? '';
+}
+
+/// An open abuse report.
+class AdminReport {
+  const AdminReport({
+    required this.id,
+    required this.reporterId,
+    required this.reporterName,
+    required this.targetId,
+    required this.targetName,
+    required this.reason,
+    required this.createdAt,
+    this.details,
+    this.game,
+    this.result,
+  });
+
+  final String id;
+  final String reporterId;
+  final String reporterName;
+  final String targetId;
+  final String targetName;
+  final ReportReason reason;
+  final String? details;
+
+  /// In UTC.
+  final DateTime createdAt;
+
+  /// Null when the report was not about a game, or the game is gone.
+  final AdminGameNote? game;
+
+  /// The game's score, whatever its state.
+  final MatchResult? result;
+
+  /// A score the admin can still void.
+  bool get hasLiveScore => result != null && result!.status != ResultStatus.voided;
+}
+
+/// What waits for an admin: [disputes] first, then [reports].
+class AdminReview {
+  const AdminReview({this.disputes = const [], this.reports = const []});
+
+  final List<AdminDispute> disputes;
+  final List<AdminReport> reports;
+
+  /// The count the admin home shows.
+  int get openCount => disputes.length + reports.length;
 }

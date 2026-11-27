@@ -26,12 +26,14 @@ class _Sections extends ConsumerWidget {
     final venues = ref.watch(adminVenuesProvider).valueOrNull;
     final sports = ref.watch(adminSportsProvider).valueOrNull;
     final banners = ref.watch(adminBannersProvider).valueOrNull;
+    final review = ref.watch(adminReviewProvider).valueOrNull;
 
     final entries = [
       _Entry('admin-venues', Icons.stadium_outlined, l.tabVenues, venues == null ? null : l.venuesCount(venues.length), '/admin/venues'),
       _Entry('admin-sports', Icons.sports_tennis_rounded, l.adminSports, sports == null ? null : l.sportsCount(sports.length), '/admin/sports'),
       _Entry('admin-banners', Icons.view_carousel_outlined, l.adminBanners, banners == null ? null : l.bannersCount(banners.length), '/admin/banners'),
       _Entry('admin-tournaments', Icons.emoji_events_outlined, l.adminTournaments, l.adminTournamentsHint, '/admin/tournaments'),
+      _Entry('admin-review', Icons.fact_check_outlined, l.adminReview, review == null ? null : l.adminReviewOpen(review.openCount), '/admin/review'),
       _Entry('admin-dashboard', Icons.insights_outlined, l.adminDashboard, l.adminDashboardHint, '/admin/dashboard'),
       _Entry('admin-audit', Icons.history_rounded, l.adminAudit, l.adminAuditHint, '/admin/audit'),
     ];

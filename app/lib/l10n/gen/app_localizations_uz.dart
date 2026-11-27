@@ -2529,4 +2529,111 @@ class AppLocalizationsUz extends AppLocalizations {
     );
     return '$percent% · $_temp0';
   }
+
+  @override
+  String get adminReview => 'Tekshiruv';
+
+  @override
+  String adminReviewOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ochiq: $count ta',
+      zero: 'Hech narsa kutmayapti',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reviewScoresTab(int count) {
+    return 'Hisoblar · $count';
+  }
+
+  @override
+  String reviewReportsTab(int count) {
+    return 'Shikoyatlar · $count';
+  }
+
+  @override
+  String get reviewNoScores => 'Tekshiriladigan hisob yoʻq';
+
+  @override
+  String get reviewNoReports => 'Ochiq shikoyat yoʻq';
+
+  @override
+  String reviewDisputedBy(String name, String reason) {
+    return '$name eʼtiroz bildirdi: $reason';
+  }
+
+  @override
+  String reviewDisputedByNoReason(String name) {
+    return '$name eʼtiroz bildirdi';
+  }
+
+  @override
+  String get reviewNoShowFrozen => 'Toʻxtatilgan: kelmagan';
+
+  @override
+  String get reviewFlaggedNoShow => 'Belgilangan: kelmagan';
+
+  @override
+  String get reviewConfirm => 'Tasdiqlash';
+
+  @override
+  String get reviewCorrect => 'Tuzatish';
+
+  @override
+  String get reviewVoid => 'Bekor qilish';
+
+  @override
+  String get reviewKeep => 'Qoldirish';
+
+  @override
+  String get reviewClose => 'Yopish';
+
+  @override
+  String get reviewVoidScore => 'Hisobni bekor qilish';
+
+  @override
+  String get reviewConfirmTitle => 'Bu hisob tasdiqlansinmi?';
+
+  @override
+  String get reviewConfirmMsg =>
+      'Hisob kiritilganidek hisoblanadi: reytinglar oʻzgaradi, oʻyinchilarga xabar yuboriladi.';
+
+  @override
+  String get reviewVoidTitle => 'Bu hisob bekor qilinsinmi?';
+
+  @override
+  String get reviewVoidMsg =>
+      'Natija butunlay bekor qilinadi. Reyting oʻzgarishlari qaytariladi, oʻyinchilarga xabar yuboriladi.';
+
+  @override
+  String get reviewKeepTitle => 'Bu hisob qoldirilsinmi?';
+
+  @override
+  String get reviewKeepMsg => 'U oʻzgarishsiz qoladi va bu roʻyxatdan chiqadi.';
+
+  @override
+  String get reviewCorrectTitle => 'Hisobni tuzatish';
+
+  @override
+  String get reviewCorrectHint =>
+      'Toʻgʻri setlarni kiriting. Reytinglar shu hisob boʻyicha oʻzgaradi, oʻyinchilarga xabar yuboriladi.';
+
+  @override
+  String get reviewCloseTitle => 'Shikoyatni yopish';
+
+  @override
+  String get reviewNote => 'Izoh (ixtiyoriy)';
+
+  @override
+  String reviewReportLine(String reporter, String target) {
+    return '$reporter — $target haqida shikoyat';
+  }
+
+  @override
+  String reviewScoreLine(String sets) {
+    return 'Hisob: $sets';
+  }
 }
