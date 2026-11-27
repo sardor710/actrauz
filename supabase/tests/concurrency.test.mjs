@@ -476,3 +476,39 @@ test('tournament scheduling: fill the day racing an app hold, two organisers rac
     assert.equal(scheduled.rows[0].n, 1);
   }
 });
+
+test('tournament scores: two organisers entering one match at once leave one winner in the next match', async () => {
+  const admin = await addAdmin(pool, await createUser(pool, 'Score admin'));
+  const organizers = [await createUser(pool, 'Scorer 1'), await createUser(pool, 'Scorer 2')];
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const t = await addTournament(pool, { startsOn: monday });
+    for (const o of organizers) {
+      await pool.query(`insert into tournament_organizers (tournament_id, user_id) values ($1, $2)`, [t, o]);
+    }
+    const cat = await addCategory(pool, t);
+    const users = [];
+    for (let i = 0; i < 4; i++) users.push(await createUser(pool, `E${attempt}-${i}`));
+    await addEntries(pool, cat, users);
+    await pool.query(`select app.make_draw($1, $2, 'knockout', null, null, $3)`, [admin, cat, now]);
+    await pool.query(`select app.publish_draw($1, $2, $3)`, [admin, cat, now]);
+    const semi = (
+      await pool.query(`select * from tournament_matches where category_id = $1 and round = 1 order by position limit 1`, [cat])
+    ).rows[0];
+
+    // Each names a different winner (a walkover: no score rules in play).
+    const results = await Promise.all(
+      ['a', 'b'].map((side, i) =>
+        errorOf(pool.query(`select app.enter_match_score($1, $2, 'walkover', $3, null, $4)`, [organizers[i], semi.id, side, now])),
+      ),
+    );
+    for (const r of results) assert.ok(r === null || r === 'next_match_played', `attempt ${attempt}: ${r}`);
+    assert.ok(results.includes(null), `attempt ${attempt}`);
+
+    const done = (await pool.query(`select * from tournament_matches where id = $1`, [semi.id])).rows[0];
+    const final = (await pool.query(`select * from tournament_matches where category_id = $1 and round = 2`, [cat])).rows[0];
+    assert.equal(done.status, 'done');
+    assert.equal(final.side_a, done.winner === 'a' ? semi.side_a : semi.side_b, `attempt ${attempt}`);
+    assert.equal(final.side_b, null);
+    assert.equal(final.status, 'waiting');
+  }
+});

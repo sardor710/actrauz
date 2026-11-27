@@ -514,7 +514,7 @@ test('the public calls: organiser list, draws and the bracket', async () => {
   ]);
 
   const playerView = await asUser(pool, users[0], async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
-  assert.deepEqual(playerView, { organizer: false, draws: [], courts: [] });
+  assert.deepEqual(playerView, { organizer: false, draws: [], courts: [], my_next_match: null, finished: false });
   const orgView = await asUser(pool, organizer, async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
   assert.equal(orgView.organizer, true);
   assert.equal(orgView.draws.length, 1);
