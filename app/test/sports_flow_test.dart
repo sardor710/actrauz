@@ -1,4 +1,9 @@
+import 'dart:async';
+
+import 'package:actra/app.dart';
+import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/competitive.dart';
+import 'package:actra/domain/games.dart';
 import 'package:actra/features/common/rating_pill.dart';
 import 'package:actra/features/common/widgets.dart';
 import 'package:actra/features/games/game_screen.dart';
@@ -6,7 +11,9 @@ import 'package:actra/features/profile/my_sports_screen.dart';
 import 'package:actra/router.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_flow_test.dart';
@@ -42,6 +49,43 @@ Future<void> _answerPadel(WidgetTester tester) async {
 }
 
 Finder _switchOf(String sportId) => find.byKey(ValueKey('sport-switch-$sportId'));
+
+/// The sample backend, with saving a sport held until [held] completes, or
+/// refused with [fail].
+class _HeldSave extends SampleBackend {
+  _HeldSave({required super.utcNow, super.meName});
+
+  Completer<void>? held;
+  JoinException? fail;
+
+  @override
+  Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers}) async {
+    await held?.future;
+    if (fail case final error?) throw error;
+    return super.setSport(sportId, level: level, answers: answers);
+  }
+}
+
+/// As `pumpApp` with no sports, on [backend].
+Future<void> _pumpWith(WidgetTester tester, _HeldSave Function(DateTime Function() clock) backend) async {
+  SharedPreferences.setMockInitialValues(signedIn);
+  final prefs = await SharedPreferences.getInstance();
+  await initializeDateFormatting();
+  tester.view.physicalSize = const Size(900, 3400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        sharedPrefsProvider.overrideWithValue(prefs),
+        clockProvider.overrideWithValue(() => sundayMorning),
+        sampleBackendProvider.overrideWith((ref) => backend(ref.watch(clockProvider))),
+      ],
+      child: const ActraApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets('new player is asked to pick sports', (tester) async {
@@ -240,5 +284,49 @@ void main() {
     expect(control.onSelectionChanged, isNull);
     expect(control.selected, {true});
     expect(find.text('Set by Actra. Ask engineering to change it.'), findsOneWidget);
+  });
+
+  testWidgets('a refused questionnaire save shows why and keeps the sheet open', (tester) async {
+    final backend = _HeldSave(utcNow: () => sundayMorning, meName: 'Test')
+      ..fail = const JoinException(JoinError.unavailable);
+    await _pumpWith(tester, (_) => backend);
+    await _openMySports(tester);
+    await tap(tester, _switchOf('padel'));
+    await _answerPadel(tester);
+
+    expect(find.text('Cannot reach the server. Check your connection.'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // The last question again, ready for another try.
+    expect(find.text(_padelAnswerTexts.last), findsOneWidget);
+    expect(find.byKey(const ValueKey('answer-4-2')), findsOneWidget);
+    expect(find.text('Your starting rating: 2.70'), findsNothing);
+  });
+
+  testWidgets('a questionnaire save cannot be closed while busy, and finishing after it is closed is safe', (
+    tester,
+  ) async {
+    final backend = _HeldSave(utcNow: () => sundayMorning, meName: 'Test')..held = Completer<void>();
+    await _pumpWith(tester, (_) => backend);
+    await _openMySports(tester);
+    await tap(tester, _switchOf('padel'));
+    for (final text in _padelAnswerTexts) {
+      await tester.tap(find.text(text));
+      await tester.pump();
+    }
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // A tap outside does not close it while it saves.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(_padelAnswerTexts.last), findsOneWidget);
+
+    // Gone anyway (swiped away), then the save finishes.
+    Navigator.of(tester.element(find.text(_padelAnswerTexts.last)), rootNavigator: true).pop();
+    await tester.pumpAndSettle();
+    backend.held!.complete();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.widget<Switch>(_switchOf('padel')).value, isTrue, reason: 'My sports reloaded');
   });
 }

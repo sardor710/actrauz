@@ -63,7 +63,10 @@ class _QuestionnaireSheetState extends ConsumerState<_QuestionnaireSheet> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _answer(int index, int questionCount) async {
+  /// [step]: the question the tapped answer belongs to. A second tap on it
+  /// before the next question shows does not answer that one too.
+  Future<void> _answer(int step, int index, int questionCount) async {
+    if (_busy || _answers.length != step) return;
     setState(() {
       _answers.add(index);
       _error = null;
@@ -78,14 +81,17 @@ class _QuestionnaireSheetState extends ConsumerState<_QuestionnaireSheet> {
 
   Future<void> _save() async {
     final l = context.l;
+    // Taken now: the sheet may be gone when the save returns.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final social = ref.read(socialRepositoryProvider);
     setState(() => _busy = true);
     try {
-      final mine = await ref.read(socialRepositoryProvider).setSport(widget.sport.id, answers: [..._answers]);
+      final mine = await social.setSport(widget.sport.id, answers: [..._answers]);
       // The server's rating, which is the kept one if the player already has rated games.
       final rating = mine.where((s) => s.sportId == widget.sport.id).firstOrNull?.rating;
       if (rating == null) throw const JoinException(JoinError.unavailable);
       widget.onSaved();
-      refreshSports(ref);
+      refreshSportsIn(container);
       if (mounted) {
         setState(() {
           _busy = false;
@@ -110,59 +116,63 @@ class _QuestionnaireSheetState extends ConsumerState<_QuestionnaireSheet> {
     final result = _result;
     final step = _answers.length.clamp(0, questions.length - 1);
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.9),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.questionnaireTitle(widget.sport.name.resolve(context.lang)).toUpperCase(),
-                style: AppText.sectionTitle,
-              ),
-              const SizedBox(height: 12),
-              if (result != null) ...[
-                Text(l.questionnaireResult(formatRating(result.rating)), style: AppText.title),
+    // Not closed by a tap outside or Back while the answers are being saved.
+    return PopScope(
+      canPop: !_busy,
+      child: SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.9),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l.questionnaireTitle(widget.sport.name.resolve(context.lang)).toUpperCase(),
+                  style: AppText.sectionTitle,
+                ),
                 const SizedBox(height: 12),
-                Align(alignment: Alignment.centerLeft, child: RatingPill(result)),
-                const SizedBox(height: 12),
-                Text(l.questionnaireResultHint(RatingRules.provisionalGames), style: AppText.muted),
-                const SizedBox(height: 20),
-                FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.doneLabel)),
-              ] else ...[
-                Text(l.questionnaireStep(step + 1, questions.length), style: AppText.caption),
-                const SizedBox(height: 6),
-                Text(questions[step].text, style: AppText.title),
-                const SizedBox(height: 16),
-                for (final (i, answer) in questions[step].answers.indexed)
-                  _AnswerTile(
-                    key: ValueKey('answer-$step-$i'),
-                    text: answer,
-                    onTap: _busy ? null : () => _answer(i, questions.length),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: 4),
-                  Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
-                ],
-                if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                if (_answers.isNotEmpty && !_busy)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: _back,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: Text(l.backLabel),
+                if (result != null) ...[
+                  Text(l.questionnaireResult(formatRating(result.rating)), style: AppText.title),
+                  const SizedBox(height: 12),
+                  Align(alignment: Alignment.centerLeft, child: RatingPill(result)),
+                  const SizedBox(height: 12),
+                  Text(l.questionnaireResultHint(RatingRules.provisionalGames), style: AppText.muted),
+                  const SizedBox(height: 20),
+                  FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.doneLabel)),
+                ] else ...[
+                  Text(l.questionnaireStep(step + 1, questions.length), style: AppText.caption),
+                  const SizedBox(height: 6),
+                  Text(questions[step].text, style: AppText.title),
+                  const SizedBox(height: 16),
+                  for (final (i, answer) in questions[step].answers.indexed)
+                    _AnswerTile(
+                      key: ValueKey('answer-$step-$i'),
+                      text: answer,
+                      onTap: _busy ? null : () => _answer(step, i, questions.length),
                     ),
-                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 4),
+                    Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
+                  ],
+                  if (_busy)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  if (_answers.isNotEmpty && !_busy)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _back,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: Text(l.backLabel),
+                      ),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

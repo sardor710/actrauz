@@ -122,17 +122,20 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
   /// Shown in the sheet: a snackbar would be hidden behind it.
   Future<void> _save() async {
     final l = context.l;
+    // Taken now: the sheet may be gone when the save returns.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final games = ref.read(gameRepositoryProvider);
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await ref.read(gameRepositoryProvider).enterScore(widget.game.id, sideA: _mySide, sideB: _opponents, sets: _sets);
-      refreshGames(ref);
+      await games.enterScore(widget.game.id, sideA: _mySide, sideB: _opponents, sets: _sets);
+      refreshGamesIn(container);
       if (mounted) Navigator.of(context).pop(true);
     } on JoinException catch (e) {
       // The game may have moved on (a score entered or disputed meanwhile).
-      refreshGames(ref);
+      refreshGamesIn(container);
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -166,69 +169,73 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
       child: Text(text, style: AppText.bodyStrong),
     );
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l.scoreEnter, style: AppText.title),
-              const SizedBox(height: 8),
-              Text(l.scoreWhoPlayed.toUpperCase(), style: AppText.sectionTitle),
-              if (_canDoubles && _canSingles) ...[
-                const SizedBox(height: 10),
-                SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(value: false, label: Text(l.scoreSingles, key: const ValueKey('score-singles'))),
-                    ButtonSegment(value: true, label: Text(l.scoreDoubles, key: const ValueKey('score-doubles'))),
-                  ],
-                  selected: {_doubles},
-                  onSelectionChanged: (v) => _pickFormat(v.first),
-                ),
-              ],
-              if (_others.length > 1) ...[
-                if (_doubles) ...[
-                  label(l.scorePartner),
-                  chips(_others, selected: (id) => id == _partner, onTap: _pickPartner, keyPrefix: 'score-partner'),
-                ],
-                if (!_doubles || !_fourPlayers) ...[
-                  label(_doubles ? l.scoreOpponents : l.scoreOpponent),
-                  chips(
-                    [for (final id in _others) if (id != _partner || !_doubles) id],
-                    selected: _opponents.contains,
-                    onTap: _toggleOpponent,
-                    keyPrefix: 'score-opponent',
+    return PopScope(
+      // Not closed by a tap outside or Back while the score is being saved.
+      canPop: !_busy,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(l.scoreEnter, style: AppText.title),
+                const SizedBox(height: 8),
+                Text(l.scoreWhoPlayed.toUpperCase(), style: AppText.sectionTitle),
+                if (_canDoubles && _canSingles) ...[
+                  const SizedBox(height: 10),
+                  SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    segments: [
+                      ButtonSegment(value: false, label: Text(l.scoreSingles, key: const ValueKey('score-singles'))),
+                      ButtonSegment(value: true, label: Text(l.scoreDoubles, key: const ValueKey('score-doubles'))),
+                    ],
+                    selected: {_doubles},
+                    onSelectionChanged: (v) => _pickFormat(v.first),
                   ),
                 ],
-              ],
-              const SizedBox(height: 14),
-              _SideLine(title: l.scoreYourSide, names: [for (final id in _mySide) name(id)]),
-              const SizedBox(height: 4),
-              _SideLine(title: l.scoreOtherSide, names: [for (final id in _opponents) name(id)]),
-              const SizedBox(height: 18),
-              Text(l.scoreSets.toUpperCase(), style: AppText.sectionTitle),
-              const SizedBox(height: 8),
-              SetsEditor(
-                sets: _sets,
-                firstSide: l.scoreYourSide,
-                secondSide: l.scoreOtherSide,
-                onChanged: (sets) => setState(() => _sets = sets),
-              ),
-              if (_error != null) ...[
+                if (_others.length > 1) ...[
+                  if (_doubles) ...[
+                    label(l.scorePartner),
+                    chips(_others, selected: (id) => id == _partner, onTap: _pickPartner, keyPrefix: 'score-partner'),
+                  ],
+                  if (!_doubles || !_fourPlayers) ...[
+                    label(_doubles ? l.scoreOpponents : l.scoreOpponent),
+                    chips(
+                      [for (final id in _others) if (id != _partner || !_doubles) id],
+                      selected: _opponents.contains,
+                      onTap: _toggleOpponent,
+                      keyPrefix: 'score-opponent',
+                    ),
+                  ],
+                ],
+                const SizedBox(height: 14),
+                _SideLine(title: l.scoreYourSide, names: [for (final id in _mySide) name(id)]),
                 const SizedBox(height: 4),
-                Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
+                _SideLine(title: l.scoreOtherSide, names: [for (final id in _opponents) name(id)]),
+                const SizedBox(height: 18),
+                Text(l.scoreSets.toUpperCase(), style: AppText.sectionTitle),
+                const SizedBox(height: 8),
+                SetsEditor(
+                  sets: _sets,
+                  firstSide: l.scoreYourSide,
+                  secondSide: l.scoreOtherSide,
+                  onChanged: (sets) => setState(() => _sets = sets),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 4),
+                  Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
+                ],
+                const SizedBox(height: 8),
+                FilledButton(
+                  key: const ValueKey('score-save'),
+                  onPressed: _valid && !_busy ? _save : null,
+                  child: Text(l.saveLabel),
+                ),
               ],
-              const SizedBox(height: 8),
-              FilledButton(
-                key: const ValueKey('score-save'),
-                onPressed: _valid && !_busy ? _save : null,
-                child: Text(l.saveLabel),
-              ),
-            ],
+            ),
           ),
         ),
       ),

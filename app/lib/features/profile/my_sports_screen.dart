@@ -28,10 +28,12 @@ class _MySportsScreenState extends ConsumerState<MySportsScreen> {
   /// Runs a write to the player's sports and refreshes what shows them.
   Future<void> _write(String sportId, Future<void> Function() action) async {
     final l = context.l;
+    // Taken now: the screen may be gone when the write returns.
+    final container = ProviderScope.containerOf(context, listen: false);
     setState(() => _busy = sportId);
     try {
       await action();
-      refreshSports(ref);
+      refreshSportsIn(container);
     } on JoinException catch (e) {
       if (mounted) showMessage(context, joinErrorText(l, e));
     } finally {
