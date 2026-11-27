@@ -19,6 +19,7 @@ This is the whole-product plan: what gets built, in what order, on what technolo
 | App state with Riverpod, navigation with go_router, translations with Flutter's built-in ARB files | Design call | |
 | Owner and admin panels as a **Flutter web app** sharing the booking logic with the phone app | Design call | Avoids writing slot and price rules twice. Revisit if the admin panel needs heavy tables and exports. |
 | Money stored as whole units (UZS, KZT), never converted or summed across currencies | Spec §3, §12.1 | |
+| Every scored padel or tennis game moves ratings; there is no rated/friendly switch | Founder, 2026-11-27 | Built in M7. Rated sports are padel and tennis; the admin switch is locked. Design: [2026-11-27-actra-m7-competitive-design.md](../specs/2026-11-27-actra-m7-competitive-design.md). |
 | Times stored and shown in the venue's local time, offset per city, never hard-coded | Spec §3 | |
 
 ## 2. What the Playo analysis showed

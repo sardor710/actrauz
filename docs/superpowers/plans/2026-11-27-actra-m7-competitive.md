@@ -496,4 +496,49 @@
 
 ## Status
 
-**2026-11-27:** design approved by the founder; plan written. Nothing built yet.
+**2026-11-27: built and reviewed; not deployed, not merged, not pushed.** Worktree `D:\actra\.worktrees\m7-competitive`, branch `m7-competitive` from `main` 12e94df.
+
+- **Done:** Tasks 0–14 and Task 15 Steps 1–4. Every task had its own reviewer (fix rounds on Tasks 7, 10 and 13B; pre-review fixes on Tasks 2, 3, 5 and 8). The whole branch was then reviewed in two halves (database and app) by senior reviewers: no critical findings, 7 important ones, all fixed in one fix wave per half and re-reviewed; one small follow-up fix for a regression the app fix wave introduced (a failed reload replacing a loaded page).
+- **Tests:** supabase `npm test` 463 pass (358 before M7); app `flutter test` 709 pass (454 before M7); `flutter analyze` clean.
+- **Not done (needs the founder's go-ahead):** Task 15 Step 5 — deploying the four migrations and running the two live checks. The live-check scripts `e2e-ratings.mjs` and `e2e-teams.mjs` are written and syntax-checked but have never been run.
+- **Browser walkthrough (sample mode, phone width):** onboarding → "Pick your sports" prompt → padel questionnaire (2.70, provisional) → Past games → score entry (6–4, waiting for the other side) → thumbs up, "Didn't show up" / Report menu, report sent → Social (My teams, teams of the city, leaderboards) → team page, join → profile (rating, team) → Admin → Review (report with "Void this score", Teams tab). Spot-checked in Russian and Kazakh. Not walked through in the browser: posting a team game and an opponent confirming a score (both need a second player or a booking; covered by tests). Preview entry `actra-m7` (port 5671) is in `D:\actra\.claude\launch.json` (not committed).
+
+**What changed against this plan while building** (each was a ruling recorded during the build):
+- The migration itself marks padel and tennis as rated sports before converting levels (design §5.1); nothing has to be set by hand.
+- A fourth admin action, **Keep**, for a confirmed score flagged by a no-show report (design §6.2 promised "keep or void").
+- A score cannot name a deleted account or a player with a recorded no-show; a result that loses a player is cancelled, never applied.
+- A venue's no-show mark and a players' no-show majority for the same game give one penalty, in either order.
+- The leaderboard shows a player's own position only in their own profile city.
+- `rating_locked` is never raised: answering the questionnaire again after a rated game silently keeps the rating.
+- Rating ranges converted from old levels read "2.0–4.9" (one decimal, cut not rounded).
+- The rating formula divides last, so an exact half rounds away from zero (established equal sides, 6–3 6–3 → ±0.06) in SQL and in the app alike.
+- `list_games` / `join_game` use a helper for the team part of the visibility rule; a team's "upcoming games" count is the same for every viewer.
+- Screens now reload what another player changed: on opening a notification, on returning to the app, after a refused action, and by pull-to-refresh; a failed reload keeps the page that was already loaded.
+
+**Before deploying (operator checks, read-only SQL on the live project):**
+1. `select id, active, competitive_rating from public.sports where id in ('padel','tennis');` — expect two rows (the migration sets the flag; if a row is missing, padel or tennis stays unrated).
+2. `select l.sport_id, l.level, count(*) from public.player_levels l join public.sports s on s.id = l.sport_id where s.id in ('padel','tennis') group by 1,2;` — these rows become "level + 0.5" ratings; only sample players are expected.
+3. `select polname from pg_policy where polrelid = 'public.player_levels'::regclass;` — the three write policies the migration replaces.
+4. `select command from cron.job where jobname = 'actra-send-reminders';` — one row, four calls.
+Deploy at a quiet time (`node scripts/deploy.mjs migrations`): the first file briefly locks `games`, `game_requests`, `notifications` and `player_levels`.
+
+**After deploying:**
+1. `select version from supabase_migrations.schema_migrations where version like '20261127%';` — four rows.
+2. The cron query again — one row, five calls (now with `app.auto_confirm_scores(now())`); then two successful runs in `cron.job_run_details`.
+3. `select count(*) from public.games g join public.sports s on s.id = g.sport_id where s.competitive_rating and g.min_rating is null;` — 0 (same for `game_requests`).
+4. `node scripts/e2e-ratings.mjs`, `node scripts/e2e-teams.mjs`, `node scripts/e2e-community.mjs`. Do not run `scripts/e2e.mjs` (it notifies the real owners of seeded venue v1).
+5. Ship a fresh app build with the deploy: the level for padel and tennis changes meaning, and builds made before M7 cannot answer the questionnaire.
+
+**Open decisions for the founder:**
+- The player's city is saved to the server only at onboarding; changing the city in the app header does not move the player's leaderboard or Find-players city. Decide whether a city change should move them.
+- Never hard-delete an account that has match results directly in the database (use the in-app deletion): a hard delete removes confirmed results while leaving the other players' rating changes in place.
+- Free text now exists in three more places (a score dispute reason, a report's text, a team's name and description) and is copied into the admin audit log; decide a retention rule with the legal review already on the launch checklist.
+- Kazakh and Uzbek wording of the new screens is a draft, like the M6 texts; in Kazakh "өтінім" is used both for a join request and for a Game Request.
+
+**Known and left for later (small):**
+- While one game or team action is waiting on the network, a second, different action tapped at the same moment is ignored.
+- Two rare lock-order overlaps remain in account deletion (a captain creating a team game while deleting their own account; a deletion with more than ten reported games): Postgres cancels one call and the app retries.
+- A no-show flag can stay on a result with two reported players when one of them joined late.
+- The sample backend does not recount no-shows when a sample account is deleted (the server does).
+- A profile's own row in the game's player list wraps its labels onto a second line on narrow phones; bottom-tab labels are still cut on narrow phones in English and Russian (older than M7).
+- On this PC a leftover test-database process (PID 22680, from an interrupted run) blocks a plain `npm test`; end it or reboot, or run the tests with `ACTRA_TEST_DATABASE_URL` pointing at another server.
