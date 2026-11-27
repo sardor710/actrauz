@@ -353,35 +353,39 @@ class _PlayerTile extends ConsumerWidget {
     final name = member.id == kMeId ? l.you : known;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          InitialAvatar(name: name, size: 42, deleted: deleted),
-          const SizedBox(width: 12),
-          Expanded(child: Text(name, style: manrope(15.5, 700))),
-          // The labels shrink with an ellipsis on a narrow phone.
-          Flexible(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isHost)
-                  Flexible(
-                    child: Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
-                  ),
-                if (member.name.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Flexible(child: ReliabilityPill(reliability: member.reliability)),
-                ],
-              ],
-            ),
-          ),
-          if (onRemove != null)
-            IconButton(
-              tooltip: l.removePlayer,
-              onPressed: onRemove,
-              icon: const Icon(Icons.person_remove_outlined, color: AppColors.muted),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, box) => Row(
+          children: [
+            InitialAvatar(name: name, size: 42, deleted: deleted),
+            const SizedBox(width: 12),
+            Expanded(child: Text(name, style: manrope(15.5, 700))),
+            if (isHost || member.name.isNotEmpty)
+              // At their own width, but never more than about half the row:
+              // on a narrow phone the labels shrink with an ellipsis.
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.55),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isHost)
+                      Flexible(
+                        child: Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
+                      ),
+                    if (member.name.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Flexible(child: ReliabilityPill(reliability: member.reliability)),
+                    ],
+                  ],
+                ),
+              ),
+            if (onRemove != null)
+              IconButton(
+                tooltip: l.removePlayer,
+                onPressed: onRemove,
+                icon: const Icon(Icons.person_remove_outlined, color: AppColors.muted),
+              ),
+          ],
+        ),
       ),
     );
   }

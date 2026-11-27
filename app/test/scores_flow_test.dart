@@ -3,6 +3,7 @@ import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/features/common/rating_pill.dart';
+import 'package:actra/features/games/finished_section.dart';
 import 'package:actra/features/games/game_card.dart';
 import 'package:actra/features/games/game_screen.dart';
 import 'package:actra/features/games/past_games_screen.dart';
@@ -49,6 +50,30 @@ Future<void> _tapTimes(WidgetTester tester, String key, int times) async {
 Future<void> _fillSet(WidgetTester tester, int index, int mine, int theirs) async {
   await _tapTimes(tester, 'set-$index-mine-plus', mine);
   await _tapTimes(tester, 'set-$index-theirs-plus', theirs);
+}
+
+/// [home] on its own, with the app's localisations and theme.
+Future<void> _pumpAlone(
+  WidgetTester tester,
+  Widget home, {
+  List<Override> overrides = const [],
+  String lang = 'en',
+}) async {
+  // A fresh scope each time: overrides cannot change on a live one.
+  await tester.pumpWidget(const SizedBox());
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: overrides,
+      child: MaterialApp(
+        locale: Locale(lang),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: buildTheme(),
+        home: home,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 Finder _inBoard(String text) =>
@@ -180,23 +205,128 @@ void main() {
 
   testWidgets('past games is empty for a new player', (tester) async {
     // Ruling R10: the sample's finished games always include the demo player.
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [pastGamesProvider.overrideWith((ref) async => const <Game>[])],
-        child: MaterialApp(
-          locale: const Locale('en'),
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: buildTheme(),
-          home: const PastGamesScreen(),
-        ),
-      ),
+    await _pumpAlone(
+      tester,
+      const PastGamesScreen(),
+      overrides: [pastGamesProvider.overrideWith((ref) async => const <Game>[])],
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('Past games'), findsOneWidget);
     expect(find.text('No games in the last 30 days'), findsOneWidget);
     expect(find.byType(GameCard), findsNothing);
+  });
+
+  testWidgets("the enterer's partner waits for the other side after confirming", (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    // Aziz corrects his score of gf2 with the demo player as his partner.
+    await backend.enterScoreAs('p1', 'gf2', sideA: ['p1', kMeId], sideB: ['p2', 'p3'], sets: const [(6, 3), (6, 4)]);
+    await _openGame(tester, 'gf2');
+
+    await tap(tester, find.byKey(const ValueKey('score-confirm')));
+
+    expect(find.text('Waiting for the other side'), findsOneWidget);
+    expect(find.byKey(const ValueKey('score-confirm')), findsNothing);
+    expect(find.byKey(const ValueKey('score-dispute')), findsNothing);
+    final result = (await backend.game('gf2')).result!;
+    expect(result.status, ResultStatus.pending, reason: 'a partner does not finish it');
+    expect(result.confirmedBy, [kMeId]);
+  });
+
+  testWidgets('a refused score shows in the sheet', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await _openGame(tester, 'gf1');
+    await tap(tester, find.byKey(const ValueKey('score-enter')));
+    // Meanwhile the score was entered elsewhere and disputed.
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: _sixFourTwice);
+    await backend.disputeScoreAs('p2', 'r-gf1');
+
+    await _fillSet(tester, 0, 6, 3);
+    await tap(tester, find.byKey(const ValueKey('score-save')));
+
+    expect(find.text('A score can no longer be entered for this game').hitTestable(), findsOneWidget);
+    expect(find.byType(ScoreSheet), findsOneWidget);
+  });
+
+  group('score block by time and state', () {
+    // Played Saturday 18:00-19:30 in Tashkent (UTC+5); the demo player is not the host.
+    final end = DateTime.utc(2026, 11, 21, 19, 30);
+    DateTime utcAfterEnd(Duration d) => end.subtract(const Duration(hours: 5)).add(d);
+    Game game({MatchResult? result}) => Game(
+      id: 'gx',
+      sportId: 'padel',
+      cityId: 'tashkent',
+      hostId: 'p1',
+      start: end.subtract(const Duration(minutes: 90)),
+      end: end,
+      spots: 2,
+      participantIds: const ['p1', kMeId],
+      participants: const [GameMember(id: 'p1', name: 'Aziz'), GameMember(id: kMeId, name: 'Test')],
+      myStatus: MyGameStatus.participant,
+      result: result,
+    );
+    const voided = MatchResult(
+      id: 'r-gx',
+      status: ResultStatus.voided,
+      sets: [(6, 4)],
+      winner: MatchWinner.a,
+      enteredBy: 'p1',
+      sideA: ['p1'],
+      sideB: [kMeId],
+    );
+
+    Future<void> pumpBlock(WidgetTester tester, Game g, Duration afterEnd, {String lang = 'en'}) => _pumpAlone(
+      tester,
+      Scaffold(body: ListView(children: [FinishedSection(game: g)])),
+      lang: lang,
+      overrides: [
+        clockProvider.overrideWithValue(() => utcAfterEnd(afterEnd)),
+        sportsProvider.overrideWith((ref) async => kSampleSports),
+      ],
+    );
+
+    testWidgets('only the host enters it in the first 24 hours, then anyone', (tester) async {
+      await pumpBlock(tester, game(), const Duration(hours: 10));
+      expect(find.text('The host enters the score. After 24 hours any player can'), findsOneWidget);
+      expect(find.byKey(const ValueKey('score-enter')), findsNothing);
+
+      await pumpBlock(tester, game(), const Duration(hours: 25));
+      expect(find.byKey(const ValueKey('score-enter')), findsOneWidget);
+    });
+
+    testWidgets('entry closes after 7 days', (tester) async {
+      await pumpBlock(tester, game(), const Duration(days: 8));
+      expect(find.text('Score entry closed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('score-enter')), findsNothing);
+    });
+
+    testWidgets('a voided result', (tester) async {
+      await pumpBlock(tester, game(result: voided), const Duration(days: 2));
+      expect(find.text('Result cancelled by Actra'), findsOneWidget);
+      expect(find.byKey(const ValueKey('score-board')), findsOneWidget);
+    });
+
+    testWidgets('nothing before the end', (tester) async {
+      await pumpBlock(tester, game(), const Duration(minutes: -1));
+      expect(find.text('GAME FINISHED'), findsNothing);
+    });
+
+    for (final lang in ['ru', 'kk']) {
+      testWidgets('the states fit a phone in $lang', (tester) async {
+        tester.view.physicalSize = const Size(360, 1400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        for (final (g, after) in [
+          (game(), const Duration(hours: 10)),
+          (game(), const Duration(days: 8)),
+          (game(result: voided), const Duration(days: 2)),
+        ]) {
+          await pumpBlock(tester, g, after, lang: lang);
+          expect(find.byType(FinishedSection), findsOneWidget);
+        }
+      });
+    }
   });
 
   testWidgets('a football game has no score block', (tester) async {

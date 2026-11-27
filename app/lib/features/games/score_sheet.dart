@@ -7,7 +7,6 @@ import '../../domain/games.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
 import 'finished_section.dart';
-import 'host_tools.dart';
 
 /// Enters the score of [game], or corrects the player's own pending one
 /// (design §5.4): who played, then the games per set. Returns `true` when saved.
@@ -49,6 +48,7 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
   /// A 1-against-1 result in a game of four, entered elsewhere, stays editable.
   bool _singlesInFour = false;
   bool _busy = false;
+  String? _error;
 
   @override
   void initState() {
@@ -132,18 +132,25 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     _sets = [..._sets]..[index] = (mine ?? a, theirs ?? b);
   });
 
+  /// Shown in the sheet: a snackbar would be hidden behind it.
   Future<void> _save() async {
-    setState(() => _busy = true);
-    final done = await runGameAction(
-      context,
-      ref,
-      () => ref.read(gameRepositoryProvider).enterScore(widget.game.id, sideA: _mySide, sideB: _opponents, sets: _sets),
-    );
-    if (!mounted) return;
-    if (done) {
-      Navigator.of(context).pop(true);
-    } else {
-      setState(() => _busy = false);
+    final l = context.l;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(gameRepositoryProvider).enterScore(widget.game.id, sideA: _mySide, sideB: _opponents, sets: _sets);
+      refreshGames(ref);
+      if (mounted) Navigator.of(context).pop(true);
+    } on JoinException catch (e) {
+      // The game may have moved on (a score entered or disputed meanwhile).
+      refreshGames(ref);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = joinErrorText(l, e);
+      });
     }
   }
 
@@ -276,6 +283,10 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
                   label: Text(l.scoreAddSet),
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 4),
+                Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
+              ],
               const SizedBox(height: 8),
               FilledButton(
                 key: const ValueKey('score-save'),
