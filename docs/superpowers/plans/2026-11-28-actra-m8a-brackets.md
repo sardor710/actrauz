@@ -19,7 +19,7 @@
 - Builds made before M8 keep working: no existing `public.*` function loses or renames a parameter or output key; new JSON keys only.
 - `app.*` functions: `set search_path = ''`, explicit `p_user` and `p_now`, errors as `raise exception '<code>'`. `public.*` wrappers: `language sql security definer set search_path = ''`, then `revoke all … from public, anon, authenticated; grant execute … to authenticated, service_role`. Copy any function you replace from **the latest migration that defines it**: `admin_save_tournament` → `20261126110000_launch.sql`; `admin_save_category` → `20261126100000_kazakh.sql`; `admin_delete_category` → `20261125110000_admin_tournaments.sql`; `owner_cancel_booking` → `20261124110000_games_v2.sql`; `delete_account` and `game_json` → `20261127130000_teams.sql`; `apply_result`, `admin_resolve_score`, `result_note`, `result_json` → `20261127110000_scores.sql`; the after-game resolver → `20261127120000_after_game.sql`. Functions replaced by an earlier M8 task are copied from that task's migration.
 - New tables: `enable row level security; revoke all … from anon, authenticated; grant all … to service_role;`.
-- **Lock order, everywhere:** the category row, then its `tournament_draws` row, then matches in `(stage, round, position)` order, then registration rows, then bookings, then `match_results` (and M7's rating rows after it), then the tournament row last.
+- **Lock order, everywhere:** scheduling, score entry and withdrawal first take `pg_advisory_xact_lock(hashtext('tournament:' || tournament_id))` (one lock per tournament, so cross-category checks are serialised); then the category row (several categories: in id order), then its `tournament_draws` row, then matches in `(stage, round, position)` order, then registration rows, then bookings, then `match_results` (and M7's rating rows after it), then the tournament row last.
 - Times: functions take venue wall-clock `timestamp` and convert with the tournament city's offset, as `app.hold_slots` and M5's deadline do; JSON times use the same format as game JSON.
 - Notifications: category `tournaments`; payload always has `tournament_id`, `category_id` and, where there is one, `match_id`. Kinds: `organizer_added`, `organizer_removed`, `draw_published`, `draw_redone`, `waitlist_closed`, `match_scheduled`, `match_result`, `entry_withdrawn`, `category_won`.
 - New error codes (SQL → Dart `TournamentError`): `draw_exists` → `drawExists`, `draw_published` → `drawPublished`, `draw_outdated` → `drawOutdated`, `draw_final` → `drawFinal`, `too_few_entries` → `tooFewEntries`, `slot_taken` → `slotTaken`, `player_busy` → `playerBusy`, `next_match_played` → `nextMatchPlayed`, `draw_not_allowed` → `drawNotAllowed`, `tournament_block` → `tournamentBlock`, `matches_outside_dates` → `matchesOutsideDates`. Existing `not_allowed`, `not_found`, `invalid_argument` keep their meaning.
@@ -33,8 +33,8 @@
 
 1. **Correcting a knockout score after the winner has moved on** (next match scheduled, unscored): the new winner replaces the old one in the next match, both are notified, and the rating change is reversed exactly once and the new one applied once. (Task 3 test `correction moves the new winner on`; Task 4 test `correction reverses once`.)
 2. **A bracket full of withdrawals still finishes:** an 8-draw where both sides of one quarter-final withdraw, and a player waiting in a semi-final withdraws before their opponent is known, still produces a winner with no match stuck in `waiting`. (Task 3 test `bracket with withdrawals completes`.)
-3. **The same player in two categories** is never scheduled in overlapping slots, manually or by "fill the day". (Task 2 tests `player busy across categories`, `fill the day respects players`.)
-4. **Two organisers at once:** two concurrent score entries on one match leave one result and one rating change; "fill the day" racing an app booking on the same slot leaves no overlap and a clean `slot_taken` or skip. (Task 3 and Task 2 tests in `concurrency.test.mjs`.)
+3. **The same player in two categories** is never scheduled by an organiser in overlapping slots, manually, by "fill the day", or by two organisers at once; a winner who advances into a slot that overlaps their match elsewhere is flagged `clash` for the organiser to move. (Task 2 tests `player busy across categories`, `fill the day respects players`, the concurrency test; Task 3 test `advancing into a clash is flagged`.)
+4. **Two organisers at once:** two concurrent score entries on one match leave one winner in the next match and one non-void rating result; "fill the day" racing an app booking on the same slot leaves no overlap and a clean `slot_taken` or skip. (Task 3 and Task 2 tests in `concurrency.test.mjs`; Task 4 test `concurrent entries apply ratings once`.)
 5. **An account deleted mid-tournament:** its unplayed matches become walkovers, its played scores stay, its pending results follow M7 (void), and the deletion itself succeeds even though the category is locked. (Task 3 test `deleted account is withdrawn`; Task 4 test `deleted account keeps others' rating changes`.)
 
 ---
@@ -74,7 +74,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - Modify: `supabase/tests/helpers/fixtures.mjs` (add `addTournament(pool, {sportId='padel', venueId=null, startsOn, endsOn})`, `addCategory(pool, tournamentId, {kind='singles', cap=32})`, `addEntries(pool, categoryId, users, {partners})` inserting `registered` rows)
 
 **Interfaces — produces:**
-- Tables: `tournament_organizers (tournament_id → tournaments cascade, user_id → profiles cascade, added_by uuid → profiles set null, added_at timestamptz, primary key (tournament_id, user_id))`; `tournament_draws (category_id uuid pk → tournament_categories cascade, format text check in ('knockout','groups'), group_size integer check in (3,4), advance integer check in (1,2), status text check in ('draft','published'), locked boolean not null default false, outdated boolean not null default false, made_by uuid, made_at, published_at, first_score_at)` (`group_size`/`advance` null for knockout); `tournament_groups (id, category_id → cascade, label text, sort_order)`; `tournament_draw_entries (registration_id uuid pk → tournament_registrations cascade, category_id, seed integer, strength numeric, group_id → tournament_groups null, withdrawn_at timestamptz)`; `tournament_matches (id, category_id → cascade, stage text check in ('group','knockout'), group_id null, round integer, position integer, side_a uuid → tournament_registrations null, side_b null, a_empty boolean default false, b_empty boolean default false, status text check in ('waiting','ready','done'), outcome text check in ('played','walkover','retired','decider','bye','none'), winner text check in ('a','b','draw'), sets jsonb, court_id → courts null, starts_at timestamptz, place_note text check (char_length <= 100), scored_by uuid, scored_at, unique (category_id, stage, group_id, round, position))`.
+- Tables: `tournament_organizers (tournament_id → tournaments cascade, user_id → profiles cascade, added_by uuid → profiles set null, added_at timestamptz, primary key (tournament_id, user_id))`; `tournament_draws (category_id uuid pk → tournament_categories cascade, format text check in ('knockout','groups'), group_size integer check in (3,4), advance integer check in (1,2), status text check in ('draft','published'), locked boolean not null default false, outdated boolean not null default false, made_by uuid, made_at, published_at, first_score_at)` (`group_size`/`advance` null for knockout); `tournament_groups (id, category_id → cascade, label text, sort_order)`; `tournament_draw_entries (registration_id uuid pk → tournament_registrations cascade, category_id, seed integer, strength numeric, group_id → tournament_groups null, withdrawn_at timestamptz)`; `tournament_matches (id, category_id → cascade, stage text check in ('group','knockout'), group_id null, round integer, position integer, side_a uuid → tournament_registrations null, side_b null, a_empty boolean default false, b_empty boolean default false, status text check in ('waiting','ready','done'), outcome text check in ('played','walkover','retired','decider','bye','none'), winner text check in ('a','b','draw'), sets jsonb, court_id → courts null, starts_at timestamptz, place_note text check (char_length <= 100), scored_by uuid, scored_at, unique (category_id, stage, group_id, round, position))`. On delete: `group_id` → cascade; `side_a`, `side_b` → `set null` (only a hard delete of a profile reaches it; the product never hard-deletes); `court_id` → `set null`; `made_by`, `scored_by`, `added_by` → profiles `set null`.
 - `app.require_organizer(p_user uuid, p_tournament_id uuid) returns void` — admins and named organisers pass; else `not_allowed`.
 - `app.admin_set_organizer(p_user uuid, p_tournament_id uuid, p_target uuid, p_add boolean, p_now timestamptz) returns void` — admin only; audited; notifies `organizer_added` / `organizer_removed`.
 - `app.make_draw(p_user uuid, p_category_id uuid, p_format text, p_group_size integer, p_advance integer, p_now timestamptz) returns void`
@@ -87,7 +87,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 **Rules to implement**
 - Entries = `registered` rows of the category. Strength: rated sport → `app.effective_rating` (pairs: average of registrant and partner); other sports → `app.player_level`, 0 if none (pairs: average). Order: strength desc, then `random()`; seed = position.
 - Knockout: `n >= 2` else `too_few_entries`. Size `S` = next power of two ≥ n. Seed order of bracket slots: start `[1, 2]`; each doubling maps every `s` to `[s, 2·len + 1 − s]` (S=4 → `[1,4,2,3]`, S=8 → `[1,8,4,5,2,7,3,6]`). Round 1 match `p` takes slots `2p−1` (side a) and `2p` (side b); a seed `> n` is an empty side; a match with one empty side is `done`, outcome `bye`, winner the other side, which is placed in the next match. Later rounds exist from the start as `waiting` rows. Winner of `(r, p)` goes to `(r+1, ceil(p/2))`, side a if `p` odd.
-- Groups: `n >= 3` else `too_few_entries`; `group_size` in (3,4) and `advance` in (1,2) else `invalid_argument`. Group count `G = ceil(n / group_size)`; if the smallest group would have fewer than 3 entries, `G = G − 1` (minimum 1). Group sizes differ by at most one. Snake seeding: seeds 1..G to groups A..G, then G..A, and so on. Labels `A`, `B`, …. Round robin by the circle method (a dummy for odd sizes); group matches carry `round` and `position`. Knockout rounds after groups: `Q = G · advance` qualifiers, `S` = next power of two ≥ Q, rows created `waiting` (filled in Task 4). `G = 1` with `advance = 1`: no knockout; the group winner wins the category (Task 4).
+- Groups: `n >= 3` else `too_few_entries`; `group_size` in (3,4) and `advance` in (1,2) else `invalid_argument`. Group count `G = ceil(n / group_size)`; if the smallest group would have fewer than 3 entries, `G = G − 1` (minimum 1). Group sizes differ by at most one. Snake seeding: seeds 1..G to groups A..G, then G..A, and so on. Labels `A`, `B`, …. Round robin by the circle method (a dummy for odd sizes); group matches carry `round` and `position`. Knockout rounds after groups: `Q = G · advance` qualifiers, `S` = next power of two ≥ Q, rows created `waiting` (filled in Task 3); a round-1 slot whose qualifier seed is `> Q` is marked empty now, and when the qualifiers are placed such a match becomes `done` with outcome `bye`, never `walkover`. `G = 1` with `advance = 1`: no knockout; the group winner wins the category (Task 3).
 - `make_draw`: `require_organizer` on the category's tournament; refused `draw_published` when the draw is published; replaces any draft (delete its matches, groups, entries); `outdated = false`.
 - `swap_draw_entries`: draft only (`draw_published`); swaps seeds (knockout) or groups (groups format) of two entries and rebuilds the affected matches.
 - **Outdated drafts:** a trigger on `tournament_registrations` (insert, or update of `status` / `category_id`) sets `outdated = true` on the draft of every category it touches.
@@ -130,7 +130,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - `app.schedule_match(p_user uuid, p_match_id uuid, p_court_id uuid, p_starts_at timestamp, p_place_note text, p_now timestamptz) returns void` — `p_starts_at` null clears the schedule.
 - `app.fill_day(p_user uuid, p_tournament_id uuid, p_day date, p_court_ids uuid[], p_from time, p_category_ids uuid[], p_now timestamptz) returns jsonb` → `{"scheduled": int, "unscheduled": [match ids]}`; `p_category_ids` null = all categories.
 - `app.release_match_block(p_match_id uuid) returns void` (deletes the match's block; used by Tasks 3–4).
-- `match_json` gains `court_name`, `ends_at`. `tournament_bracket` gains `"courts": [{"id","name","slot_minutes"}]` of the venue (organisers only).
+- `match_json` gains `court_name`, `ends_at` and `clash` (true when a player of a known side is in another scheduled match of the tournament overlapping this one; computed on read). **Call:** advancing never moves a match; the organiser sees the flag and moves it. `tournament_bracket` gains `"courts": [{"id","name","slot_minutes"}]` of the venue (organisers only).
 - Public: `schedule_match(p_match_id uuid, p_court_id uuid default null, p_starts_at timestamp default null, p_place_note text default null) returns jsonb` (the match), `fill_day(p_tournament_id uuid, p_day date, p_court_ids uuid[], p_from time, p_category_ids uuid[] default null) returns jsonb`.
 - `owner_calendar` slot JSON gains `"tournament": {"title", "match_id"}` for tournament blocks (additive).
 
@@ -153,7 +153,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
   - `no venue`: a venueless tournament schedules with a place note and makes no booking; a court id → `invalid_argument`.
   - `tournament edits`: venue change with a draw → `draw_exists`; dates moved past a scheduled match → `matches_outside_dates`; `active = false` releases the blocks; category kind change and delete → `draw_exists`.
   - `redo releases blocks`: `redo_draw` leaves no blocks for the category.
-  - concurrency (`concurrency.test.mjs`): `fill_day` and an app `hold_slots` on the same slot at once → no overlap, one of them skipped or refused cleanly.
+  - concurrency (`concurrency.test.mjs`): `fill_day` and an app `hold_slots` on the same slot at once → no overlap, one of them skipped or refused cleanly; two organisers scheduling the same player in two categories at the same time → one gets `player_busy`.
 - [ ] **Step 2: Run** `npm test -- schedule`. Expected: FAIL.
 - [ ] **Step 3: Write the migration.**
 - [ ] **Step 4: Run** `npm test`. Expected: all pass.
@@ -181,8 +181,8 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - **Groups:** standings per §7.6 and §14a.5 (walkovers count points only; retirements count their score; withdrawn entries are placed last). When every match of every group is `done`, rank qualifiers per §14a.6 (winners first by points per match, set difference per match, game difference per match, seed; then runners-up), place them by the Task 1 seed order into knockout round 1, keeping two entries of one group in opposite halves where possible (swap a lower qualifier with the nearest-ranked one of another group in the other half). `G = 1`, `advance = 1`: the group winner wins the category.
 - **Corrections:** a `done` match can be scored again while its dependent match has no score (outcome not in played/walkover/retired/decider) → otherwise `next_match_played`. A knockout correction that changes the winner replaces the side in the next match (and its players are notified with `match_result`). A group correction is refused with `next_match_played` once any knockout match of the category has a non-bye outcome; before that, standings and any already-filled knockout slots are recomputed.
 - `match_result` to every player of both sides on each entry or correction.
-- **Withdraw:** published draw; under `set_config('actra.draw_override','on', true)` the registration becomes `removed`, `admin_override = true`; `withdrawn_at` set; every unplayed match of the entry: other side known → `walkover` for it (release the block if not started); otherwise the entry's side becomes empty (the empty-side rule above settles it when the other side arrives). Played matches stay. `entry_withdrawn` to the entry's players. Audited.
-- `delete_account` (copy from teams.sql): call `withdraw_entry_service` for every entry of the user in a published draw before the existing cancel-registrations step.
+- **Withdraw:** the category is `locked` (published, or a draft after a redo), else `not_found`. Always under `set_config('actra.draw_override','on', true)`: the registration becomes `removed`, `admin_override = true`. In a draft: the draft is marked outdated, nothing else. In a published draw: `withdrawn_at` set; every unplayed match of the entry: other side known → `walkover` for it (release the block if not started); otherwise the entry's side becomes empty (the empty-side rule above settles it when the other side arrives). Played matches stay. `entry_withdrawn` to the entry's players. Audited.
+- `delete_account` (copy from teams.sql): call `withdraw_entry_service` for every live entry where the user is registrant or confirmed partner in a `locked` category, before the existing cancel-registrations step.
 
 - [ ] **Step 1: Write the failing tests** in `match_scores.test.mjs`:
   - `knockout to a winner`: 4-entry padel draw, three `played` scores → `winner`, `runner_up`, `finished`; `category_won` notice; `first_score_at` set.
@@ -190,11 +190,13 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
   - `football group allows a draw`: 1–1 in a group gives each 1 point.
   - `correction moves the new winner on`: correct a quarter-final after its semi is scheduled → the semi's side changes; correcting after the semi has a score → `next_match_played`.
   - `standings tie-breaks`: three entries on 4 points each: head-to-head decides two-way ties, set difference a three-way tie; a walkover win adds 2 points and no sets.
-  - `groups fill the knockout`: 2 groups, advance 2 → semis A1–B2 and B1–A2; 3 groups advance 1 + byes: best winner gets the bye.
+  - `groups fill the knockout`: 2 groups, advance 2 → semis A1–B2 and B1–A2; 3 groups advance 1 → S=4, the best winner's match has outcome `bye` (not `walkover`) and a group correction is still allowed afterwards.
   - `single group`: G=1 advance 1 → the group winner is `winner`.
   - `bracket with withdrawals completes`: 8 entries; withdraw both sides of quarter-final 1 → it is `none`, semi 1 becomes a walkover for whoever wins QF2; withdraw a semi-finalist before their opponent is known; finish the rest → `finished`, no match `waiting`.
   - `group withdrawal`: an entry with one played match withdraws → its played result stays, the rest are walkovers, it is placed last.
-  - `deleted account is withdrawn`: delete a player with a published entry → succeeds; their unplayed match is a walkover; their registration `removed`.
+  - `deleted account is withdrawn`: delete a player with a published entry → succeeds; their unplayed match is a walkover; their registration `removed`. Deleting a confirmed partner works the same.
+  - `withdraw from a redone draft`: after `redo_draw`, `withdraw_entry` removes the entry and marks the draft outdated; deleting an account with an entry there succeeds.
+  - `advancing into a clash is flagged`: a winner placed into a semi that overlaps their match in another category → that semi's `clash` is true.
   - `walkover releases a future block`; `my next match` in `tournament_bracket`; `my_tournament_matches` lists the caller's matches.
   - `organiser plays`: an organiser who is in the match can score it.
   - concurrency: two concurrent `enter_match_score` on one match → both finish without error or one gets a clean error; the next match holds exactly one winner.
@@ -207,6 +209,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 
 **Files:**
 - Create: `supabase/migrations/20261128130000_tournament_ratings.sql`, `supabase/tests/tournament_ratings.test.mjs`
+- Modify: `supabase/tests/concurrency.test.mjs` (one test)
 
 **Interfaces — consumes:** Task 3's `after_match_scored` hook; M7's `apply_result`, `result_unplayable`.
 
@@ -226,6 +229,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
   - `M7 paths ignore tournament results`: `auto_confirm_scores`, `admin_review`, `my_past_games`, `confirm_score`/`dispute_score` on a tournament result id → no effect or `not_found`; leaderboard shows the new rating.
   - `deleted account keeps others' rating changes`: after a confirmed tournament result, deleting one player leaves the opponent's rating as it is.
   - `game results unchanged`: rerun one M7 scenario (enter, confirm) to show games still score.
+  - `concurrent entries apply ratings once` (`concurrency.test.mjs`): two concurrent `enter_match_score` on one padel match → exactly one non-void result and one `rating_events` row per player.
 - [ ] **Step 2: Run** `npm test -- tournament_ratings`. Expected: FAIL.
 - [ ] **Step 3: Write the migration.**
 - [ ] **Step 4: Run** `npm test`. Expected: all pass, including every M7 test file.
@@ -233,30 +237,47 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 
 ## Part 2 — app
 
-### Task 5: Bracket rules and data layer
+### Task 5A: Bracket rules, types and the Supabase layer
 
 **Files:**
-- Create: `app/lib/domain/brackets.dart`, `app/lib/data/organizer_repository.dart`, `app/lib/data/sample/sample_brackets.dart`, `app/lib/data/supabase/supabase_organizer_repository.dart`, `app/test/domain/brackets_test.dart`, `app/test/data/sample_brackets_test.dart`
-- Modify: `app/lib/domain/tournaments.dart` (`TournamentError` values), `data/repositories.dart`, `data/admin_repository.dart`, `data/sample/sample_repositories.dart`, `data/sample/sample_tournaments.dart`, `data/supabase/mappers.dart`, `supabase_tournament_repository.dart`, `supabase_admin_repository.dart`, `errors.dart`, `state/providers.dart`, four ARB files
+- Create: `app/lib/domain/brackets.dart`, `app/lib/data/organizer_repository.dart`, `app/lib/data/supabase/supabase_organizer_repository.dart`, `app/test/domain/brackets_test.dart`
+- Modify: `app/lib/domain/tournaments.dart` (`TournamentError` values), `data/repositories.dart`, `data/admin_repository.dart`, `data/supabase/mappers.dart`, `supabase_tournament_repository.dart`, `supabase_admin_repository.dart`, `errors.dart`, `state/providers.dart`, four ARB files
 - Test: `app/test/data/supabase_mappers_test.dart`
 
 **Interfaces — produces (Dart):**
 - `enum DrawFormat { knockout, groups }`, `enum MatchStage { group, knockout }`, `enum MatchStatus { waiting, ready, done }`, `enum MatchOutcome { played, walkover, retired, decider, bye, none }`, `enum Side { a, b, draw }`.
 - `class DrawEntry { registrationId, seed, strength, groupId?, withdrawn, List<PlayerRef> players }`; `class TournamentMatch { id, stage, groupId?, round, position, sideA?, sideB?, aEmpty, bEmpty, status, outcome?, winner?, List<List<int>>? sets, courtId?, courtName?, startsAt?, endsAt?, placeNote? }`; `class GroupStanding { registrationId, played, won, drawn, lost, points, setsFor, setsAgainst, gamesFor, gamesAgainst, place, advancing, withdrawn }`; `class DrawGroup { id, label, List<GroupStanding> standings }`; `class CategoryDraw { categoryId, format, groupSize?, advance?, published, outdated, entries, groups, matches, winner?, runnerUp?, finished }`; `class TournamentBracket { bool organizer, List<CategoryDraw> draws, NextMatch? myNextMatch, bool finished, List<CourtRef> courts }`; `class MyMatch` (match + tournament id/title + category id); `class FillResult { int scheduled; List<String> unscheduled }`.
-- `class BracketRules` (static, mirrors SQL): `List<int> seedOrder(int size)`, `List<int> groupSizes(int n, int groupSize)`, `List<List<(int, int)>> roundRobin(int n)`, `List<GroupStanding> standings(List<TournamentMatch> groupMatches, Map<String, int> seeds, Set<String> withdrawn)`, `List<String> rankQualifiers(List<DrawGroup> groups, int advance, Map<String, int> seeds)`.
+- `class BracketRules` (static, mirrors SQL): `List<int> seedOrder(int size)`, `List<int> groupSizes(int n, int groupSize)`, `List<List<(int, int)>> roundRobin(int n)`, `List<GroupStanding> standings(List<TournamentMatch> groupMatches, Map<String, int> seeds, Set<String> withdrawn)`, `List<String> rankQualifiers(List<DrawGroup> groups, int advance, Map<String, int> seeds)`, `List<String?> placeQualifiers(List<String> ranked, Map<String, String> groupOf, int size)` (bracket slots 1..size, null = bye; keeps one group's entries in opposite halves where possible).
 - `TournamentRepository`: `Future<TournamentBracket> bracket(String tournamentId)`, `Future<List<MyMatch>> myMatches()`.
 - `abstract class OrganizerRepository`: `organizedTournaments()`, `makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance})`, `swapEntries(String categoryId, String registrationA, String registrationB)`, `publish(String categoryId)`, `redo(String categoryId)` (all `Future<CategoryDraw>`), `scheduleMatch(String matchId, {String? courtId, DateTime? startsAt, String? placeNote})` → `Future<TournamentMatch>`, `fillDay(String tournamentId, DateTime day, List<String> courtIds, TimeOfDay from, {List<String>? categoryIds})` → `Future<FillResult>`, `enterScore(String matchId, MatchOutcome outcome, {Side? winner, List<List<int>>? sets})`, `withdraw(String registrationId)` (both `Future<CategoryDraw>`). Failures throw `TournamentException`.
 - `OrganizerRepository.entries(String tournamentId)` → `Future<List<AdminRegistration>>` (names and phones).
 - `AdminRepository`: `Future<List<PlayerRef>> organizers(String tournamentId)`, `Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add})`.
 - Providers: `organizerRepositoryProvider`, `bracketProvider` (`FutureProvider.family<TournamentBracket, String>`), `myMatchesProvider`, `organizedTournamentsProvider`.
 - Error strings `errDrawExists` … `errMatchesOutsideDates` for every new `TournamentError`.
-- Sample data: sample tournament `t1` (padel) gets a published 8-entry knockout with the quarter-finals played and semis scheduled on sample courts; the demo player is an organiser of `t1` and plays in one of its matches; one sample tournament keeps no draw.
+- Until Task 5B, `SampleBackend` implements the new methods by throwing `UnimplementedError` (sample mode is not used by Task 5A's tests).
 
-- [ ] **Step 1: Write the failing tests.** `brackets_test.dart`: `seedOrder(8)` → `[1,8,4,5,2,7,3,6]`; `groupSizes(10,3)` → `[4,3,3]`, `(5,4)` → `[5]`, `(7,4)` → `[4,3]`; `roundRobin(4)` has 3 rounds of 2; the Task 3 tie-break case; `rankQualifiers` puts A1 and A2 in opposite halves for 2 groups × 2. `sample_brackets_test.dart`: make, swap, publish, schedule, score to a winner, correction refused after the next match is scored, withdrawal makes a walkover, `playerBusy` across categories — all in sample mode. Mappers: `draw_json` with a group draw maps fully; a `tournament_bracket` without the Task 2–3 keys still maps; every new error code maps to its `TournamentError`.
-- [ ] **Step 2: Run** `flutter test test/domain/brackets_test.dart test/data`. Expected: FAIL.
-- [ ] **Step 3: Implement**, then `flutter gen-l10n` (and `dart run tool/gen_seed.dart` only if seed rows change; sample brackets live in the sample backend, not in `seed.sql`).
+- [ ] **Step 1: Write the failing tests.** `brackets_test.dart`: `seedOrder(8)` → `[1,8,4,5,2,7,3,6]`; `groupSizes(10,3)` → `[4,3,3]`, `(5,4)` → `[5]`, `(7,4)` → `[4,3]`; `roundRobin(4)` has 3 rounds of 2; the Task 3 tie-break case; `rankQualifiers` orders winners before runners-up; `placeQualifiers` for 2 groups × 2 gives slots `[A1, B2, B1, A2]` (A1 and A2 in opposite halves) and for 3 qualifiers in 4 slots one null next to the best. Mappers: `draw_json` with a group draw maps fully; a `tournament_bracket` without the Task 2–3 keys still maps; every new error code maps to its `TournamentError`.
+- [ ] **Step 2: Run** `flutter test test/domain/brackets_test.dart test/data/supabase_mappers_test.dart`. Expected: FAIL.
+- [ ] **Step 3: Implement**, then `flutter gen-l10n`.
 - [ ] **Step 4: Run** `flutter test` and `flutter analyze`. Expected: all pass.
-- [ ] **Step 5: Commit** `M8a: bracket rules and data layer`.
+- [ ] **Step 5: Commit** `M8a: bracket rules, types and backend calls`.
+
+### Task 5B: Brackets in the sample backend
+
+**Files:**
+- Create: `app/lib/data/sample/sample_brackets.dart`, `app/test/data/sample_brackets_test.dart`
+- Modify: `data/sample/sample_repositories.dart`, `data/sample/sample_tournaments.dart`
+
+**Interfaces — consumes:** Task 5A's `BracketRules`, types and interfaces (replaces the `UnimplementedError` stubs).
+
+- Sample rules follow Tasks 1–3 (same errors, same lock, same empty-side, standings and correction rules), built on `BracketRules`. Ratings in sample mode move with the M7 sample rating maths for played padel/tennis matches.
+- Sample data: sample tournament `t1` (padel) gets a published 8-entry knockout with the quarter-finals played and semis scheduled on sample courts; the demo player is an organiser of `t1` and plays in one of its matches; one sample tournament keeps no draw. Sample brackets live in the sample backend, not in `seed.sql`.
+
+- [ ] **Step 1: Write the failing tests** in `sample_brackets_test.dart`: make, swap, publish, schedule, `fillDay` (2 courts from 09:00 → four quarter-finals at 09:00 ×2 and 10:30 ×2, the rest reported), score to a winner, correction refused after the next match is scored, withdrawal makes a walkover, `playerBusy` across categories, outdated draft refuses publish.
+- [ ] **Step 2: Run** `flutter test test/data/sample_brackets_test.dart`. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** `flutter test` and `flutter analyze`. Expected: all pass.
+- [ ] **Step 5: Commit** `M8a: brackets in the sample backend`.
 
 ### Task 6: Bracket on the tournament page (players)
 
@@ -264,7 +285,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - Create: `app/lib/features/tournaments/bracket_view.dart`, `group_table.dart`, `next_match_card.dart`, `app/test/features/bracket_view_test.dart`
 - Modify: `features/tournaments/tournament_screen.dart`, `my_tournaments_screen.dart`, `features/inbox/inbox_screen.dart` (open the tournament for the new kinds), four ARB files
 
-**Interfaces — consumes:** Task 5's `bracketProvider`, `myMatchesProvider`, `TournamentBracket`.
+**Interfaces — consumes:** Task 5A's `bracketProvider`, `myMatchesProvider`, `TournamentBracket`.
 
 - Per category, once published: a "Draw" section with the bracket (rounds side by side in a horizontal scroll; each match card: two entries' names, the score or outcome label, court and time) and, for groups, a table per group (P, W, L, Pts; advancing places marked). Byes are not drawn as matches. Winner and runner-up shown when the final is done; "Finished" on the tournament when every category is.
 - "Your next match" card at the top of the tournament page and on My tournaments (opponent, court, time, place note).
@@ -285,7 +306,7 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - Create: `app/lib/features/organizer/organized_tournaments_screen.dart`, `manager_screen.dart`, `draw_tab.dart`, `app/test/features/organizer_draw_test.dart`
 - Modify: `features/admin/tournament_editor_screen.dart` (organisers block: list, add by phone/username with the pair-invite lookup, remove), `features/profile/profile_screen.dart` ("Tournaments I run", shown when the list is not empty), `router.dart` (`/tournaments/:id/manage`, `/organizing`), four ARB files
 
-**Interfaces — consumes:** Task 5's `OrganizerRepository`, `AdminRepository.organizers/setOrganizer`, `organizedTournamentsProvider`.
+**Interfaces — consumes:** Task 5A's `OrganizerRepository`, `AdminRepository.organizers/setOrganizer`, `organizedTournamentsProvider`.
 
 - Manager screen: tabs Draw, Schedule, Scores (the last two built in Task 8; placeholders here). Phone-width first.
 - Draw tab per category: entry count and an "Entries" list (names, phones, paid) from `OrganizerRepository.entries`; format picker (Knockout / Groups); for groups, group size 3 or 4 and advancing 1 or 2; "Make draw"; the draft preview with tap-two-entries-to-swap; "Out of date — make the draw again" banner when `outdated`; "Publish" (confirm dialog: entries lock and the waitlist closes); "Redo" (confirm dialog) while allowed; every `TournamentException` shown with its string.
@@ -302,9 +323,10 @@ The design's §12 named one migration and a `tournament_group_entries` table; th
 - Create: `app/lib/features/organizer/schedule_tab.dart`, `scores_tab.dart`, `score_sheet.dart`, `app/test/features/organizer_matches_test.dart`
 - Modify: `features/organizer/manager_screen.dart`, the owner calendar screen and its slot model/mapper (`tournament` label on blocks; `tournamentBlock` error text on cancel), four ARB files
 
-**Interfaces — consumes:** Task 5's `OrganizerRepository.scheduleMatch/fillDay/enterScore/withdraw`, `TournamentBracket.courts`.
+**Interfaces — consumes:** Task 5A's `OrganizerRepository.scheduleMatch/fillDay/enterScore/withdraw`, `TournamentBracket.courts`.
 
 - Schedule tab: day picker within the tournament dates; a column per court with placed matches; tap a match → sheet with court, start (court slot grid) or, without a venue, time + place note; "Clear time"; "Fill the day" sheet (courts, start time, categories) reporting what did not fit.
+- Matches with `clash` show a warning on the Schedule and Scores tabs.
 - Scores tab: matches in play order (scheduled time, then round); tap → score sheet: rated sports enter sets like M7's score sheet (reuse its set input widget); other sports one score per side; level knockout score asks for the decider winner; "Walkover" and "Retired" with a winner pick; corrections reopen the sheet; "Withdraw entry" from an entry's menu with a confirm dialog.
 - Owner calendar: tournament blocks read "Tournament: <title>"; cancelling one shows `errTournamentBlock`.
 
