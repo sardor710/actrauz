@@ -2202,7 +2202,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noRatingYet => 'Рейтинга пока нет';
 
   @override
-  String get leaderboards => 'Рейтинговые таблицы';
+  String get leaderboards => 'Таблицы лидеров';
 
   @override
   String leaderboardTitle(String city) {
@@ -2507,7 +2507,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get voteDown => 'Оценить отрицательно';
 
   @override
-  String get noShowAction => 'Не пришёл';
+  String get noShowAction => 'Не было на игре';
 
   @override
   String get reportAction => 'Пожаловаться';
@@ -2594,12 +2594,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String reviewDisputedBy(String name, String reason) {
-    return 'Оспорил $name: $reason';
+    return 'Оспорено ($name): $reason';
   }
 
   @override
   String reviewDisputedByNoReason(String name) {
-    return 'Оспорил $name';
+    return 'Оспорено: $name';
   }
 
   @override

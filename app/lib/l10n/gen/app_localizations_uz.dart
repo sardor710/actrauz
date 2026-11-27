@@ -2394,7 +2394,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get scoreConfirm => 'Tasdiqlash';
 
   @override
-  String get scoreDispute => 'Eʼtiroz bildirish';
+  String get scoreDispute => 'Eʼtiroz';
 
   @override
   String get scoreEdit => 'Tahrirlash';
@@ -2716,13 +2716,13 @@ class AppLocalizationsUz extends AppLocalizations {
   String get teamJoin => 'Jamoaga qoʻshilish';
 
   @override
-  String get teamRequestJoin => 'Ariza yuborish';
+  String get teamRequestJoin => 'Soʻrov yuborish';
 
   @override
-  String get teamRequestSent => 'Arizangiz sardor qarorini kutmoqda';
+  String get teamRequestSent => 'Soʻrovingiz sardor qarorini kutmoqda';
 
   @override
-  String get teamCancelRequest => 'Arizani qaytarib olish';
+  String get teamCancelRequest => 'Soʻrovni qaytarib olish';
 
   @override
   String get teamInvited => 'Sizni bu jamoaga taklif qilishdi';
@@ -2759,7 +2759,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get teamMembersTitle => 'Aʼzolar';
 
   @override
-  String get teamRequestsTitle => 'Qoʻshilish arizalari';
+  String get teamRequestsTitle => 'Qoʻshilish soʻrovlari';
 
   @override
   String get teamMakeCaptain => 'Sardor qilish';
@@ -2808,7 +2808,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get teamPolicyOpenHint => 'Istalgan kishi darhol qoʻshila oladi';
 
   @override
-  String get teamPolicyApprovalHint => 'Sardor har bir arizani tasdiqlaydi';
+  String get teamPolicyApprovalHint => 'Sardor har bir soʻrovni tasdiqlaydi';
 
   @override
   String get inviteToTeam => 'Jamoaga taklif qilish';

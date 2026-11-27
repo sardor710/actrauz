@@ -486,8 +486,8 @@ class AppLocalizationsKk extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count қатысушы',
-      one: '$count қатысушы',
+      other: '$count мүше',
+      one: '$count мүше',
     );
     return '$_temp0';
   }
@@ -2376,7 +2376,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get notifScoreResolved => 'Actra әкімшісі даулы есепті қарап шықты';
 
   @override
-  String get notifScoreVoided => 'Ойыныңыздың есебі жойылды';
+  String get notifScoreVoided => 'Ойыныңыздың есебі болдырылмады';
 
   @override
   String notifRatingUpdated(String from, String to) {
@@ -2675,7 +2675,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String notifTeamJoinDeclined(String team) {
-    return '«$team» командасына өтінішіңіз қабылданбады';
+    return '«$team» командасына өтініміңіз қабылданбады';
   }
 
   @override
@@ -2754,7 +2754,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get teamHandoverText =>
-      'Капитан рөлін қатысушыға беріңіз, содан кейін командадан шығасыз.';
+      'Капитан рөлін мүшеге беріңіз, содан кейін командадан шығасыз.';
 
   @override
   String get teamHandoverEmpty =>
@@ -2767,7 +2767,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get teamCaptain => 'Капитан';
 
   @override
-  String get teamMembersTitle => 'Қатысушылар';
+  String get teamMembersTitle => 'Мүшелер';
 
   @override
   String get teamRequestsTitle => 'Кіруге өтінімдер';
@@ -2781,7 +2781,7 @@ class AppLocalizationsKk extends AppLocalizations {
   }
 
   @override
-  String get teamMakeCaptainMsg => 'Сіз командада қатысушы ретінде қаласыз.';
+  String get teamMakeCaptainMsg => 'Сіз командада мүше ретінде қаласыз.';
 
   @override
   String get teamRemoveMember => 'Командадан шығару';
@@ -2881,7 +2881,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String teamHandoverConfirm(String name) {
-    return 'Капитандықты $name қатысушысына беріп, командадан шығасыз ба?';
+    return 'Капитандықты $name мүшесіне беріп, командадан шығасыз ба?';
   }
 
   @override

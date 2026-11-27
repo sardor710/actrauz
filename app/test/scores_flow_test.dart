@@ -13,6 +13,7 @@ import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/router.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -407,7 +408,7 @@ void main() {
       expect(find.text('GAME FINISHED'), findsNothing);
     });
 
-    for (final lang in ['ru', 'kk']) {
+    for (final lang in ['ru', 'kk', 'uz']) {
       testWidgets('the states fit a phone in $lang', (tester) async {
         tester.view.physicalSize = const Size(360, 1400);
         tester.view.devicePixelRatio = 1.0;
@@ -436,7 +437,7 @@ void main() {
     expect(find.text('The host enters the score. After 24 hours any player can'), findsNothing);
   });
 
-  for (final lang in ['ru', 'kk']) {
+  for (final lang in ['ru', 'kk', 'uz']) {
     testWidgets('the score screens fit a phone in $lang', (tester) async {
       await pumpApp(tester, prefs: {...signedIn, 'lang': lang}, utcNow: sundayMorning);
       tester.view.physicalSize = const Size(360, 1400);
@@ -452,6 +453,11 @@ void main() {
       // Pending, with Confirm and Dispute; then confirmed with four changes.
       await _openGame(tester, 'gf2');
       await tester.scrollUntilVisible(find.byKey(const ValueKey('score-confirm')), 200);
+      // Both half-width buttons keep their whole label.
+      for (final key in ['score-dispute', 'score-confirm']) {
+        final label = find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(Text));
+        expect(tester.renderObject<RenderParagraph>(label).didExceedMaxLines, isFalse, reason: '$lang $key');
+      }
       await tap(tester, find.byKey(const ValueKey('score-confirm')));
       for (final id in ['p1', 'p3', kMeId, 'p2']) {
         expect(find.byKey(ValueKey('rating-change-$id')), findsOneWidget);

@@ -275,27 +275,39 @@ class _ScoreBlock extends ConsumerWidget {
             ),
           ]);
         } else if (inResult && !waiting) {
+          final dispute = OutlinedButton(
+            key: const ValueKey('score-dispute'),
+            onPressed: () => _dispute(context, ref, result),
+            child: Text(l.scoreDispute, maxLines: 1, overflow: TextOverflow.ellipsis),
+          );
+          final confirm = FilledButton(
+            key: const ValueKey('score-confirm'),
+            onPressed: () => _run(context, ref, () => ref.read(gameRepositoryProvider).confirmScore(result.id)),
+            child: Text(l.scoreConfirm, maxLines: 1, overflow: TextOverflow.ellipsis),
+          );
           children.addAll([
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    key: const ValueKey('score-dispute'),
-                    onPressed: () => _dispute(context, ref, result),
-                    child: Text(l.scoreDispute, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    key: const ValueKey('score-confirm'),
-                    onPressed: () =>
-                        _run(context, ref, () => ref.read(gameRepositoryProvider).confirmScore(result.id)),
-                    child: Text(l.scoreConfirm, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-              ],
+            // Side by side while both labels fit whole in half the width;
+            // stacked otherwise, so neither is cut short.
+            LayoutBuilder(
+              builder: (context, box) {
+                final half = (box.maxWidth - 12) / 2;
+                final fits = [l.scoreDispute, l.scoreConfirm].every(
+                  (label) => _labelWidth(context, label) + _buttonPadding <= half,
+                );
+                return fits
+                    ? Row(
+                        children: [
+                          Expanded(child: dispute),
+                          const SizedBox(width: 12),
+                          Expanded(child: confirm),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [dispute, const SizedBox(height: 8), confirm],
+                      );
+              },
             ),
           ]);
         }
@@ -313,6 +325,22 @@ class _ScoreBlock extends ConsumerWidget {
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
   }
+}
+
+/// The default inner padding of a filled or outlined button, both sides.
+const _buttonPadding = 48.0;
+
+/// How wide [label] is in the buttons' text style.
+double _labelWidth(BuildContext context, String label) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: AppText.button),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
 }
 
 /// The two sides with their games per set; the winning side in bold.

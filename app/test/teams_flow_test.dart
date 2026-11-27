@@ -599,7 +599,7 @@ void main() {
     expect(_key('open-hours-never'), findsOneWidget);
   });
 
-  for (final lang in ['ru', 'kk']) {
+  for (final lang in ['ru', 'kk', 'uz']) {
     testWidgets('team games fit a phone in $lang', (tester) async {
       await pumpApp(tester, prefs: {...signedIn, 'lang': lang}, utcNow: sundayMorning);
       tester.view.physicalSize = const Size(360, 1400);

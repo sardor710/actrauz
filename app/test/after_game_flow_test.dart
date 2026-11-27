@@ -319,7 +319,7 @@ void main() {
     });
   });
 
-  for (final lang in ['ru', 'kk']) {
+  for (final lang in ['ru', 'kk', 'uz']) {
     testWidgets('the after-game rows, menu and report sheet fit a phone in $lang', (tester) async {
       await pumpApp(tester, prefs: {...signedIn, 'lang': lang}, utcNow: sundayMorning);
       tester.view.physicalSize = const Size(360, 1400);
