@@ -48,6 +48,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <ul>
 <li><strong>Account:</strong> the phone number you share with the Actra bot on Telegram (@actraapp), your Telegram user id, your name, your chosen city and language, and your level for each sport. There are no passwords and we do not ask for an e-mail address.</li>
 <li><strong>Activity in the app:</strong> bookings, games you join or host, game requests, tournament registrations, your notifications, and reliability events (for example attended or missed games).</li>
+<li><strong>Ratings, results and teams:</strong> your padel and tennis rating and the number of rated games, the scores of games you play, the thumbs up or down you give other players, "didn't show up" marks, reports about a player's behaviour (with the text you write), and the teams you create or join.</li>
 <li><strong>Staff actions:</strong> venue owner and administrator actions are written to an audit log.</li>
 <li><strong>Location:</strong> during onboarding the app asks once for your approximate location, only to suggest the nearest city. The coordinates are used on your device only. They are not sent to our servers and not stored. You can refuse and choose the city yourself.</li>
 </ul>
@@ -59,6 +60,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <h2>Who can see it</h2>
 <ul>
 <li>Other players see your name, your level and your reliability.</li>
+<li>Other players also see your rating, the scores of games you played, the share of thumbs up you received (never who gave them) and the teams you are in. A report you send is read only by Actra administrators; the reported player is not told who sent it.</li>
 <li>The owner of a venue sees your name and phone number for bookings at that venue.</li>
 <li>Actra administrators can see account and booking data needed to run the service.</li>
 <li>Our hosting provider, Supabase, processes the data on our behalf.</li>
@@ -72,6 +74,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 
 <h2>Deleting your account</h2>
 <p>In the app: Profile → Delete account. Your upcoming bookings and tournament registrations are cancelled and you leave your games. Administrator accounts must first be demoted. Signing in again with the same phone number creates a new, empty account. Without the app, see <a href="delete-account.html#en">how to request deletion</a>.</p>
+<p>Deleting your account also removes your ratings, the votes and "didn't show up" marks you gave and your team memberships; a team you captain passes to its longest-standing member, or is removed if you are its only member. Reports you sent are closed and their text is deleted. Scores that were already confirmed stay for the other players, without your name.</p>
 
 <h2>Your rights and contact</h2>
 <p>You can ask us what we hold about you, ask for corrections or ask for deletion. Write to <span class="ph">&lt;founder: contact e-mail&gt;</span>.</p>
@@ -92,6 +95,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <ul>
 <li><strong>Аккаунт:</strong> номер телефона, который вы отправляете боту Actra в Telegram (@actraapp), ваш Telegram id, имя, выбранный город и язык, уровень по каждому виду спорта. Паролей нет, адрес электронной почты мы не запрашиваем.</li>
 <li><strong>Действия в приложении:</strong> бронирования, игры, в которых вы участвуете или которые организуете, запросы на игру, регистрации на турниры, ваши уведомления и события надёжности (например, пришли вы на игру или пропустили).</li>
+<li><strong>Рейтинг, результаты и команды:</strong> ваш рейтинг в паделе и теннисе и число рейтинговых игр, счёт сыгранных игр, оценки «палец вверх» или «палец вниз», которые вы ставите другим игрокам, отметки «не было на игре», жалобы на поведение игрока (вместе с вашим текстом) и команды, которые вы создаёте или в которых состоите.</li>
 <li><strong>Действия персонала:</strong> действия владельцев площадок и администраторов записываются в журнал аудита.</li>
 <li><strong>Местоположение:</strong> при первом запуске приложение один раз запрашивает примерное местоположение — только чтобы предложить ближайший город. Координаты используются только на вашем устройстве, не отправляются на наши серверы и не хранятся. Можно отказаться и выбрать город самостоятельно.</li>
 </ul>
@@ -103,6 +107,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <h2>Кто это видит</h2>
 <ul>
 <li>Другие игроки видят ваше имя, уровень и надёжность.</li>
+<li>Другие игроки также видят ваш рейтинг, счёт игр с вашим участием, долю полученных вами оценок «палец вверх» (но не то, кто их поставил) и команды, в которых вы состоите. Жалобу читают только администраторы Actra; игроку, на которого пожаловались, не сообщают, кто её отправил.</li>
 <li>Владелец площадки видит ваше имя и номер телефона по бронированиям на своей площадке.</li>
 <li>Администраторы Actra видят данные аккаунтов и бронирований, необходимые для работы сервиса.</li>
 <li>Наш хостинг-провайдер Supabase обрабатывает данные по нашему поручению.</li>
@@ -116,6 +121,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 
 <h2>Удаление аккаунта</h2>
 <p>В приложении: Профиль → Удалить аккаунт. Ваши будущие бронирования и регистрации на турниры отменяются, вы выходите из своих игр. Аккаунт администратора сначала нужно лишить прав администратора. Если снова войти с тем же номером телефона, будет создан новый пустой аккаунт. Без приложения: <a href="delete-account.html#ru">как запросить удаление</a>.</p>
+<p>При удалении аккаунта также удаляются ваш рейтинг, поставленные вами оценки и отметки «не было на игре» и ваше участие в командах; команда, в которой вы капитан, переходит к участнику с самым большим стажем или удаляется, если вы в ней один. Отправленные вами жалобы закрываются, их текст удаляется. Уже подтверждённый счёт игр остаётся у других игроков, но без вашего имени.</p>
 
 <h2>Ваши права и контакты</h2>
 <p>Вы можете запросить, какие данные о вас у нас есть, попросить их исправить или удалить. Пишите на <span class="ph">&lt;founder: contact e-mail&gt;</span>.</p>
@@ -136,6 +142,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <ul>
 <li><strong>Akkaunt:</strong> Telegramdagi Actra botiga (@actraapp) yuborgan telefon raqamingiz, Telegram id, ismingiz, tanlangan shahar va til, har bir sport turi boʻyicha darajangiz. Parollar yoʻq, elektron pochta manzilini soʻramaymiz.</li>
 <li><strong>Ilovadagi faoliyat:</strong> bronlar, qoʻshilgan yoki oʻzingiz tashkil qilgan oʻyinlar, oʻyin soʻrovlari, turnirlarga roʻyxatdan oʻtishlar, bildirishnomalaringiz va ishonchlilik voqealari (masalan, oʻyinga kelgan yoki kelmagan boʻlsangiz).</li>
+<li><strong>Reyting, natijalar va jamoalar:</strong> padel va tennisdagi reytingingiz hamda reytingli oʻyinlar soni, oʻynagan oʻyinlaringiz hisobi, boshqa oʻyinchilarga qoʻygan «yoqdi» yoki «yoqmadi» baholaringiz, «oʻyinga kelmadi» belgilari, oʻyinchi xulqi haqidagi shikoyatlar (yozgan matningiz bilan) va siz tuzgan yoki aʼzo boʻlgan jamoalar.</li>
 <li><strong>Xodimlar harakatlari:</strong> maydon egalari va administratorlarning harakatlari audit jurnaliga yoziladi.</li>
 <li><strong>Joylashuv:</strong> birinchi ishga tushirishda ilova taxminiy joylashuvingizni bir marta soʻraydi — faqat eng yaqin shaharni taklif qilish uchun. Koordinatalar faqat qurilmangizda ishlatiladi, serverlarimizga yuborilmaydi va saqlanmaydi. Rad etib, shaharni oʻzingiz tanlashingiz mumkin.</li>
 </ul>
@@ -147,6 +154,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <h2>Kim koʻra oladi</h2>
 <ul>
 <li>Boshqa oʻyinchilar ismingiz, darajangiz va ishonchliligingizni koʻradi.</li>
+<li>Boshqa oʻyinchilar reytingingizni, siz qatnashgan oʻyinlar hisobini, olgan «yoqdi» baholaringiz ulushini (kim qoʻyganini emas) va aʼzo boʻlgan jamoalaringizni ham koʻradi. Shikoyatni faqat Actra administratorlari oʻqiydi; shikoyat qilingan oʻyinchiga uni kim yuborgani aytilmaydi.</li>
 <li>Maydon egasi oʻz maydonidagi bronlar uchun ismingiz va telefon raqamingizni koʻradi.</li>
 <li>Actra administratorlari xizmatni yuritish uchun zarur akkaunt va bron maʼlumotlarini koʻra oladi.</li>
 <li>Hosting provayderimiz Supabase maʼlumotlarni bizning topshirigʻimiz bilan qayta ishlaydi.</li>
@@ -160,6 +168,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 
 <h2>Akkauntni oʻchirish</h2>
 <p>Ilovada: Profil → Akkauntni oʻchirish. Kelgusi bronlaringiz va turnirlardagi arizalaringiz bekor qilinadi, oʻyinlaringizdan chiqasiz. Administrator akkauntida avval administrator huquqi olib tashlanishi kerak. Xuddi shu telefon raqami bilan qayta kirsangiz, yangi boʻsh akkaunt yaratiladi. Ilovasiz: <a href="delete-account.html#uz">oʻchirishni qanday soʻrash mumkin</a>.</p>
+<p>Akkaunt oʻchirilganda reytingingiz, qoʻygan baholaringiz va «oʻyinga kelmadi» belgilaringiz hamda jamoalardagi aʼzoligingiz ham oʻchiriladi; siz sardor boʻlgan jamoa eng uzoq vaqtdan beri aʼzo boʻlgan oʻyinchiga oʻtadi, yagona aʼzo boʻlsangiz, jamoa oʻchiriladi. Yuborgan shikoyatlaringiz yopiladi va matni oʻchiriladi. Tasdiqlangan oʻyin hisoblari boshqa oʻyinchilarda ismingizsiz qoladi.</p>
 
 <h2>Huquqlaringiz va aloqa</h2>
 <p>Siz haqingizda qanday maʼlumot borligini soʻrashingiz, tuzatish yoki oʻchirishni talab qilishingiz mumkin. Yozing: <span class="ph">&lt;founder: contact e-mail&gt;</span>.</p>
@@ -180,6 +189,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <ul>
 <li><strong>Аккаунт:</strong> Telegram-дағы Actra ботына (@actraapp) жіберген телефон нөміріңіз, Telegram id, атыңыз, таңдалған қала мен тіл, әр спорт түрі бойынша деңгейіңіз. Құпиясөздер жоқ, электрондық пошта мекенжайын сұрамаймыз.</li>
 <li><strong>Қолданбадағы әрекеттер:</strong> брондаулар, қосылған немесе өзіңіз ұйымдастырған ойындар, ойын сұраныстары, турнирлерге тіркелулер, хабарландыруларыңыз және сенімділік оқиғалары (мысалы, ойынға келгеніңіз немесе келмегеніңіз).</li>
+<li><strong>Рейтинг, нәтижелер және командалар:</strong> падел мен теннистегі рейтингіңіз және рейтингтік ойындар саны, ойнаған ойындарыңыздың есебі, басқа ойыншыларға қойған «ұнады» немесе «ұнамады» бағаларыңыз, «ойынға келмеді» белгілері, ойыншының мінез-құлқы туралы шағымдар (жазған мәтініңізбен бірге) және өзіңіз құрған немесе мүше болған командалар.</li>
 <li><strong>Қызметкерлер әрекеттері:</strong> нысан иелері мен әкімшілердің әрекеттері аудит журналына жазылады.</li>
 <li><strong>Орналасқан жер:</strong> алғаш іске қосқанда қолданба шамамен орналасқан жеріңізді бір рет сұрайды — тек ең жақын қаланы ұсыну үшін. Координаттар тек құрылғыңызда пайдаланылады, серверлерімізге жіберілмейді және сақталмайды. Бас тартып, қаланы өзіңіз таңдай аласыз.</li>
 </ul>
@@ -191,6 +201,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 <h2>Кім көре алады</h2>
 <ul>
 <li>Басқа ойыншылар атыңызды, деңгейіңізді және сенімділігіңізді көреді.</li>
+<li>Басқа ойыншылар рейтингіңізді, сіз қатысқан ойындардың есебін, алған «ұнады» бағаларыңыздың үлесін (кім қойғанын емес) және мүше болған командаларыңызды да көреді. Шағымды тек Actra әкімшілері оқиды; шағым түскен ойыншыға оны кім жібергені айтылмайды.</li>
 <li>Нысан иесі өз нысанындағы брондаулар бойынша атыңыз бен телефон нөміріңізді көреді.</li>
 <li>Actra әкімшілері қызметті жүргізуге қажетті аккаунт және брондау деректерін көре алады.</li>
 <li>Хостинг провайдеріміз Supabase деректерді біздің тапсырмамызбен өңдейді.</li>
@@ -204,6 +215,7 @@ nav.top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;bord
 
 <h2>Аккаунтты жою</h2>
 <p>Қолданбада: Профиль → Аккаунтты жою. Алдағы брондауларыңыздан және турнирлерге өтінімдеріңізден бас тартылады, ал сіз ойындарыңыздан шығасыз. Әкімші аккаунтынан алдымен әкімші рөлін алып тастау керек. Дәл сол телефон нөмірімен қайта кірсеңіз, жаңа бос аккаунт ашылады. Қолданбасыз: <a href="delete-account.html#kk">жоюды қалай сұрауға болады</a>.</p>
+<p>Аккаунт жойылғанда рейтингіңіз, қойған бағаларыңыз бен «ойынға келмеді» белгілеріңіз және командалардағы мүшелігіңіз де жойылады; сіз капитан болған команда ең ұзақ уақыт мүше болған ойыншыға өтеді, ал жалғыз мүше болсаңыз, команда жойылады. Жіберген шағымдарыңыз жабылады, мәтіні өшіріледі. Расталған ойын есептері басқа ойыншыларда атыңызсыз қалады.</p>
 
 <h2>Құқықтарыңыз және байланыс</h2>
 <p>Біздегі сіз туралы деректерді сұрауға, түзетуді немесе жоюды талап етуге болады. Жазыңыз: <span class="ph">&lt;founder: contact e-mail&gt;</span>.</p>
