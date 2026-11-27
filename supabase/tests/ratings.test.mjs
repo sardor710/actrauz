@@ -184,6 +184,29 @@ test('clients cannot write a rated level', async () => {
   assert.equal(await levelOf(u, 'football'), 3);
 });
 
+test('tournament level follows the rating, ticked or not', async () => {
+  const levelFor = (user, sportId) => one(`select app.player_level($1, $2) as l`, [user, sportId]).then((r) => r.l);
+  const u = await rated('Unticked', '4.60');
+  await pool.query(`select app.remove_my_sport($1, 'padel')`, [u]);
+  assert.equal(await levelOf(u), null);
+  assert.equal(await levelFor(u, 'padel'), 4);
+  // Top of the scale is level 5; no rating counts as the minimum.
+  assert.equal(await levelFor(await rated('Top', '6.40'), 'padel'), 5);
+  assert.equal(await levelFor(await player('Unrated'), 'padel'), 1);
+  // A simple sport keeps its stored level.
+  assert.equal(await levelFor(await player('Footballer', { football: 3 }), 'football'), 3);
+  assert.equal(await levelFor(await player('No football'), 'football'), 1);
+});
+
+test('clients cannot touch ratings', async () => {
+  const u = await player('Rating client');
+  await expectError(asUser(pool, u, (c) => c.query(`select * from player_ratings`)), '42501');
+  await expectError(
+    asUser(pool, u, (c) => c.query(`insert into player_ratings (user_id, sport_id, rating, source) values ($1, 'padel', 7, 'level')`, [u])),
+    '42501',
+  );
+});
+
 // --- backfill ----------------------------------------------------------------
 
 test('backfill', async () => {

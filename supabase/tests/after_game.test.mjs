@@ -231,6 +231,24 @@ test('three-player game needs both others', async () => {
   assert.deepEqual(await gameEvents(t, gameId), ['no_show -20']);
 });
 
+test('five-player game needs three reports', async () => {
+  const [h, a, b, c, t] = await players('Five host', 'Five A', 'Five B', 'Five C', 'Five T');
+  const gameId = await finishedGame([h, a, b, c, t]);
+  await noShow(a, gameId, t);
+  await noShow(b, gameId, t);
+  // Two of the four others is not more than half.
+  assert.deepEqual(await gameEvents(t, gameId), []);
+  await noShow(c, gameId, t);
+  assert.deepEqual(await gameEvents(t, gameId), ['no_show -20']);
+});
+
+test('no-show against a deleted player', async () => {
+  const [h, a, t] = await players('Gone host', 'Gone A', 'Gone T');
+  const gameId = await finishedGame([h, a, t]);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [t, now]);
+  await expectError(noShow(a, gameId, t), 'not_found');
+});
+
 test('two-player game never reaches a majority', async () => {
   const [h, t] = await players('Two host', 'Two T');
   const gameId = await finishedGame([h, t]);
@@ -622,6 +640,46 @@ test('admin keeps a flagged result', async () => {
   const other = await flaggedResult('Void');
   await resolve(admin, other.resultId, 'void');
   assert.equal((await resultRow(other.resultId)).status, 'void');
+  assert.equal((await review(admin)).counts.disputes, 0);
+});
+
+test('a kept score is not flagged again', async () => {
+  const admin = await addAdmin(pool, await player('Again admin'));
+  const { resultId, gameId, players: [, a, , t] } = await flaggedResult('Again');
+  await resolve(admin, resultId, 'keep');
+  // The majority is lost and reached again: the admin's decision stands.
+  await noShow(a, gameId, t, false, plus(1));
+  await noShow(a, gameId, t, true, plus(2));
+  assert.deepEqual(await gameEvents(t, gameId), ['no_show -20']);
+  const kept = await resultRow(resultId);
+  assert.equal(kept.status, 'confirmed');
+  assert.equal(kept.flagged_no_show, false);
+  assert.equal((await review(admin)).counts.disputes, 0);
+
+  // Nor is a result the admin confirmed after a no-show froze it.
+  const [h2, a2, b2, t2] = await players('Again2 host', 'Again2 A', 'Again2 B', 'Again2 T');
+  const game2 = await finishedGame([h2, a2, b2, t2]);
+  const r2 = await enterScore(h2, game2, [h2, a2], [b2, t2]);
+  await noShow(h2, game2, t2);
+  await noShow(a2, game2, t2);
+  assert.equal((await resultRow(r2.id)).status, 'disputed');
+  await resolve(admin, r2.id, 'confirm');
+  await noShow(a2, game2, t2, false, plus(1));
+  await noShow(a2, game2, t2, true, plus(2));
+  const confirmed = await resultRow(r2.id);
+  assert.equal(confirmed.status, 'confirmed');
+  assert.equal(confirmed.flagged_no_show, false);
+});
+
+test('losing the majority clears the flag', async () => {
+  const admin = await addAdmin(pool, await player('Clear admin'));
+  const { resultId, gameId, players: [, a, , t] } = await flaggedResult('Clear');
+  assert.equal((await resultRow(resultId)).flagged_no_show, true);
+  await noShow(a, gameId, t, false, plus(1));
+  const cleared = await resultRow(resultId);
+  assert.equal(cleared.status, 'confirmed');
+  assert.equal(cleared.flagged_no_show, false);
+  assert.equal(cleared.resolved_at, null);
   assert.equal((await review(admin)).counts.disputes, 0);
 });
 

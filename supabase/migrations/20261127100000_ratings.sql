@@ -158,6 +158,20 @@ as $$
     app.rating_const('min'))
 $$;
 
+-- Redefined from 20261125100000_tournaments.sql (tournament level checks):
+-- in a rated sport the level follows the rating (whole part, capped at 5;
+-- no rating counts as the minimum), whether or not the player still has the
+-- sport ticked; in a simple sport the stored level, 1 without one.
+create or replace function app.player_level(p_user uuid, p_sport_id text) returns integer
+language sql stable
+set search_path = ''
+as $$
+  select case when app.is_rated_sport(p_sport_id)
+    then least(5, floor(app.effective_rating(p_user, p_sport_id)))::integer
+    else coalesce((select l.level from public.player_levels l where l.user_id = p_user and l.sport_id = p_sport_id), 1)
+  end
+$$;
+
 -- {"rating", "provisional", "rated_games"}, or null without a rating.
 create function app.rating_json(p_user uuid, p_sport_id text) returns jsonb
 language sql

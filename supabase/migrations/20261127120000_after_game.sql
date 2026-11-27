@@ -128,16 +128,21 @@ end $$;
 -- venue already marked no-show for the game's booking. Then, if the player
 -- is in the game's result: a pending one is frozen as disputed for the
 -- admin (reason no_show; the players hear, as for a player's dispute), a
--- confirmed one is flagged. Nothing is voided here.
+-- confirmed one is flagged. Nothing is voided here, and a result an admin
+-- has resolved (resolved_at set) is left as the admin decided.
 --
 -- Lost again: the game's no_show event goes and, if there was one, the
 -- game_completed credit comes back (once the game has been completed, else
--- app.complete_games gives it). A result already disputed stays disputed.
+-- app.complete_games gives it). Inside the 48-hour reporting window the
+-- flag on a confirmed result no admin has resolved is cleared. A result
+-- already disputed stays disputed.
 create function app.recount_no_show(p_game public.games, p_target uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
 as $$
 declare
+  -- As app.report_no_show.
+  c_report_window constant interval := interval '48 hours';
   v_reporters integer;
   v_others integer;
   v_on_time boolean;
@@ -164,12 +169,13 @@ begin
       perform app.notify(p_target, 'no_show_recorded', 'games', app.game_note(p_game), p_now);
     end if;
 
-    -- The result row is locked, and its state read, before it changes.
+    -- The result row is locked, and its state read, before it changes. A
+    -- result an admin has resolved keeps the admin's decision.
     select r.* into v_result from public.match_results r
     where r.game_id = p_game.id
       and exists (select 1 from public.match_result_players mp where mp.result_id = r.id and mp.user_id = p_target)
     for update;
-    if not found then return; end if;
+    if not found or v_result.resolved_at is not null then return; end if;
     if v_result.status = 'pending' then
       update public.match_results r set status = 'disputed', dispute_reason = 'no_show'
       where r.id = v_result.id
@@ -185,6 +191,17 @@ begin
     where e.user_id = p_target and e.kind = 'no_show' and e.ref = p_game.id::text;
     if found and v_on_time and p_game.completed_at is not null then
       perform app.reliability_event(p_target, 'game_completed', p_game.id::text, p_now);
+    end if;
+    -- Inside the reporting window, a flag the majority set on a confirmed
+    -- result goes with it, unless an admin has resolved the result.
+    if p_now < upper(p_game.during) + c_report_window then
+      select r.* into v_result from public.match_results r
+      where r.game_id = p_game.id
+        and exists (select 1 from public.match_result_players mp where mp.result_id = r.id and mp.user_id = p_target)
+      for update;
+      if found and v_result.status = 'confirmed' and v_result.flagged_no_show and v_result.resolved_at is null then
+        update public.match_results r set flagged_no_show = false where r.id = v_result.id;
+      end if;
     end if;
   end if;
 end $$;

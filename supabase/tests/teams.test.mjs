@@ -636,6 +636,14 @@ test('a member the host removed no longer sees the team game listed', async () =
   assert.ok((await listedIds(other)).includes(g.id));
 });
 
+test('clients cannot touch the team tables', async () => {
+  const u = await player('Table client');
+  await expectError(asUser(pool, u, (c) => c.query(`select * from team_members`)), '42501');
+  await expectError(asUser(pool, u, (c) => c.query(`select * from team_join_requests`)), '42501');
+  await expectError(asUser(pool, u, (c) => c.query(`select * from team_invites`)), '42501');
+  await expectError(asUser(pool, u, (c) => c.query(`delete from team_members`)), '42501');
+});
+
 test('captain who hosts an upcoming team game is deleted', async () => {
   const [cap, oldest, newer, loner] = await players('Host cap', 'Host oldest', 'Host newer', 'Host loner');
   const team = await teamWith(cap, [oldest, newer], { sport_id: 'running' });
