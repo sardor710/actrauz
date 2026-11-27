@@ -192,7 +192,9 @@ test('approval team needs the captain', async () => {
 
   const capView = await teamJson(team.id, cap);
   assert.deepEqual(capView.requests.map((r) => [r.id, r.user_id, r.name]), [[requestId, a, 'Approval A']]);
-  assert.deepEqual(Object.keys(capView.requests[0]).sort(), ['created_at', 'id', 'level', 'name', 'rating', 'reliability', 'user_id']);
+  assert.deepEqual(Object.keys(capView.requests[0]).sort(), ['created_at', 'id', 'level', 'name', 'provisional', 'rating', 'reliability', 'user_id']);
+  // Outside rated sports both are null, as for members.
+  assert.equal(capView.requests[0].provisional, null);
 
   const approved = await decide(cap, requestId, true);
   assert.equal(approved.id, team.id);
@@ -620,6 +622,18 @@ test('rating range still applies to members', async () => {
   // An invited player skips the range, as today.
   await inviteToGame(cap, g.id, invited);
   assert.equal((await joinGame(invited, g.id)).my_status, 'participant');
+});
+
+test('a member the host removed no longer sees the team game listed', async () => {
+  const [cap, m, other] = await players('Removed cap', 'Removed member', 'Removed other');
+  const team = await teamWith(cap, [m, other], { sport_id: 'running' });
+  const g = await createGame(cap, run({ team_id: team.id }));
+  await joinGame(m, g.id);
+  await pool.query(`select app.host_remove_participant($1, $2, $3, $4)`, [cap, g.id, m, now]);
+  assert.ok(!(await listedIds(m)).includes(g.id));
+  await expectError(joinGame(m, g.id), 'not_found');
+  // The other members still see it.
+  assert.ok((await listedIds(other)).includes(g.id));
 });
 
 test('team page lists its games', async () => {

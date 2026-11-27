@@ -283,6 +283,25 @@ test('dispute freezes the result', async () => {
   await expectError(dispute(d, resultId, null), 'not_found');
 });
 
+test('only the game’s players see a dispute’s details', async () => {
+  const players = await four('3.50');
+  const [a, , c] = players;
+  const { gameId, resultId } = await doubles(players, [[6, 4], [6, 4]]);
+  await dispute(c, resultId, 'not what happened');
+  const outsider = await player('Onlooker');
+
+  const mine = (await gameJson(gameId, a)).result;
+  assert.equal(mine.dispute_reason, 'not what happened');
+  assert.equal(mine.flagged_no_show, false);
+  for (const viewer of [outsider, null]) {
+    const theirs = (await gameJson(gameId, viewer)).result;
+    assert.equal(theirs.status, 'disputed');
+    assert.deepEqual(theirs.sets, [[6, 4], [6, 4]]);
+    assert.equal('dispute_reason' in theirs, false);
+    assert.equal('flagged_no_show' in theirs, false);
+  }
+});
+
 test('host can correct a pending score', async () => {
   const players = await four('3.50');
   const [h, p, o1, o2] = players;

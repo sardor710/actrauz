@@ -195,8 +195,10 @@ begin
   end if;
 
   -- The profile lock makes two creations by one player take turns, so the
-  -- limit holds (the same lock delete_account takes).
-  perform 1 from public.profiles p where p.id = p_user for no key update;
+  -- limit holds (the same lock delete_account takes). Checked again under
+  -- the lock: an account deleted meanwhile captains nothing new.
+  perform 1 from public.profiles p where p.id = p_user and p.deleted_at is null for no key update;
+  if not found then raise exception 'not_authenticated'; end if;
   if (select count(*) from public.teams t where t.captain_id = p_user) >= c_max_captained then
     raise exception 'team_limit';
   end if;
@@ -1008,8 +1010,9 @@ alter table public.games
 create index games_team_idx on public.games (team_id) where team_id is not null;
 
 -- The team part of who may see and join a game: a team game is open to the
--- team's members, and to everyone from public_from on. False for a game
--- without a team (never null). Not stable, like app.can_see_game.
+-- team's members (but not one the host removed from it), and to everyone
+-- from public_from on. False for a game without a team (never null). Not
+-- stable, like app.can_see_game.
 create function app.team_game_open(p_user uuid, g public.games, p_now timestamptz) returns boolean
 language sql
 set search_path = ''
@@ -1017,7 +1020,8 @@ as $$
   select g.team_id is not null
     and (coalesce(g.public_from <= p_now, false)
          or (p_user is not null
-             and exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user)))
+             and exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user)
+             and not app.removed_from_game(g.id, p_user)))
 $$;
 
 -- Redefined from 20261124110000_games_v2.sql as an overload with a clock:
@@ -1361,7 +1365,9 @@ as $$
         or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)
         or exists (select 1 from public.game_invites i
                    where i.game_id = g.id and i.user_id = p_user and i.status = 'pending')
-        or exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user))))
+        or (exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user)
+            -- A member the host removed is closed out, as join_game does.
+            and not app.removed_from_game(g.id, p_user)))))
   order by lower(g.during), g.id
 $$;
 
@@ -1435,7 +1441,13 @@ as $$
        left join public.player_ratings rt on rt.user_id = p.user_id and rt.sport_id = g.sport_id
        where p.game_id = g.id),
       '[]'::jsonb),
-    'result', (select app.result_json(mr) from public.match_results mr where mr.game_id = g.id))
+    -- Someone outside the game sees the score, not a dispute's details.
+    'result', (select app.result_json(mr)
+                      - case when p_user is not null
+                                  and exists (select 1 from public.game_participants p
+                                              where p.game_id = g.id and p.user_id = p_user)
+                             then '{}'::text[] else array['dispute_reason', 'flagged_no_show'] end
+               from public.match_results mr where mr.game_id = g.id))
   || case when p_user is not null and p_user = g.host_id then
        jsonb_build_object('join_requests', coalesce(
          (select jsonb_agg(
@@ -1544,6 +1556,7 @@ as $$
                      'name', pr.full_name,
                      'level', l.level,
                      'rating', app.rating_json(r.user_id, t.sport_id)->'rating',
+                     'provisional', app.rating_json(r.user_id, t.sport_id)->'provisional',
                      'reliability', app.reliability(r.user_id, now()),
                      'created_at', r.created_at)
                    order by r.created_at, r.id)
