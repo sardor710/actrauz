@@ -228,6 +228,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => TournamentScreen(tournamentId: state.pathParameters['id']!),
+                    routes: [
+                      // Organisers (M8a); the screen itself checks nothing,
+                      // the backend refuses everyone else.
+                      GoRoute(
+                        path: 'manage',
+                        builder: (context, state) => TournamentManageScreen(tournamentId: state.pathParameters['id']!),
+                      ),
+                    ],
                   ),
                 ],
               ),

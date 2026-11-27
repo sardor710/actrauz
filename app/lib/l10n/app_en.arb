@@ -15,7 +15,9 @@
   "cityDetected": "Found: {city}",
   "@cityDetected": {
     "placeholders": {
-      "city": {"type": "String"}
+      "city": {
+        "type": "String"
+      }
     }
   },
   "signInTitle": "Sign in",
@@ -1734,5 +1736,142 @@
       }
     }
   },
-  "tryAgain": "Try again"
+  "tryAgain": "Try again",
+  "drawTitle": "Draw",
+  "roundFinal": "Final",
+  "roundSemiFinals": "Semi-finals",
+  "roundQuarterFinals": "Quarter-finals",
+  "roundNumber": "Round {number}",
+  "@roundNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "matchTbd": "To be decided",
+  "matchTimeTbd": "Time to be set",
+  "outcomeWalkover": "Walkover",
+  "outcomeRetired": "Retired",
+  "outcomeDecider": "Won on decider",
+  "outcomeNone": "No winner",
+  "drawWinner": "Winner",
+  "drawRunnerUp": "Runner-up",
+  "tournamentFinished": "Finished",
+  "groupLabel": "Group {label}",
+  "@groupLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "tablePlayed": "P",
+  "tableWon": "W",
+  "tableLost": "L",
+  "tablePoints": "Pts",
+  "groupAdvancing": "Goes through",
+  "nextMatchTitle": "Your next match",
+  "versusNames": "vs {names}",
+  "@versusNames": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "myMatchesTitle": "My matches",
+  "manageTournament": "Manage",
+  "manageComingSoon": "The tournament manager is coming soon",
+  "notifOrganizerAdded": "You are now an organiser of {title}",
+  "@notifOrganizerAdded": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifOrganizerRemoved": "You are no longer an organiser of {title}",
+  "@notifOrganizerRemoved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDrawPublished": "The draw for {title} is published",
+  "@notifDrawPublished": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDrawRedone": "The draw for {title} was made again",
+  "@notifDrawRedone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifWaitlistClosed": "The waitlist for {title} has closed",
+  "@notifWaitlistClosed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMatchScheduled": "Your match time in {title} is set",
+  "@notifMatchScheduled": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMatchResult": "Your match result in {title} is in",
+  "@notifMatchResult": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMatchCorrected": "Your match result in {title} was corrected",
+  "@notifMatchCorrected": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifEntryWithdrawn": "You were withdrawn from the draw of {title}",
+  "@notifEntryWithdrawn": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCategoryWon": "You won {category} at {title}!",
+  "@notifCategoryWon": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCategoryWonPlain": "You won at {title}!",
+  "@notifCategoryWonPlain": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -14,7 +14,8 @@ import 'tournament_tools.dart';
 ///
 /// [registrationOpen] gates everything the deadline closes: answering an
 /// invite and cancelling. An offered spot can still be claimed, since an admin
-/// may offer one after the deadline.
+/// may offer one after the deadline. Once the category's draw is published
+/// there is no cancelling either.
 class RegistrationBlock extends ConsumerWidget {
   const RegistrationBlock({super.key, required this.registration, required this.cityId, required this.registrationOpen});
 
@@ -64,7 +65,11 @@ class RegistrationBlock extends ConsumerWidget {
         !r.partnerConfirmed &&
         (r.status == RegistrationStatus.pendingPartner || r.status == RegistrationStatus.waitlisted);
     final canClaim = r.status == RegistrationStatus.offered && _isMember;
-    final canCancel = registrationOpen && r.status.live && _isMember;
+    // A published draw locks the category's entries: the backend refuses a
+    // cancel with draw_published (M8a §6.4).
+    final locked =
+        ref.watch(bracketProvider(r.tournamentId)).valueOrNull?.draw(r.categoryId)?.published ?? false;
+    final canCancel = registrationOpen && r.status.live && _isMember && !locked;
 
     final other = r.role == RegistrationRole.partner ? r.registrant : r.partner;
     final line = other == null

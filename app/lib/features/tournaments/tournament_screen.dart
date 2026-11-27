@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../domain/brackets.dart';
 import '../../domain/tournaments.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
+import 'bracket_view.dart';
+import 'next_match_card.dart';
 import 'register_sheet.dart';
 import 'registration_block.dart';
 import 'tournament_tools.dart';
@@ -15,16 +18,44 @@ import 'tournament_tools.dart';
 /// categories with how full they are. Each category offers Register, or the
 /// waitlist once it is full; the player's own entries show with what they can
 /// do about them.
-class TournamentScreen extends ConsumerWidget {
+///
+/// Once a category's draw is published (M8a), the category shows it: the
+/// bracket, the group tables, the winner. The player's next match is on top,
+/// and organisers get "Manage". The page reloads on opening, on coming back to
+/// the app (app.dart) and by pulling down; a failed reload keeps what was
+/// shown.
+class TournamentScreen extends ConsumerStatefulWidget {
   const TournamentScreen({super.key, required this.tournamentId});
 
   final String tournamentId;
+
+  @override
+  ConsumerState<TournamentScreen> createState() => _TournamentScreenState();
+}
+
+class _TournamentScreenState extends ConsumerState<TournamentScreen> {
+  String get tournamentId => widget.tournamentId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Opened again: what was loaded before may be stale (organisers enter
+    // times and scores meanwhile). The loaded page stays until the reload
+    // arrives.
+    final cached = [tournamentProvider(tournamentId), bracketProvider(tournamentId)].where(ref.exists).toList();
+    if (cached.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final provider in cached) {
+        ref.invalidate(provider);
+      }
+    });
+  }
 
   void _back(BuildContext context) => context.canPop() ? context.pop() : context.go('/tournaments');
 
   Future<void> _register(
     BuildContext context,
-    WidgetRef ref,
     Tournament tournament,
     TournamentCategory category, {
     required bool waitlist,
@@ -41,15 +72,25 @@ class TournamentScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _reload() => pullToReload(
+    context,
+    Future.wait([
+      ref.refresh(tournamentProvider(tournamentId).future),
+      ref.refresh(bracketProvider(tournamentId).future),
+    ]),
+  );
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final value = ref.watch(tournamentProvider(tournamentId));
     return Scaffold(
       key: const ValueKey('tournament-detail'),
       appBar: value.hasValue ? null : AppBar(leading: BackButton(onPressed: () => _back(context))),
       body: value.when(
         skipLoadingOnReload: true,
-        data: (tournament) => _body(context, ref, tournament),
+        // A failed reload keeps the page; the pull that failed says so.
+        skipError: true,
+        data: (tournament) => _body(context, tournament),
         loading: () => const Padding(
           padding: EdgeInsets.all(32),
           child: Center(child: CircularProgressIndicator()),
@@ -59,12 +100,21 @@ class TournamentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _body(BuildContext context, WidgetRef ref, Tournament t) {
+  Widget _body(BuildContext context, Tournament t) {
     final l = context.l;
     final lang = context.lang;
     final now = tournamentNow(ref, t.cityId);
     final sport = ref.watch(sportsProvider).valueOrNull?.where((s) => s.id == t.sportId).firstOrNull;
     final description = t.description.resolve(lang);
+    // Kept through a failed reload; nothing of the draws until it first loads.
+    final bracket = ref.watch(bracketProvider(tournamentId)).valueOrNull;
+    final next = bracket?.myNextMatch;
+    final nextDraw = next == null ? null : bracket?.draw(next.categoryId);
+    CategoryDraw? published(String categoryId) {
+      final draw = bracket?.draw(categoryId);
+      return draw != null && draw.published ? draw : null;
+    }
+
     final deadline = '${dayLabel(l, lang, t.registrationDeadline, now)}, ${hm(t.registrationDeadline)}';
 
     Widget row(IconData icon, String text) => Padding(
@@ -79,93 +129,131 @@ class TournamentScreen extends ConsumerWidget {
       ),
     );
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        TournamentCover(
-          id: t.id,
-          sportId: t.sportId,
-          coverUrl: t.coverUrl,
-          colorSeed: t.colorSeed,
-          height: 240,
-          radius: 0,
-          darken: 0.45,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  OverlayIconButton(icon: Icons.arrow_back_rounded, onTap: () => _back(context)),
-                  const Spacer(),
-                  if (sport != null)
-                    Pill(
-                      text: sport.name.resolve(lang),
-                      color: AppColors.blue,
-                      onColor: Colors.white,
-                      large: true,
+    return RefreshIndicator(
+      onRefresh: _reload,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          TournamentCover(
+            id: t.id,
+            sportId: t.sportId,
+            coverUrl: t.coverUrl,
+            colorSeed: t.colorSeed,
+            height: 240,
+            radius: 0,
+            darken: 0.45,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OverlayIconButton(icon: Icons.arrow_back_rounded, onTap: () => _back(context)),
+                    const Spacer(),
+                    if (sport != null)
+                      Pill(text: sport.name.resolve(lang), color: AppColors.blue, onColor: Colors.white, large: true),
+                    const SizedBox(height: 8),
+                    Text(
+                      t.title.resolve(lang),
+                      style: manrope(23, 800, color: Colors.white, height: 1.2),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t.title.resolve(lang),
-                    style: manrope(23, 800, color: Colors.white, height: 1.2),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (bracket?.finished ?? false)
+            InfoBanner(
+              key: const ValueKey('tournament-finished'),
+              icon: Icons.emoji_events_outlined,
+              text: l.tournamentFinished,
+            )
+          else if (!t.registrationOpen)
+            InfoBanner(icon: Icons.lock_clock_outlined, text: l.tournamentClosedBanner, error: true),
+          if (next != null && nextDraw != null && nextDraw.published)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: NextMatchCard(
+                match: next.match,
+                draw: nextDraw,
+                now: now,
+                subtitle: t.categories.where((c) => c.id == next.categoryId).firstOrNull?.name.resolve(lang),
+              ),
+            ),
+          if (bracket?.organizer ?? false)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('tournament-manage'),
+                  onPressed: () => context.go('/tournaments/$tournamentId/manage'),
+                  icon: const Icon(Icons.tune_rounded),
+                  label: Text(l.manageTournament),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (t.venueName.resolve(lang).isNotEmpty) row(Icons.place_outlined, t.venueName.resolve(lang)),
+                    row(Icons.event_outlined, tournamentDates(l, lang, t, now)),
+                    row(Icons.schedule_rounded, l.tournamentDeadline(deadline)),
+                    if (description.isNotEmpty) ...[const SizedBox(height: 4), Text(description, style: AppText.body)],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SectionCard(
+            title: l.tournamentCategories,
+            contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Column(
+              children: [
+                for (final (i, c) in t.categories.indexed) ...[
+                  if (i > 0) const Divider(height: 28),
+                  _CategoryTile(
+                    tournament: t,
+                    category: c,
+                    draw: published(c.id),
+                    now: now,
+                    onRegister: (waitlist) => _register(context, t, c, waitlist: waitlist),
                   ),
                 ],
-              ),
-            ),
-          ),
-        ),
-        if (!t.registrationOpen) InfoBanner(icon: Icons.lock_clock_outlined, text: l.tournamentClosedBanner, error: true),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (t.venueName.resolve(lang).isNotEmpty) row(Icons.place_outlined, t.venueName.resolve(lang)),
-                  row(Icons.event_outlined, tournamentDates(l, lang, t, now)),
-                  row(Icons.schedule_rounded, l.tournamentDeadline(deadline)),
-                  if (description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(description, style: AppText.body),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-        SectionCard(
-          title: l.tournamentCategories,
-          contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Column(
-            children: [
-              for (final (i, c) in t.categories.indexed) ...[
-                if (i > 0) const Divider(height: 28),
-                _CategoryTile(
-                  tournament: t,
-                  category: c,
-                  onRegister: (waitlist) => _register(context, ref, t, c, waitlist: waitlist),
-                ),
               ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-      ],
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.tournament, required this.category, required this.onRegister});
+  const _CategoryTile({
+    required this.tournament,
+    required this.category,
+    required this.draw,
+    required this.now,
+    required this.onRegister,
+  });
 
   final Tournament tournament;
   final TournamentCategory category;
+
+  /// Its published draw: the category's entries are locked.
+  final CategoryDraw? draw;
+  final DateTime now;
 
   /// Register (false) or join the waitlist (true).
   final void Function(bool waitlist) onRegister;
@@ -180,7 +268,7 @@ class _CategoryTile extends StatelessWidget {
     final grey = c.full && mine.isEmpty;
 
     Widget? action;
-    if (open && mine.isEmpty) {
+    if (open && mine.isEmpty && draw == null) {
       action = !c.full
           ? FilledButton(onPressed: () => onRegister(false), child: Text(l.registerLabel))
           : c.waitlistEnabled
@@ -236,7 +324,25 @@ class _CategoryTile extends StatelessWidget {
           RegistrationBlock(registration: r, cityId: tournament.cityId, registrationOpen: open),
         ],
         if (action != null) ...[const SizedBox(height: 12), SizedBox(width: double.infinity, child: action)],
+        if (draw case final draw?) ...[const Divider(height: 28), CategoryDrawSection(draw: draw, now: now)],
       ],
     );
   }
+}
+
+/// Where "Manage" leads until the tournament manager is built (M8a Task 7).
+class TournamentManageScreen extends StatelessWidget {
+  const TournamentManageScreen({super.key, required this.tournamentId});
+
+  final String tournamentId;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    key: const ValueKey('tournament-manage-screen'),
+    appBar: AppBar(
+      leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/tournaments/$tournamentId')),
+      title: Text(context.l.manageTournament),
+    ),
+    body: EmptyState(icon: Icons.tune_rounded, text: context.l.manageComingSoon),
+  );
 }

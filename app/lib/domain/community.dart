@@ -358,12 +358,17 @@ class AppNotification {
           'game_finished' ||
           'score_entered' ||
           'score_disputed' ||
-          'score_resolved' ||
-          'rating_updated' ||
           'no_show_recorded' ||
           'team_game_posted':
         final gameId = text('game_id');
         return gameId == null ? null : '/games/$gameId';
+      // A game's result notices open the game; a tournament match's (M8a:
+      // no game) open the tournament.
+      case 'score_resolved' || 'rating_updated':
+        final gameId = text('game_id');
+        if (gameId != null) return '/games/$gameId';
+        final tournamentId = text('tournament_id');
+        return tournamentId == null ? null : '/tournaments/$tournamentId';
       case 'tournament_registered' ||
           'tournament_partner_invite' ||
           'tournament_partner_accepted' ||
@@ -373,7 +378,16 @@ class AppNotification {
           'tournament_spot_offered' ||
           'tournament_deadline_reminder' ||
           'tournament_removed' ||
-          'tournament_moved':
+          'tournament_moved' ||
+          'organizer_added' ||
+          'organizer_removed' ||
+          'draw_published' ||
+          'draw_redone' ||
+          'waitlist_closed' ||
+          'match_scheduled' ||
+          'match_result' ||
+          'entry_withdrawn' ||
+          'category_won':
         final tournamentId = text('tournament_id');
         return tournamentId == null ? null : '/tournaments/$tournamentId';
       case 'team_invite' ||

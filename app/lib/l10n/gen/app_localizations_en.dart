@@ -2968,4 +2968,140 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tryAgain => 'Try again';
+
+  @override
+  String get drawTitle => 'Draw';
+
+  @override
+  String get roundFinal => 'Final';
+
+  @override
+  String get roundSemiFinals => 'Semi-finals';
+
+  @override
+  String get roundQuarterFinals => 'Quarter-finals';
+
+  @override
+  String roundNumber(int number) {
+    return 'Round $number';
+  }
+
+  @override
+  String get matchTbd => 'To be decided';
+
+  @override
+  String get matchTimeTbd => 'Time to be set';
+
+  @override
+  String get outcomeWalkover => 'Walkover';
+
+  @override
+  String get outcomeRetired => 'Retired';
+
+  @override
+  String get outcomeDecider => 'Won on decider';
+
+  @override
+  String get outcomeNone => 'No winner';
+
+  @override
+  String get drawWinner => 'Winner';
+
+  @override
+  String get drawRunnerUp => 'Runner-up';
+
+  @override
+  String get tournamentFinished => 'Finished';
+
+  @override
+  String groupLabel(String label) {
+    return 'Group $label';
+  }
+
+  @override
+  String get tablePlayed => 'P';
+
+  @override
+  String get tableWon => 'W';
+
+  @override
+  String get tableLost => 'L';
+
+  @override
+  String get tablePoints => 'Pts';
+
+  @override
+  String get groupAdvancing => 'Goes through';
+
+  @override
+  String get nextMatchTitle => 'Your next match';
+
+  @override
+  String versusNames(String names) {
+    return 'vs $names';
+  }
+
+  @override
+  String get myMatchesTitle => 'My matches';
+
+  @override
+  String get manageTournament => 'Manage';
+
+  @override
+  String get manageComingSoon => 'The tournament manager is coming soon';
+
+  @override
+  String notifOrganizerAdded(String title) {
+    return 'You are now an organiser of $title';
+  }
+
+  @override
+  String notifOrganizerRemoved(String title) {
+    return 'You are no longer an organiser of $title';
+  }
+
+  @override
+  String notifDrawPublished(String title) {
+    return 'The draw for $title is published';
+  }
+
+  @override
+  String notifDrawRedone(String title) {
+    return 'The draw for $title was made again';
+  }
+
+  @override
+  String notifWaitlistClosed(String title) {
+    return 'The waitlist for $title has closed';
+  }
+
+  @override
+  String notifMatchScheduled(String title) {
+    return 'Your match time in $title is set';
+  }
+
+  @override
+  String notifMatchResult(String title) {
+    return 'Your match result in $title is in';
+  }
+
+  @override
+  String notifMatchCorrected(String title) {
+    return 'Your match result in $title was corrected';
+  }
+
+  @override
+  String notifEntryWithdrawn(String title) {
+    return 'You were withdrawn from the draw of $title';
+  }
+
+  @override
+  String notifCategoryWon(String category, String title) {
+    return 'You won $category at $title!';
+  }
+
+  @override
+  String notifCategoryWonPlain(String title) {
+    return 'You won at $title!';
+  }
 }

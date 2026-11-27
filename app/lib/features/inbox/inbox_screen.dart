@@ -83,6 +83,15 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'tournament_moved' => category == null
         ? l.notifTournamentMoved(tournament)
         : l.notifTournamentMovedTo(category, tournament),
+    'organizer_added' => l.notifOrganizerAdded(tournament),
+    'organizer_removed' => l.notifOrganizerRemoved(tournament),
+    'draw_published' => l.notifDrawPublished(tournament),
+    'draw_redone' => l.notifDrawRedone(tournament),
+    'waitlist_closed' => l.notifWaitlistClosed(tournament),
+    'match_scheduled' => l.notifMatchScheduled(tournament),
+    'match_result' => p['correction'] == true ? l.notifMatchCorrected(tournament) : l.notifMatchResult(tournament),
+    'entry_withdrawn' => l.notifEntryWithdrawn(tournament),
+    'category_won' => category == null ? l.notifCategoryWonPlain(tournament) : l.notifCategoryWon(category, tournament),
     'team_invite' when team != null => l.notifTeamInvite(actor, team),
     'team_join_request' when team != null => l.notifTeamJoinRequest(actor, team),
     'team_join_approved' when team != null => l.notifTeamJoinApproved(team),
@@ -163,6 +172,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     if (p['team_id'] case final String teamId when teamId.isNotEmpty) {
       ref.invalidate(teamProvider(teamId));
       ref.invalidate(teamsProvider);
+    }
+    // A tournament notice (M8a): its page, its bracket and the player's
+    // matches and entries.
+    if (p['tournament_id'] case final String tournamentId when tournamentId.isNotEmpty) {
+      ref.invalidate(tournamentProvider(tournamentId));
+      ref.invalidate(bracketProvider(tournamentId));
+      ref.invalidate(myMatchesProvider);
+      ref.invalidate(myRegistrationsProvider);
     }
     if (n.category == 'ratings') {
       ref.invalidate(pastGamesProvider);
@@ -279,7 +296,8 @@ class _NotificationRow extends ConsumerWidget {
     final sports = ref.watch(sportsProvider).valueOrNull ?? const [];
     final sportId = n.payload['sport_id'];
     final sportName = sports.where((s) => s.id == sportId).firstOrNull?.name.resolve(context.lang);
-    final start = DateTime.tryParse('${n.payload['starts_local'] ?? ''}');
+    // A tournament match's time (M8a) comes as starts_at.
+    final start = DateTime.tryParse('${n.payload['starts_local'] ?? n.payload['starts_at'] ?? ''}');
     final now = ref.watch(cityNowProvider)();
     final details = [
       ?sportName,

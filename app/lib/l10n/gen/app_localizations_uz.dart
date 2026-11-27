@@ -2967,4 +2967,140 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get tryAgain => 'Qayta urinish';
+
+  @override
+  String get drawTitle => 'Setka';
+
+  @override
+  String get roundFinal => 'Final';
+
+  @override
+  String get roundSemiFinals => 'Yarim finallar';
+
+  @override
+  String get roundQuarterFinals => 'Chorak finallar';
+
+  @override
+  String roundNumber(int number) {
+    return '$number-raund';
+  }
+
+  @override
+  String get matchTbd => 'Aniqlanadi';
+
+  @override
+  String get matchTimeTbd => 'Vaqti belgilanadi';
+
+  @override
+  String get outcomeWalkover => 'Texnik gʻalaba';
+
+  @override
+  String get outcomeRetired => 'Oʻyindan chiqdi';
+
+  @override
+  String get outcomeDecider => 'Hal qiluvchi oʻyinda gʻalaba';
+
+  @override
+  String get outcomeNone => 'Gʻolibsiz';
+
+  @override
+  String get drawWinner => 'Gʻolib';
+
+  @override
+  String get drawRunnerUp => 'Ikkinchi oʻrin';
+
+  @override
+  String get tournamentFinished => 'Yakunlandi';
+
+  @override
+  String groupLabel(String label) {
+    return '$label guruhi';
+  }
+
+  @override
+  String get tablePlayed => 'Oʻ';
+
+  @override
+  String get tableWon => 'G';
+
+  @override
+  String get tableLost => 'M';
+
+  @override
+  String get tablePoints => 'Ochko';
+
+  @override
+  String get groupAdvancing => 'Keyingi bosqichga chiqadi';
+
+  @override
+  String get nextMatchTitle => 'Keyingi oʻyiningiz';
+
+  @override
+  String versusNames(String names) {
+    return 'Raqib: $names';
+  }
+
+  @override
+  String get myMatchesTitle => 'Mening oʻyinlarim';
+
+  @override
+  String get manageTournament => 'Boshqarish';
+
+  @override
+  String get manageComingSoon => 'Turnirni boshqarish tez orada paydo boʻladi';
+
+  @override
+  String notifOrganizerAdded(String title) {
+    return 'Siz turnir tashkilotchisi boʻldingiz: $title';
+  }
+
+  @override
+  String notifOrganizerRemoved(String title) {
+    return 'Siz endi turnir tashkilotchisi emassiz: $title';
+  }
+
+  @override
+  String notifDrawPublished(String title) {
+    return 'Turnir setkasi eʼlon qilindi: $title';
+  }
+
+  @override
+  String notifDrawRedone(String title) {
+    return 'Turnir setkasi qaytadan tuzildi: $title';
+  }
+
+  @override
+  String notifWaitlistClosed(String title) {
+    return 'Turnirning kutish roʻyxati yopildi: $title';
+  }
+
+  @override
+  String notifMatchScheduled(String title) {
+    return 'Oʻyiningiz vaqti belgilandi: $title';
+  }
+
+  @override
+  String notifMatchResult(String title) {
+    return 'Oʻyiningiz natijasi kiritildi: $title';
+  }
+
+  @override
+  String notifMatchCorrected(String title) {
+    return 'Oʻyiningiz natijasi tuzatildi: $title';
+  }
+
+  @override
+  String notifEntryWithdrawn(String title) {
+    return 'Siz turnir setkasidan olib tashlandingiz: $title';
+  }
+
+  @override
+  String notifCategoryWon(String category, String title) {
+    return 'Siz $category toifasida gʻolib boʻldingiz: $title!';
+  }
+
+  @override
+  String notifCategoryWonPlain(String title) {
+    return 'Siz gʻolib boʻldingiz: $title!';
+  }
 }

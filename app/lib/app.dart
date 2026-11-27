@@ -42,9 +42,15 @@ class _ActraAppState extends ConsumerState<ActraApp> with WidgetsBindingObserver
   void _reloadOthersChanges() {
     if (ref.read(sessionProvider).userName == null) return;
     // Games, past games, the leaderboards, team pages, the inbox and its
-    // count, and the player's sports.
+    // count, the player's sports, and tournaments.
     refreshSports(ref);
     ref.invalidate(teamsProvider);
+    // Tournament pages, brackets and the player's matches and entries (M8a:
+    // organisers enter scores and times meanwhile).
+    ref.invalidate(tournamentProvider);
+    ref.invalidate(bracketProvider);
+    ref.invalidate(myMatchesProvider);
+    ref.invalidate(myRegistrationsProvider);
   }
 
   /// Tells the backend the player is around (for "active users"): on start, on

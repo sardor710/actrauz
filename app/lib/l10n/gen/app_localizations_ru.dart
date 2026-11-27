@@ -3004,4 +3004,140 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tryAgain => 'Повторить';
+
+  @override
+  String get drawTitle => 'Сетка';
+
+  @override
+  String get roundFinal => 'Финал';
+
+  @override
+  String get roundSemiFinals => 'Полуфиналы';
+
+  @override
+  String get roundQuarterFinals => 'Четвертьфиналы';
+
+  @override
+  String roundNumber(int number) {
+    return 'Раунд $number';
+  }
+
+  @override
+  String get matchTbd => 'Определится';
+
+  @override
+  String get matchTimeTbd => 'Время уточняется';
+
+  @override
+  String get outcomeWalkover => 'Техническая победа';
+
+  @override
+  String get outcomeRetired => 'Отказ';
+
+  @override
+  String get outcomeDecider => 'Победа в решающей игре';
+
+  @override
+  String get outcomeNone => 'Без победителя';
+
+  @override
+  String get drawWinner => 'Победитель';
+
+  @override
+  String get drawRunnerUp => 'Второе место';
+
+  @override
+  String get tournamentFinished => 'Завершён';
+
+  @override
+  String groupLabel(String label) {
+    return 'Группа $label';
+  }
+
+  @override
+  String get tablePlayed => 'И';
+
+  @override
+  String get tableWon => 'В';
+
+  @override
+  String get tableLost => 'П';
+
+  @override
+  String get tablePoints => 'Очки';
+
+  @override
+  String get groupAdvancing => 'Выходит дальше';
+
+  @override
+  String get nextMatchTitle => 'Ваш следующий матч';
+
+  @override
+  String versusNames(String names) {
+    return 'Соперник: $names';
+  }
+
+  @override
+  String get myMatchesTitle => 'Мои матчи';
+
+  @override
+  String get manageTournament => 'Управление';
+
+  @override
+  String get manageComingSoon => 'Управление турниром скоро появится';
+
+  @override
+  String notifOrganizerAdded(String title) {
+    return 'Вы стали организатором турнира: $title';
+  }
+
+  @override
+  String notifOrganizerRemoved(String title) {
+    return 'Вы больше не организатор турнира: $title';
+  }
+
+  @override
+  String notifDrawPublished(String title) {
+    return 'Сетка турнира опубликована: $title';
+  }
+
+  @override
+  String notifDrawRedone(String title) {
+    return 'Сетка турнира составлена заново: $title';
+  }
+
+  @override
+  String notifWaitlistClosed(String title) {
+    return 'Лист ожидания турнира закрыт: $title';
+  }
+
+  @override
+  String notifMatchScheduled(String title) {
+    return 'Время вашего матча назначено: $title';
+  }
+
+  @override
+  String notifMatchResult(String title) {
+    return 'Результат вашего матча внесён: $title';
+  }
+
+  @override
+  String notifMatchCorrected(String title) {
+    return 'Результат вашего матча исправлен: $title';
+  }
+
+  @override
+  String notifEntryWithdrawn(String title) {
+    return 'Вас сняли с сетки турнира: $title';
+  }
+
+  @override
+  String notifCategoryWon(String category, String title) {
+    return 'Вы победили в категории $category: $title!';
+  }
+
+  @override
+  String notifCategoryWonPlain(String title) {
+    return 'Вы победили: $title!';
+  }
 }

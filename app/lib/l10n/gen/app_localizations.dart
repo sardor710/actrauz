@@ -5201,6 +5201,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get tryAgain;
+
+  /// No description provided for @drawTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get drawTitle;
+
+  /// No description provided for @roundFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final'**
+  String get roundFinal;
+
+  /// No description provided for @roundSemiFinals.
+  ///
+  /// In en, this message translates to:
+  /// **'Semi-finals'**
+  String get roundSemiFinals;
+
+  /// No description provided for @roundQuarterFinals.
+  ///
+  /// In en, this message translates to:
+  /// **'Quarter-finals'**
+  String get roundQuarterFinals;
+
+  /// No description provided for @roundNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {number}'**
+  String roundNumber(int number);
+
+  /// No description provided for @matchTbd.
+  ///
+  /// In en, this message translates to:
+  /// **'To be decided'**
+  String get matchTbd;
+
+  /// No description provided for @matchTimeTbd.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to be set'**
+  String get matchTimeTbd;
+
+  /// No description provided for @outcomeWalkover.
+  ///
+  /// In en, this message translates to:
+  /// **'Walkover'**
+  String get outcomeWalkover;
+
+  /// No description provided for @outcomeRetired.
+  ///
+  /// In en, this message translates to:
+  /// **'Retired'**
+  String get outcomeRetired;
+
+  /// No description provided for @outcomeDecider.
+  ///
+  /// In en, this message translates to:
+  /// **'Won on decider'**
+  String get outcomeDecider;
+
+  /// No description provided for @outcomeNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No winner'**
+  String get outcomeNone;
+
+  /// No description provided for @drawWinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Winner'**
+  String get drawWinner;
+
+  /// No description provided for @drawRunnerUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Runner-up'**
+  String get drawRunnerUp;
+
+  /// No description provided for @tournamentFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get tournamentFinished;
+
+  /// No description provided for @groupLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group {label}'**
+  String groupLabel(String label);
+
+  /// No description provided for @tablePlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'P'**
+  String get tablePlayed;
+
+  /// No description provided for @tableWon.
+  ///
+  /// In en, this message translates to:
+  /// **'W'**
+  String get tableWon;
+
+  /// No description provided for @tableLost.
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get tableLost;
+
+  /// No description provided for @tablePoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Pts'**
+  String get tablePoints;
+
+  /// No description provided for @groupAdvancing.
+  ///
+  /// In en, this message translates to:
+  /// **'Goes through'**
+  String get groupAdvancing;
+
+  /// No description provided for @nextMatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next match'**
+  String get nextMatchTitle;
+
+  /// No description provided for @versusNames.
+  ///
+  /// In en, this message translates to:
+  /// **'vs {names}'**
+  String versusNames(String names);
+
+  /// No description provided for @myMatchesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My matches'**
+  String get myMatchesTitle;
+
+  /// No description provided for @manageTournament.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manageTournament;
+
+  /// No description provided for @manageComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'The tournament manager is coming soon'**
+  String get manageComingSoon;
+
+  /// No description provided for @notifOrganizerAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'You are now an organiser of {title}'**
+  String notifOrganizerAdded(String title);
+
+  /// No description provided for @notifOrganizerRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'You are no longer an organiser of {title}'**
+  String notifOrganizerRemoved(String title);
+
+  /// No description provided for @notifDrawPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'The draw for {title} is published'**
+  String notifDrawPublished(String title);
+
+  /// No description provided for @notifDrawRedone.
+  ///
+  /// In en, this message translates to:
+  /// **'The draw for {title} was made again'**
+  String notifDrawRedone(String title);
+
+  /// No description provided for @notifWaitlistClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'The waitlist for {title} has closed'**
+  String notifWaitlistClosed(String title);
+
+  /// No description provided for @notifMatchScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Your match time in {title} is set'**
+  String notifMatchScheduled(String title);
+
+  /// No description provided for @notifMatchResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Your match result in {title} is in'**
+  String notifMatchResult(String title);
+
+  /// No description provided for @notifMatchCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'Your match result in {title} was corrected'**
+  String notifMatchCorrected(String title);
+
+  /// No description provided for @notifEntryWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'You were withdrawn from the draw of {title}'**
+  String notifEntryWithdrawn(String title);
+
+  /// No description provided for @notifCategoryWon.
+  ///
+  /// In en, this message translates to:
+  /// **'You won {category} at {title}!'**
+  String notifCategoryWon(String category, String title);
+
+  /// No description provided for @notifCategoryWonPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'You won at {title}!'**
+  String notifCategoryWonPlain(String title);
 }
 
 class _AppLocalizationsDelegate
