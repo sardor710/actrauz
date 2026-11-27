@@ -85,6 +85,7 @@ class GameScreen extends ConsumerWidget {
     return Scaffold(
       body: AsyncBody(
         value: ref.watch(gameProvider(gameId)),
+        onRetry: () => ref.invalidate(gameProvider(gameId)),
         builder: (game) {
           final venueId = game.venueId;
           final venue = venueId == null ? null : ref.watch(venueProvider(venueId)).valueOrNull;
@@ -153,7 +154,7 @@ class GameScreen extends ConsumerWidget {
               Expanded(
                 child: RefreshIndicator(
                   // Pull to see what other players changed meanwhile.
-                  onRefresh: () => reloadQuietly(ref.refresh(gameProvider(gameId).future)),
+                  onRefresh: () => pullToReload(context, ref.refresh(gameProvider(gameId).future)),
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,

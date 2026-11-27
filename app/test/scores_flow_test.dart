@@ -22,6 +22,29 @@ import 'games_host_flow_test.dart' show containerOf, refresh;
 
 const _sixFourTwice = [(6, 4), (6, 4)];
 
+/// The sample backend, with game and past-games loads that fail while
+/// [offline], and past games that come back [empty].
+class _Flaky extends SampleBackend {
+  _Flaky({required super.utcNow}) : super(meName: 'Test');
+
+  bool offline = false;
+
+  /// Past games come back empty.
+  bool empty = false;
+
+  @override
+  Future<Game> game(String id) async {
+    if (offline) throw const JoinException(JoinError.unavailable);
+    return super.game(id);
+  }
+
+  @override
+  Future<List<Game>> pastGames() async {
+    if (offline) throw const JoinException(JoinError.unavailable);
+    return empty ? const [] : super.pastGames();
+  }
+}
+
 /// The sample backend, with a confirm that takes a moment, as over a network.
 class _SlowConfirm extends SampleBackend {
   _SlowConfirm({required super.utcNow}) : super(meName: 'Test');
@@ -302,6 +325,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('score-confirm')), findsOneWidget);
+  });
+
+  testWidgets('a reload that fails keeps the game page on screen, and a failed pull says so', (tester) async {
+    late _Flaky backend;
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => backend = _Flaky(utcNow: clock));
+    await _openGame(tester, 'gf1');
+    expect(find.text('GAME FINISHED'), findsOneWidget);
+
+    backend.offline = true;
+    // As on coming back to the app.
+    containerOf(tester).invalidate(gameProvider);
+    await tester.pumpAndSettle();
+    expect(find.text('GAME FINISHED'), findsOneWidget);
+    expect(find.text('Something went wrong. Try again.'), findsNothing);
+
+    await tester.fling(find.byType(GameScreen), const Offset(0, 1500), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('GAME FINISHED'), findsOneWidget);
+    expect(find.text('Something went wrong. Try again.'), findsOneWidget, reason: 'the failed pull is not silent');
+    await settleSnackbars(tester);
+  });
+
+  testWidgets('a game page that failed to load offers Try again', (tester) async {
+    late _Flaky backend;
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => backend = _Flaky(utcNow: clock));
+    backend.offline = true;
+    containerOf(tester).read(routerProvider).go('/games/gf1');
+    await tester.pumpAndSettle();
+    expect(find.text('GAME FINISHED'), findsNothing);
+
+    backend.offline = false;
+    await tap(tester, find.text('Try again'));
+    expect(find.text('GAME FINISHED'), findsOneWidget);
+  });
+
+  testWidgets('Past games with nothing listed can still be pulled to refresh', (tester) async {
+    late _Flaky backend;
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => backend = _Flaky(utcNow: clock));
+    final c = containerOf(tester);
+    c.read(routerProvider).go('/games/past');
+    await tester.pumpAndSettle();
+    expect(find.byType(GameCard), findsNWidgets(3));
+    // Shown empty, as for a player with no games yet.
+    c.invalidate(pastGamesProvider);
+    backend.empty = true;
+    await tester.pumpAndSettle();
+    expect(find.text('No games in the last 30 days'), findsOneWidget);
+
+    backend.empty = false;
+    await tester.fling(find.text('No games in the last 30 days'), const Offset(0, 1500), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(GameCard), findsNWidgets(3));
   });
 
   testWidgets('a refused confirm reloads the game', (tester) async {

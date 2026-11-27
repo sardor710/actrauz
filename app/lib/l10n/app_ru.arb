@@ -838,5 +838,6 @@
   "auditReportClosed": "Жалоба закрыта",
   "auditTeamDeleted": "Команда удалена",
   "reviewCloseReport": "Закрыть жалобу",
-  "playedCount": "{count, plural, one{Сыграл {count} игрок} few{Сыграли {count} игрока} many{Сыграли {count} игроков} other{Сыграли {count} игрока}}"
+  "playedCount": "{count, plural, one{Сыграл {count} игрок} few{Сыграли {count} игрока} many{Сыграли {count} игроков} other{Сыграли {count} игрока}}",
+  "tryAgain": "Повторить"
 }

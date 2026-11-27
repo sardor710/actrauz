@@ -5,21 +5,40 @@ import '../../core/theme.dart';
 import '../../data/sample/sample_media.dart';
 import 'formatters.dart';
 
-/// Loading, error and data states for one async value.
+/// Loading, error and data states for one async value. Data already shown
+/// stays on screen while it reloads and when a reload fails; the error
+/// state is only for a value that never loaded.
 class AsyncBody<T> extends StatelessWidget {
-  const AsyncBody({super.key, required this.value, required this.builder});
+  const AsyncBody({super.key, required this.value, required this.builder, this.onRetry});
 
   final AsyncValue<T> value;
   final Widget Function(T data) builder;
 
+  /// When set, the error state offers "Try again", which calls it.
+  final VoidCallback? onRetry;
+
   @override
   Widget build(BuildContext context) => value.when(
+    skipLoadingOnReload: true,
+    skipLoadingOnRefresh: true,
+    skipError: true,
     data: builder,
     loading: () => const Padding(
       padding: EdgeInsets.all(32),
       child: Center(child: CircularProgressIndicator()),
     ),
-    error: (error, _) => EmptyState(icon: Icons.error_outline, text: context.l.errGeneric),
+    error: (error, _) {
+      final retry = onRetry;
+      final state = EmptyState(icon: Icons.error_outline, text: context.l.errGeneric);
+      if (retry == null) return state;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          state,
+          OutlinedButton(key: const ValueKey('async-retry'), onPressed: retry, child: Text(context.l.tryAgain)),
+        ],
+      );
+    },
   );
 }
 
@@ -405,12 +424,12 @@ void showMessage(BuildContext context, String text) {
     ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
 }
 
-/// Waits for a pull-to-refresh reload. A failed one is not thrown again: the
-/// page shows the provider's error itself.
-Future<void> reloadQuietly(Future<Object?> reload) async {
+/// Waits for a pull-to-refresh reload. A failed one keeps the page as it was
+/// (see [AsyncBody]) and says so, so the pull is not silently ignored.
+Future<void> pullToReload(BuildContext context, Future<Object?> reload) async {
   try {
     await reload;
   } catch (_) {
-    // Shown by the page's AsyncBody.
+    if (context.mounted) showMessage(context, context.l.errGeneric);
   }
 }

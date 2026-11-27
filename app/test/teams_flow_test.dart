@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:actra/app.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
@@ -29,6 +31,14 @@ class _LeaveFails extends SampleBackend {
 
   @override
   Future<void> leaveTeam(String id) async => throw const JoinException(JoinError.unavailable);
+}
+
+/// The sample backend, with the team list never arriving.
+class _TeamsPending extends SampleBackend {
+  _TeamsPending({required super.utcNow}) : super(meName: 'Test');
+
+  @override
+  Future<List<Team>> teams(String cityId) => Completer<List<Team>>().future;
 }
 
 /// The sample backend, with joining a team taking a moment, as over a network.
@@ -598,6 +608,16 @@ void main() {
     final game = (await backend.games('tashkent')).singleWhere((g) => g.bookingId == booking.id);
     expect(game.team, isNull);
     expect(game.visibility, GameVisibility.public);
+  });
+
+  testWidgets('with a team chosen, Create waits for the teams to load', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => _TeamsPending(utcNow: clock));
+    // The booking chooses the sport and is picked; only the teams are missing.
+    final booking = await bookPadel(tester);
+    await _go(tester, '/games/new?team=tm-anything&booking=${booking.id}');
+    expect(find.byKey(ValueKey('booking-${booking.id}')), findsOneWidget);
+
+    expect(tester.widget<FilledButton>(_key('create-game-submit')).onPressed, isNull, reason: 'not as a public game');
   });
 
   testWidgets('team choice is hidden without a team', (tester) async {

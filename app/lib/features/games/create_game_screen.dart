@@ -171,7 +171,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
     final (:choices, loading: loadingVenues) = bookingChoices(ref);
 
     // Coming from a booking or a team chooses its sport too.
-    final teams = ref.watch(teamsProvider).valueOrNull ?? const <Team>[];
+    final teamsValue = ref.watch(teamsProvider);
+    final teams = teamsValue.valueOrNull ?? const <Team>[];
     final fromBooking = choices.where((c) => c.booking.id == widget.bookingId).firstOrNull;
     final fromTeam = teams.where((t) => t.id == widget.teamId && t.isCaptain).firstOrNull;
     final sportId = _sportId ?? fromBooking?.court.sportId ?? fromTeam?.sportId;
@@ -197,7 +198,11 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
         ? teams.where((t) => t.id == _teamId && t.isCaptain && t.sportId == sportId).firstOrNull
         : null;
     final spots = _spots ?? (sport?.defaultPlayers ?? 4).clamp(SpotsStepper.min, SpotsStepper.max);
-    final canCreate = sport != null && !_busy && (!sport.bookable || chosen != null) && stranded == null;
+    // A team was chosen but the teams have not loaded (or failed): not as a
+    // public game meanwhile.
+    final teamsPending = _teamId != null && !teamsValue.hasValue;
+    final canCreate =
+        sport != null && !_busy && (!sport.bookable || chosen != null) && stranded == null && !teamsPending;
 
     return Scaffold(
       appBar: AppBar(

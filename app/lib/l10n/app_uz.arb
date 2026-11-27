@@ -838,5 +838,6 @@
   "auditReportClosed": "Shikoyat yopildi",
   "auditTeamDeleted": "Jamoa oʻchirildi",
   "reviewCloseReport": "Shikoyatni yopish",
-  "playedCount": "{count, plural, other{{count} kishi oʻynadi}}"
+  "playedCount": "{count, plural, other{{count} kishi oʻynadi}}",
+  "tryAgain": "Qayta urinish"
 }

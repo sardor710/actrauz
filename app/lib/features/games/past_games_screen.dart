@@ -18,23 +18,24 @@ class PastGamesScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(l.pastGames)),
       body: AsyncBody(
         value: ref.watch(pastGamesProvider),
-        builder: (games) => games.isEmpty
-            ? Center(child: EmptyState(icon: Icons.history_rounded, text: l.noPastGames))
-            : RefreshIndicator(
-                // Pull to see scores other players entered meanwhile.
-                onRefresh: () => reloadQuietly(ref.refresh(pastGamesProvider.future)),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  children: [
-                    for (final game in games)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: GameCard(game: game),
-                      ),
-                  ],
+        onRetry: () => ref.invalidate(pastGamesProvider),
+        builder: (games) => RefreshIndicator(
+          // Pull to see scores other players entered meanwhile, also from
+          // the empty state.
+          onRefresh: () => pullToReload(context, ref.refresh(pastGamesProvider.future)),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              if (games.isEmpty) EmptyState(icon: Icons.history_rounded, text: l.noPastGames),
+              for (final game in games)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GameCard(game: game),
                 ),
-              ),
+            ],
+          ),
+        ),
       ),
     );
   }

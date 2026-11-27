@@ -176,12 +176,13 @@ class TeamScreen extends ConsumerWidget {
       ),
       body: AsyncBody(
         value: value,
+        onRetry: () => ref.invalidate(teamProvider(teamId)),
         builder: (team) => Column(
           children: [
             Expanded(
               child: RefreshIndicator(
                 // Pull to see what the captain and the others changed meanwhile.
-                onRefresh: () => reloadQuietly(ref.refresh(teamProvider(teamId).future)),
+                onRefresh: () => pullToReload(context, ref.refresh(teamProvider(teamId).future)),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(top: 8, bottom: 16),

@@ -125,6 +125,8 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     final l = context.l;
     // Taken now: the sheet may be gone when the save returns.
     final container = ProviderScope.containerOf(context, listen: false);
+    // The page's messenger, for a refusal that comes back after the sheet is gone.
+    final messenger = ScaffoldMessenger.of(context);
     final games = ref.read(gameRepositoryProvider);
     setState(() {
       _busy = true;
@@ -137,7 +139,13 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     } on JoinException catch (e) {
       // The game may have moved on (a score entered or disputed meanwhile).
       refreshGamesIn(container);
-      if (!mounted) return;
+      if (!mounted) {
+        // Swiped away meanwhile: say why on the page instead.
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(joinErrorText(l, e)), behavior: SnackBarBehavior.floating));
+        return;
+      }
       setState(() {
         _busy = false;
         _error = joinErrorText(l, e);

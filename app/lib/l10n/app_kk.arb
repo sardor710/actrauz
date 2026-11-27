@@ -838,5 +838,6 @@
   "auditReportClosed": "Шағым жабылды",
   "auditTeamDeleted": "Команда жойылды",
   "reviewCloseReport": "Шағымды жабу",
-  "playedCount": "{count, plural, other{{count} адам ойнады}}"
+  "playedCount": "{count, plural, other{{count} адам ойнады}}",
+  "tryAgain": "Қайталау"
 }
