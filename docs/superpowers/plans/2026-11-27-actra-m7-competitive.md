@@ -84,7 +84,7 @@
 - Questionnaire: exactly five answers, each 0–3. Points per answer index: Q1 `[0, 0.3, 0.6, 0.8]`, Q2 `[0, 0.2, 0.4, 0.6]`, Q3 `[0, 0.4, 0.8, 1.2]`, Q4 `[0, 0.3, 0.6, 0.7]`, Q5 `[0, 0.3, 0.6, 0.7]`. Rating = `least(5.00, 1.00 + sum)`.
 - `set_my_sport`: simple sport → needs `p_level` 1–5, upserts `player_levels`; rated sport → if a rating with `rated_games > 0` exists, only `sync_level` (answers ignored); else needs five answers, upserts the rating with source `questionnaire`, then `sync_level`. Unknown or inactive sport, or wrong arguments → `invalid_argument`. `can_retake` = rated sport and `rated_games = 0`.
 - `remove_my_sport` deletes the `player_levels` row only.
-- Backfill in the migration: every `player_levels` row of a rated sport with no rating gets `rating = level + 0.5`, source `level`.
+- Backfill in the migration: every `player_levels` row of a rated sport with no rating gets `rating = level + 0.5`, source `level`; every game and game request of a rated sport with a null rating range gets one from its level range by the old-build conversion below.
 - Replace the three write policies on `player_levels` (insert, update, delete) so they also require `exists (select 1 from public.sports s where s.id = sport_id and not s.competitive_rating)`.
 - `create_game`, `create_game_request`: for a rated sport, if `min_rating`/`max_rating` are in the JSON (numbers 1.0–7.0, min ≤ max, else `invalid_argument`) store them and set `min_level = least(5, floor(min_rating))`, `max_level = least(5, floor(max_rating))`; if absent, set `min_rating = min_level`, `max_rating = case max_level when 5 then 7.00 else max_level + 0.99 end`. Simple sports store null. `convert_game_request` passes the request's rating range into the game.
 - `join_game`: for a game with `min_rating` set, compare `app.effective_rating` with the range instead of the level; still `level_out_of_range`, still skipped for invited players.
@@ -98,7 +98,7 @@
   - `simple sport takes a level`: football level 4 stored; football with answers and no level → `invalid_argument`; padel with only a level → `invalid_argument`.
   - `rating is locked after a rated game`: set `rated_games = 1`, answer again → rating unchanged, no error, `can_retake: false`.
   - `clients cannot write a rated level`: `asUser` insert, update and delete on `player_levels` for padel fail (`42501` or zero rows changed); the same for football succeeds.
-  - `backfill`: run the backfill block (between `-- backfill:start` / `-- backfill:end` markers, as `games_v2.test.mjs` does) on a padel level 3 row → rating `3.50`, level 3.
+  - `backfill`: run the backfill block (between `-- backfill:start` / `-- backfill:end` markers, as `games_v2.test.mjs` does) on a padel level 3 row → rating `3.50`, level 3; an existing open padel game with levels 2–4 and null ratings → `2.00`–`4.99`; a football game stays null.
   - `old build creates a padel game`: `create_game` with `min_level: 2, max_level: 4` → `min_rating 2.00`, `max_rating 4.99`; `max_level: 5` → `7.00`; JSON `min_level`/`max_level` are integers.
   - `rating range sets the level range`: `min_rating: 3.0, max_rating: 4.5` → `min_level 3`, `max_level 4`; `min_rating: 5` with `max_rating: 4` → `invalid_argument`; football game has null ratings.
   - `join checks the rating`: range 3.0–4.5: rating 4.70 → `level_out_of_range`; 4.50 joins; a player with no rating → `level_out_of_range` and joins a 1.0–2.5 game; an invited 4.70 player joins.
@@ -139,7 +139,7 @@
 - `confirm_score`: caller is in the result, is not `entered_by`, status `pending` (else `not_found`); records the caller's `confirmed_at`; if the caller is on the other side from `entered_by`, calls `apply_result`.
 - `dispute_score`: caller in the result, status `pending` (else `not_found`); status `disputed`, reason trimmed to 300 characters.
 - `auto_confirm_scores`: `apply_result` for every `pending` result with `confirm_deadline <= p_now`.
-- `apply_result`: players with no `player_ratings` row first get one — the average rating of the result's players who do have a row, rounded to 2 decimals, capped at `questionnaire_cap`; `unrated_default` if nobody has one — source `first_result`. Then with `Ra`, `Rb` the side averages:
+- `apply_result`: after locking the result row, insert missing `player_ratings` rows, then lock the result's players' `player_ratings` rows `for update` in `user_id` order, so two results that share a player cannot lose an update. Players with no `player_ratings` row first get one — the average rating of the result's players who do have a row, rounded to 2 decimals, capped at `questionnaire_cap`; `unrated_default` if nobody has one — source `first_result`. Then with `Ra`, `Rb` the side averages:
   ```
   expected_a = 1 / (1 + 10 ^ (Rb - Ra))            expected_b = 1 - expected_a
   actual     = 1 win, 0.5 draw, 0 loss
@@ -166,10 +166,10 @@
   - `all unrated start at 2.50`.
   - `rating stays within 1.00–7.00`: a 1.00 player loses → `1.00`.
   - `admin confirms, corrects and voids a dispute`: `confirm` applies; `correct` with `[[6,0],[6,0]]` applies the new score; `void` on a disputed result leaves ratings alone; each writes one audit row; a non-admin → `not_allowed`.
-  - `void after a later result`: confirm result 1 (+0.13 for player A), then a second game moves A by +0.10; void result 1 → A's rating is `3.50 + 0.10 = 3.60`, `rated_games 1`, result 1's events gone, level synced.
+  - `void after a later result`: confirm result 1 (+0.13 for player A), then confirm a second game A also wins; read A's rating `r2`; void result 1 → A's rating is `r2 − 0.13`, `rated_games 1`, result 1's events gone, result 2's events untouched, level synced.
   - `levels follow ratings`: a player crossing from 2.95 to 3.05 has `player_levels.level 3`.
   - `client calls`: `asUser` → `public.enter_score` returns game JSON with `result.status = 'pending'`; `asAnon` → `42501`.
-- [ ] **Step 2:** Add to `concurrency.test.mjs` the test `concurrent confirm and auto-confirm`: two connections run `app.confirm_score` (opponent) and `app.auto_confirm_scores(now + 24h)` at once (the pattern the file already uses for bookings) → exactly four `rating_events`.
+- [ ] **Step 2:** Add to `concurrency.test.mjs` the test `concurrent confirm and auto-confirm`: two connections run `app.confirm_score` (opponent) and `app.auto_confirm_scores(now + 24h)` at once (the pattern the file already uses for bookings) → exactly four `rating_events`. And `two results sharing a player`: two games with player A in both, confirmed at once on two connections → A's rating equals the start plus both events' deltas.
 - [ ] **Step 3: Run** `npm test -- scores`. Expected: FAIL.
 - [ ] **Step 4: Write the migration** per "Rules to implement".
 - [ ] **Step 5: Run** `npm test`. Expected: all pass.
@@ -210,11 +210,12 @@
 - `SocialRepository`: `Future<List<MySport>> mySports()`, `Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers})`, `Future<List<MySport>> removeSport(String sportId)`; `players(...)` gains `double? minRating, double? maxRating` (used instead of the level range when the sport is rated; the Supabase implementation then calls `list_players_rated`).
 - `JoinError.ratingLocked` (`rating_locked`) and `JoinError.scoreClosed` (`score_closed`), with `errRatingLocked`, `errScoreClosed` strings.
 - Providers: `mySportsProvider` (`FutureProvider<List<MySport>>`), `refreshSports(WidgetRef ref)` (invalidates `mySportsProvider`, `playerProvider`, `playerProfileProvider`, games).
-- Sample data: `kSamplePlayers` get a `ratings` entry for every padel/tennis level they have (`level + 0.5`, 12 rated games so they are established, except p2 with 4); the demo player `me` starts with **no** sports (today's hard-coded level 3 everywhere is removed). `seed_sql.dart` writes matching `player_ratings` rows and the derived level.
+- Sample data: `kSamplePlayers` get a `ratings` entry for every padel/tennis level they have (`level + 0.5`, 12 rated games so they are established, except p2 with 4). `seed_sql.dart` writes matching `player_ratings` rows and the derived level.
+- **The demo player's sports and the test seam.** `SampleBackend` gains `Map<String, int> meLevels` and `Map<String, SportRating> meRatings` (both default empty: a new player has no sports; today's hard-coded level 3 everywhere goes). `sampleBackendProvider` passes them from a new `demoSportsProvider` (`Provider<({Map<String, int> levels, Map<String, SportRating> ratings})>`, default empty). In `app/test/app_flow_test.dart`, `pumpApp` gains `bool withSports = true`: when true it overrides `demoSportsProvider` with level 3 in every simple sport and rating 3.50 with 12 rated games in padel and tennis, so the existing flow tests behave as before; new tests that need a fresh player pass `withSports: false`. The shared `signedIn` prefs gain `'sports_prompted': true` (Task 5 reads it).
 
 - [ ] **Step 1: Write the failing tests.** `competitive_test.dart`: the three questionnaire values from Task 1 and `ArgumentError` for four answers. `games_test.dart`: `joinGame` with range 3.0–4.5 and a 4.7 player → `JoinError.levelOutOfRange`, 4.5 joins, invited 4.7 joins. `sample_backend_test.dart`: `setSport('padel', answers: [1,2,1,0,2])` → rating 2.7, level 2, `canRetake`; `setSport('football', level: 4)`; `removeSport`; `players('tashkent', sportId: 'padel', minRating: 3, maxRating: 4)` returns only players in range; a padel game created with `minRating: 3, maxRating: 4.5` has `minLevel 3`, `maxLevel 4`. Mappers: `gameFromJson` reads `min_rating`, participant `rating`/`provisional`; `playerProfileFromJson` reads `ratings`; a JSON without the new keys still maps (old backend). Seed: `seed_sql_test.dart` expects `player_ratings` rows.
 - [ ] **Step 2: Run** `flutter test test/domain test/data`. Expected: FAIL (missing symbols).
-- [ ] **Step 3: Implement**, then `dart run tool/gen_seed.dart` and `flutter gen-l10n`. Fix every test that relied on the demo player being level 3 in all sports by giving the test its own `setSport` call.
+- [ ] **Step 3: Implement**, then `dart run tool/gen_seed.dart` and `flutter gen-l10n`. Tests that build `SampleBackend` directly and relied on the demo player being level 3 pass `meLevels` / `meRatings` themselves.
 - [ ] **Step 4: Run** `flutter test`, `flutter analyze`, and `npm test -- seed` in `supabase/`. Expected: all pass.
 - [ ] **Step 5: Commit** `M7: ratings in the app's domain, sample data and backend calls`.
 
@@ -235,35 +236,48 @@
 - Before creating or joining a game in a rated sport, call `ensureRated`.
 - Admin sports sheet: the rating `SegmentedButton` is disabled with a line "Set by Actra. Ask engineering to change it."
 
-- [ ] **Step 1: Write the failing widget tests** in `sports_flow_test.dart` (import `pumpApp`, `signedIn`, `tap` from `app_flow_test.dart`): `new player is asked to pick sports` (sheet shown once; not on the second launch); `padel questionnaire sets a rating` (answers 2nd, 3rd, 2nd, 1st, 3rd options → "2.70" and "Provisional" on the profile); `football takes a level`; `turning a sport off removes it`; `joining padel without a rating opens the questionnaire`; `padel game shows a rating range` (create with 3.0–4.5 → card shows "3.0–4.5"); `admin cannot switch rating mode` (control disabled).
+- [ ] **Step 1: Write the failing widget tests** in `sports_flow_test.dart` (import `pumpApp`, `signedIn`, `tap` from `app_flow_test.dart`; these tests use `withSports: false`, and the prompt test uses prefs without `sports_prompted`): `new player is asked to pick sports` (sheet shown once; not on the second launch); `padel questionnaire sets a rating` (answers 2nd, 3rd, 2nd, 1st, 3rd options → "2.70" and "Provisional" on the profile); `football takes a level`; `turning a sport off removes it`; `joining padel without a rating opens the questionnaire`; `padel game shows a rating range` (create with 3.0–4.5 → card shows "3.0–4.5"); `admin cannot switch rating mode` (control disabled).
 - [ ] **Step 2: Run** `flutter test test/sports_flow_test.dart`. Expected: FAIL.
 - [ ] **Step 3: Implement** with the existing widgets (`SectionCard`, `Pill`, `showOptionSheet`, `AsyncBody`); no new colours or type styles.
 - [ ] **Step 4: Run** `flutter test` (including `test/ui`) and `flutter analyze`. Expected: all pass.
 - [ ] **Step 5: Commit** `M7: My sports, rating questionnaire and rating ranges in the app`.
 
-### Task 6: Scores and past games in the app
+### Task 6A: Scores and past games in the app's data layer
 
 **Files:**
-- Create: `app/lib/features/games/finished_section.dart`, `score_sheet.dart`, `past_games_screen.dart`, `app/test/scores_flow_test.dart`
-- Modify: `app/lib/domain/competitive.dart` (`MatchResult`, `ResultStatus`, `RatingChange`, `ratingChanges(...)`), `domain/games.dart` (`Game.result`, `bool Game.endedAt(DateTime now)`), `domain/community.dart` (`kNotificationCategories` gains `ratings`, `teams`; routes for the new kinds), `data/repositories.dart`, `data/sample/sample_competitive.dart`, `sample_repositories.dart`, `sample_data.dart` (one finished padel game seed: `me` host with p1, p2, p3, ended yesterday; sample-only, not written to `seed.sql`), `data/supabase/mappers.dart`, `supabase_game_repository.dart`, `features/games/game_screen.dart`, `games_screen.dart`, `features/inbox/inbox_screen.dart`, `features/profile/settings_screen.dart`, `router.dart` (`/games/past` before `/games/:id`), `state/providers.dart`, four ARB files
+- Modify: `app/lib/domain/competitive.dart` (`MatchResult`, `ResultStatus`, `RatingChange`, `ratingChanges(...)`), `domain/games.dart` (`Game.result`, `bool Game.endedAt(DateTime now)`), `domain/community.dart` (`kNotificationCategories` gains `ratings`, `teams`; routes for the new kinds), `data/repositories.dart`, `data/sample/sample_competitive.dart`, `sample_repositories.dart`, `sample_data.dart` (finished padel game seeds, sample-only, not written to `seed.sql`: `gf1` hosted by `me` with p1, p2, p3, ended yesterday, no result; `gf2` hosted by p1 with `me`, p2, p3, ended yesterday, with a pending result entered by p1), `data/supabase/mappers.dart`, `supabase_game_repository.dart`, `features/inbox/inbox_screen.dart` (`notificationText` and icon cases), `features/profile/settings_screen.dart` (`_categoryLabel` cases), `state/providers.dart`, four ARB files
 - Test: `app/test/domain/competitive_test.dart`, `test/data/sample_backend_test.dart`, `test/data/supabase_mappers_test.dart`, `test/domain/tournaments_test.dart:817` (category list)
 
 **Interfaces — produces:**
 - `GameRepository`: `Future<List<Game>> pastGames()`, `Future<Game> enterScore(String gameId, {required List<String> sideA, required List<String> sideB, required List<(int, int)> sets})`, `Future<Game> confirmScore(String resultId)`, `Future<Game> disputeScore(String resultId, {String? reason})`. `SampleBackend` adds `enterScoreAs`, `confirmScoreAs`, `disputeScoreAs(userId, …)`, `autoConfirmScores()`.
 - `class MatchResult { id, status, sets, winner, enteredBy, sideA, sideB, confirmedBy, disputeReason, changes (Map<String, RatingChange>) }`; `({List<RatingChange> a, List<RatingChange> b}) ratingChanges({required List<SportRating?> sideA, required List<SportRating?> sideB, required List<(int, int)> sets})` implementing Task 2's formula, including the starting rating of a player passed as null; `class RatingChange { final double oldRating; final double newRating; double get delta; }`.
-- `pastGamesProvider`; notification kinds `game_finished`, `score_entered`, `score_disputed`, `score_resolved`, `rating_updated` all route to `/games/<game_id>`.
+- `pastGamesProvider`; notification kinds `game_finished`, `score_entered`, `score_disputed`, `score_resolved`, `rating_updated` all route to `/games/<game_id>` and each has its own inbox text in four languages (`game_finished` has two: "enter the score" when `can_score`, "rate the game" otherwise).
+- Sample rules mirror Tasks 2–3: who may enter and when, opponent confirmation, `autoConfirmScores()`, dispute, roster freeze in `leaveAs` (`JoinError.notFound` once started), `game_finished` to `me` when a sample game ends.
+
+- [ ] **Step 1: Write the failing tests.** `competitive_test.dart`: `ratingChanges` gives `+0.13 / −0.13` (four provisional 3.50, 6–4 6–4), `+0.05` established, `+0.03 / −0.03` and `+0.34 / −0.34` for 4.50 v 3.50, `0` for a draw, a null player starting at the others' average capped at 5.00, all null → 2.50. `sample_backend_test.dart`: `gf1` is in `pastGames()` and not in `games()`; `enterScore` by `me` → `pending`; `confirmScoreAs('p2', …)` (opponent) → confirmed, `me` gets `rating_updated`, `mySports` rating moved; a partner's confirm stays pending; `disputeScoreAs` → disputed and no change; `autoConfirmScores()` after 24 hours on a mutable test clock; `leaveAs` on a started game throws `JoinError.notFound`; a score on a football game throws `notFound`; the inbox entry routes to `/games/<id>`. Mappers: `result` maps with `changes`; an absent `result` is null. `tournaments_test.dart:817`: the category list includes `ratings` and `teams`.
+- [ ] **Step 2: Run** `flutter test test/domain test/data`. Expected: FAIL.
+- [ ] **Step 3: Implement**, then `flutter gen-l10n`.
+- [ ] **Step 4: Run** `flutter test`, `flutter analyze`. Expected: all pass.
+- [ ] **Step 5: Commit** `M7: scores and past games in the app's data layer`.
+
+### Task 6B: Score entry, confirmation and past games (screens)
+
+**Files:**
+- Create: `app/lib/features/games/finished_section.dart`, `score_sheet.dart`, `past_games_screen.dart`, `app/test/scores_flow_test.dart`
+- Modify: `app/lib/features/games/game_screen.dart`, `games_screen.dart`, `router.dart` (`/games/past` before `/games/:id`), four ARB files
+
+**Interfaces — consumes:** Task 6A's repository methods, `pastGamesProvider`, `Game.result`, `Game.endedAt`, seeds `gf1`, `gf2`.
 
 **Behaviour**
 - The game page shows `FinishedSection` to participants once the game has ended and was not cancelled. For a rated sport its score block is one of: "Enter the score" (host; or any participant after 24 hours) opening `ScoreSheet`; the pending score with "Confirm" / "Dispute" for the other players and "Edit" for whoever entered it; "Waiting for the other side" for the enterer's partner after confirming; the confirmed score with each player's change ("3.50 → 3.63"); "Disputed — an Actra admin will review"; "Result cancelled by Actra" for void. After 7 days with no result: "Score entry closed".
 - `ScoreSheet`: pick who played (pre-filled for 2 or 4 participants: host's side first), then 1–5 set rows with two number steppers each, an "Add set" button, and Save.
 - Games tab: a "Past games" link above the list opens `/games/past` (cards as in the list, newest first, empty state).
-- Settings shows the two new mute switches (`notifCategoryRatings`, `notifCategoryTeams`).
 
-- [ ] **Step 1: Write the failing tests.** `competitive_test.dart`: `ratingChanges` gives `+0.13 / −0.13` (four provisional 3.50, 6–4 6–4), `+0.05` established, `+0.03 / −0.03` and `+0.34 / −0.34` for 4.50 v 3.50, `0` for a draw, unrated → others' average. `sample_backend_test.dart`: the seeded finished game is in `pastGames()` and not in `games()`; `enterScore` by `me` → `pending`; `confirmScoreAs('p2', …)` (opponent) → confirmed, `me` gets `rating_updated`, `mySports` rating moved; partner confirm stays pending; `disputeScoreAs` → disputed and no change; `leaveAs` on a started game throws `JoinError.notFound`; score on a football game throws `notFound`. Mappers: `result` maps; absent `result` is null. `scores_flow_test.dart`: `host enters a score` (open the finished game from Past games, enter 6–4 6–4, see "Waiting…"/pending state); `rating change is shown after confirmation` (backend `confirmScoreAs` then refresh → "→" line and an inbox entry that opens the game); `opponent can dispute` (seed a second finished game hosted by p1 with a pending result; tap Dispute).
-- [ ] **Step 2: Run** the three test files. Expected: FAIL.
+- [ ] **Step 1: Write the failing widget tests** in `scores_flow_test.dart`: `host enters a score` (open `gf1` from Past games, enter 6–4 6–4, see the pending score and "Edit"); `rating change is shown after confirmation` (`confirmScoreAs('p2', …)` on the backend, refresh → the "3.50 → 3.63" line, and an inbox entry that opens the game); `opponent can confirm or dispute` (`gf2`: Confirm shows the confirmed score; in a second test Dispute shows "Disputed"); `past games is empty for a new player`; `a football game has no score block`.
+- [ ] **Step 2: Run** `flutter test test/scores_flow_test.dart`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `flutter test`, `flutter analyze`. Expected: all pass.
-- [ ] **Step 5: Commit** `M7: score entry, confirmation and past games in the app`.
+- [ ] **Step 5: Commit** `M7: score entry, confirmation and past games screens`.
 
 ### Task 7: Leaderboard screen
 
@@ -295,10 +309,10 @@
 - `app.report_no_show(p_user uuid, p_game_id uuid, p_target uuid, p_reported boolean, p_now timestamptz) returns void`
 - `app.report_player(p_user uuid, p_target uuid, p_game_id uuid, p_reason text, p_details text, p_now timestamptz) returns uuid`
 - `app.sportsmanship(p_user uuid) returns jsonb` — `{"votes": n, "percent": p}` with `percent` null when `n < 5`
-- `app.admin_review(p_user uuid) returns jsonb` — `{"disputes":[{"result": result_json, "game": game_note, "players":[{"id","name","side"}], "disputed_by_name"}], "reports":[{"id","reporter_id","reporter_name","target_id","target_name","game_id","reason","details","created_at"}], "counts":{"disputes","reports"}}`; disputes = results with status `disputed` or `flagged_no_show`
+- `app.admin_review(p_user uuid) returns jsonb` — `{"disputes":[{"result": result_json, "game": game_note, "players":[{"id","name","side"}], "disputed_by_name"}], "reports":[{"id","reporter_id","reporter_name","target_id","target_name","game_id","game","result","reason","details","created_at"}], "counts":{"disputes","reports"}}`; disputes = results with status `disputed` or `flagged_no_show`; a report's `game` is `game_note` and `result` is the `result_json` of that game's result (both null without a game), so an admin can void a confirmed score from a "false score" report
 - `app.admin_close_report(p_user uuid, p_report_id uuid, p_note text, p_now timestamptz) returns void` (audit action `report_closed`)
 - Public: `vote_player(p_game_id uuid, p_target uuid, p_up boolean) returns jsonb`, `report_no_show(p_game_id uuid, p_target uuid, p_reported boolean) returns jsonb` (both return the game JSON), `report_player(p_target uuid, p_game_id uuid default null, p_reason text default 'other', p_details text default null) returns void`, `admin_review() returns jsonb`, `admin_close_report(p_report_id uuid, p_note text default null) returns void`.
-- `game_json` gains `after_game` for participants of an ended game: `{"votes": {target_id: bool}, "no_shows": [target_id], "can_vote": bool, "can_report_no_show": bool}` (the caller's own entries only); `player_json` gains `sportsmanship`.
+- `game_json` gains `after_game` for participants of an ended game: `{"votes": {target_id: bool}, "no_shows": [target_id]}` (the caller's own entries only; the app works out the 7-day and 48-hour windows from `ends_local` and its own clock, the server enforces them); `player_json` gains `sportsmanship`.
 - Notification kind `no_show_recorded` (category `games`, payload `app.game_note(g)`).
 
 **Rules**
@@ -319,7 +333,7 @@
 
 **Files:**
 - Create: `app/lib/features/games/report_sheet.dart`, `app/test/after_game_flow_test.dart`
-- Modify: `app/lib/domain/competitive.dart` (`AfterGame`, `Sportsmanship`, `enum ReportReason { language, aggression, falseScore, other }`), `domain/games.dart` (`Game.afterGame`), `domain/community.dart` (`PlayerProfile.sportsmanship`, route for `no_show_recorded`), `data/repositories.dart`, `data/social.dart`, sample and Supabase repositories, `mappers.dart`, `features/games/finished_section.dart`, `features/social/player_profile_screen.dart`, `features/profile/profile_screen.dart`, `features/inbox/inbox_screen.dart`, four ARB files
+- Modify: `app/lib/domain/competitive.dart` (`AfterGame { myVotes, myNoShows }`, `bool canVote(Game, DateTime now)`, `bool canReportNoShow(Game, DateTime now)`, `Sportsmanship`, `enum ReportReason { language, aggression, falseScore, other }`), `domain/games.dart` (`Game.afterGame`), `domain/community.dart` (`PlayerProfile.sportsmanship`, route for `no_show_recorded`), `data/repositories.dart`, `data/social.dart`, sample and Supabase repositories, `mappers.dart`, `features/games/finished_section.dart`, `features/social/player_profile_screen.dart`, `features/profile/profile_screen.dart`, `features/inbox/inbox_screen.dart`, four ARB files
 
 **Interfaces — produces:** `GameRepository.vote(String gameId, String targetId, bool? up) → Future<Game>`, `GameRepository.reportNoShow(String gameId, String targetId, {required bool reported}) → Future<Game>`, `SocialRepository.reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details}) → Future<void>`; `SampleBackend.voteAs`, `reportNoShowAs`; `JoinError.alreadyReported` (`already_exists` from `report_player`) with `errAlreadyReported`.
 
@@ -340,7 +354,7 @@
 
 **Interfaces — produces:** `AdminRepository.review() → Future<AdminReview>`, `resolveScore(String resultId, String action, {List<(int, int)>? sets}) → Future<void>` (`action` is `confirm`, `correct` or `void`), `closeReport(String reportId, {String? note}) → Future<void>`.
 
-**Behaviour:** two tabs. **Scores:** each card shows the sport, date, both sides, the entered score, "Disputed by {name}: {reason}" or "Flagged: no-show", and the buttons Confirm, Correct (opens the set editor from `score_sheet.dart`), Void; each asks for confirmation (`confirmDelete` style). **Reports:** reporter, reported player (opens their profile), reason, text, date, and "Close" with an optional note.
+**Behaviour:** two tabs. **Scores:** each card shows the sport, date, both sides, the entered score, "Disputed by {name}: {reason}" or "Flagged: no-show", and the buttons Confirm, Correct (opens the set editor from `score_sheet.dart`), Void; each asks for confirmation (`confirmDelete` style). **Reports:** reporter, reported player (opens their profile), reason, text, date, and "Close" with an optional note; when the report's game has a result that is not void, the card shows the score and a "Void this score" button.
 
 - [ ] **Step 1: Write the failing tests:** sample admin — a disputed result appears in `review()`, `resolveScore(id, 'confirm')` applies ratings and removes it, `'void'` on a confirmed result reverses the change, `closeReport` removes the report and adds an audit entry; mapper for the Task 8 JSON; widget tests `admin confirms a disputed score`, `admin closes a report`, and the locked-page check for a non-admin.
 - [ ] **Step 2: Run** them. Expected: FAIL.
@@ -402,7 +416,7 @@
 
 **Rules**
 - A team game: the caller is the team's captain, the team's sport and city equal the game's (`invalid_argument` otherwise; unknown team → `not_found`); stored `visibility = 'invite_only'`; `public_from = lower(during) − open_hours_before hours` or null.
-- Who sees and may join a game with `team_id`: team members always; everyone from `public_from` on (while spots remain); invited players as today. Apply this in `app.can_see_game` (using `now()`), `app.list_games` and `app.join_game` / `app.request_to_join` (using `p_now`). Level, rating and reliability rules are unchanged.
+- Who sees and may join a game with `team_id`: team members always; everyone from `public_from` on (while spots remain); invited players as today. Add `app.can_see_game(p_user uuid, g public.games, p_now timestamptz)` holding the whole rule; the existing two-argument form stays and calls it with `now()` (it is what `public.get_game` uses). `app.list_games`, `app.join_game`, `app.request_to_join` and every other caller that has a `p_now` use the three-argument form. Level, rating and reliability rules are unchanged.
 - A team that is deleted leaves its games as ordinary invite-only games (`team_id` becomes null).
 
 - [ ] **Step 1: Write the failing tests:** `captain posts a team game` (members get `team_game_posted`; a member sees it in `list_games` and joins with one tap; a non-member does not see it, `get_game` is null and `join_game` → `not_found`); `only the captain, only the team's sport` (a member → `not_allowed`; football game for a padel team → `invalid_argument`); `team game reads as invite-only` (`visibility = 'invite_only'`, `team.name` present, `min_level` integer); `opens to everyone` (`open_hours_before: 24` on a game 48 hours away: a non-member is refused at `now`, sees and joins it at `now + 25 hours`); `rating range still applies to members`; `team page lists its games` (`team_json.games` has it, `upcoming_games 1`, a started game is not counted); `deleting the team keeps the game` (`team_id` null, still invite-only); `admin review lists teams`.
@@ -411,16 +425,31 @@
 - [ ] **Step 4: Run** `npm test`. Expected: all pass.
 - [ ] **Step 5: Commit** `M7: team games in the database`.
 
-### Task 13: Teams in the app
+### Task 13A: Teams in the app's data layer
 
 **Files:**
-- Create: `app/lib/domain/teams.dart`, `app/lib/data/sample/sample_teams.dart`, `app/lib/features/social/team_screen.dart`, `team_editor_screen.dart`, `app/test/teams_flow_test.dart`, `app/test/domain/teams_test.dart`
-- Modify: `app/lib/data/social.dart` (the old `Team`, `kSampleTeams` and `SampleSocialRepository.teams` go; sample teams are seeded in `SampleBackend` from `kTeamSeeds` in `sample_data.dart`), sample and Supabase social repositories, `mappers.dart`, `errors.dart`, `formatters.dart`, `domain/community.dart` (`PlayerProfile.teams`, routes for team kinds → `/teams/<team_id>`), `features/social/social_screen.dart`, `player_profile_screen.dart`, `features/profile/profile_screen.dart`, `features/inbox/inbox_screen.dart`, `features/admin/admin_review_screen.dart` (third tab "Teams" with Delete), `data/admin_repository.dart` (+ implementations: `deleteTeam(String id)`), `router.dart` (`/teams/new`, `/teams/:id`, `/teams/:id/edit`), `state/providers.dart`, `state/ui_providers.dart`, four ARB files, `app/test/ui/ui_content_test.dart` ("teams" group rewritten against `kTeamSeeds`)
+- Create: `app/lib/domain/teams.dart`, `app/lib/data/sample/sample_teams.dart`, `app/test/domain/teams_test.dart`
+- Modify: `app/lib/data/social.dart` (the old `Team`, `kSampleTeams` and `SampleSocialRepository.teams` go; sample teams are seeded in `SampleBackend` from `kTeamSeeds` in `sample_data.dart`: the eight current names, each with a sample captain and 2–4 sample members, none including `me`), sample and Supabase social repositories, `mappers.dart`, `errors.dart`, `features/common/formatters.dart`, `domain/community.dart` (`PlayerProfile.teams`, routes for team kinds → `/teams/<team_id>`), `features/inbox/inbox_screen.dart` (text for the team kinds), `features/social/social_screen.dart` (only what is needed to compile against the new `Team`), `data/admin_repository.dart` (+ implementations: `deleteTeam(String id)`, `AdminReview.teams`), `state/providers.dart`, `state/ui_providers.dart`, four ARB files, `app/test/ui/ui_content_test.dart` ("teams" group rewritten against `kTeamSeeds`)
+- Test: `app/test/data/sample_backend_test.dart`, `test/data/supabase_mappers_test.dart`, `test/data/admin_mappers_test.dart`
 
 **Interfaces — produces:**
 - `class Team { id, name, sportId, cityId, description, joinPolicy (TeamJoinPolicy.open | approval), colorSeed, captainId, memberCount, upcomingGames, myStatus (MyTeamStatus.captain | member | requested | invited | null), myRequestId, members (List<TeamMember>), requests (List<TeamRequest>), games (List<Game>) }`; `class TeamMember { id, name, level, rating (double?), provisional, reliability, captain, deleted }`; `class TeamRequest { id, userId, name, level, rating, reliability }`; `class TeamDraft { name, sportId, cityId, description, joinPolicy }`; `class TeamRef { id, name, sportId }`.
 - `SocialRepository`: `teams(String cityId) → Future<List<Team>>`, `team(String id) → Future<Team>`, `createTeam(TeamDraft) → Future<Team>`, `updateTeam(String id, TeamDraft) → Future<Team>`, `deleteTeam(String id) → Future<void>`, `joinTeam(String id) → Future<Team>`, `leaveTeam(String id) → Future<void>`, `withdrawTeamRequest(String requestId) → Future<void>`, `decideTeamRequest(String requestId, {required bool approve}) → Future<Team>`, `removeTeamMember(String teamId, String userId) → Future<Team>`, `inviteToTeam(String teamId, String userId) → Future<void>`, `respondTeamInvite(String teamId, {required bool accept}) → Future<Team>`, `transferCaptain(String teamId, String userId) → Future<Team>`. `SampleBackend` adds `createTeamAs`, `joinTeamAs`, `inviteToTeamAs`.
 - `JoinError.teamLimit`, `captainCannotLeave`, `nameTaken` (`already_exists` from the team calls) with their strings; `teamProvider` (family), `teamsProvider` (now from the repository), `refreshTeams(WidgetRef ref)`.
+
+- [ ] **Step 1: Write the failing tests.** `teams_test.dart` and `sample_backend_test.dart`: create (I am captain and a member), name taken → `nameTaken`, sixth team → `teamLimit`, open join, approval request → `decideTeamRequest` as the captain, invite → accept, captain cannot leave → `transferCaptain` → leave, remove member, delete; inbox entries for `team_invite` and `team_join_request` route to `/teams/<id>`; `markDeleted` on a sample captain hands the team to the oldest member. Mappers: `team_json` and the summary; `player_json.teams`; `admin_review.teams`.
+- [ ] **Step 2: Run** `flutter test test/domain test/data test/ui`. Expected: FAIL.
+- [ ] **Step 3: Implement**, then `flutter gen-l10n`.
+- [ ] **Step 4: Run** `flutter test`, `flutter analyze`. Expected: all pass.
+- [ ] **Step 5: Commit** `M7: teams in the app's data layer`.
+
+### Task 13B: Team screens
+
+**Files:**
+- Create: `app/lib/features/social/team_screen.dart`, `team_editor_screen.dart`, `app/test/teams_flow_test.dart`
+- Modify: `app/lib/features/social/social_screen.dart`, `player_profile_screen.dart`, `features/profile/profile_screen.dart`, `features/admin/admin_review_screen.dart` (third tab "Teams" with Delete), `router.dart` (`/teams/new` before `/teams/:id`, `/teams/:id`, `/teams/:id/edit`), four ARB files
+
+**Interfaces — consumes:** Task 13A's models, repository methods and providers.
 
 **Behaviour**
 - Social tab: "My teams" (tiles with initials on the seeded colour, sport badge, member count, a dot when I have a pending invite) and "Teams in {city}" filtered to my sports with a "Show all" toggle; a "Create a team" button. Tiles open `/teams/:id`.
@@ -428,11 +457,11 @@
 - Editor: name, sport and city (fixed after creation), description with a 500 counter, join policy.
 - Player profile: "Invite to team" next to "Invite to game", listing the teams I captain that the player is not in; the profile lists the player's teams as tappable pills. My own profile lists my teams.
 
-- [ ] **Step 1: Write the failing tests.** `teams_test.dart` and sample backend: create (I am captain), name taken → `nameTaken`, sixth team → `teamLimit`, open join, approval request → approve, invite → accept, captain cannot leave → transfer → leave, remove member, delete; inbox entries for `team_invite` and `team_join_request` route to `/teams/<id>`. Mappers: `team_json` and summary; `player_json.teams`. Widget tests: `create a team and see it under My teams`; `join an open team`; `request to join and get approved` (approve through `SampleBackend` as the captain, refresh); `invite a player to my team from their profile`; `captain hands over and leaves`; `admin deletes a team`.
-- [ ] **Step 2: Run** them. Expected: FAIL.
+- [ ] **Step 1: Write the failing widget tests** in `teams_flow_test.dart`: `create a team and see it under My teams`; `join an open team`; `request to join and get approved` (approve through `SampleBackend` as the captain, refresh); `invite a player to my team from their profile`; `captain hands over and leaves`; `a taken name shows an error`; `admin deletes a team`.
+- [ ] **Step 2: Run** `flutter test test/teams_flow_test.dart`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `flutter test`, `flutter analyze`. Expected: all pass.
-- [ ] **Step 5: Commit** `M7: teams in the app`.
+- [ ] **Step 5: Commit** `M7: team screens`.
 
 ### Task 14: Team games in the app
 
