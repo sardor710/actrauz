@@ -200,6 +200,28 @@ test('majority no-show', async () => {
   assert.equal((await one(`select count(*)::int as n from game_no_show_reports where game_id = $1`, [gameId])).n, 3);
 });
 
+test('two reports at once still make a majority', async () => {
+  const [h, a, b, t] = await players('Race host', 'Race A', 'Race B', 'Race T');
+  const gameId = await finishedGame([h, a, b, t]);
+  const first = await db.connect();
+  const second = await db.connect();
+  try {
+    await first.query('begin');
+    await second.query('begin');
+    await first.query(`select app.report_no_show($1, $2, $3, true, $4)`, [a, gameId, t, now]);
+    // Waits for the first transaction's lock on the game row.
+    const waiting = second.query(`select app.report_no_show($1, $2, $3, true, $4)`, [b, gameId, t, now]);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await first.query('commit');
+    await waiting;
+    await second.query('commit');
+  } finally {
+    first.release();
+    second.release();
+  }
+  assert.deepEqual(await gameEvents(t, gameId), ['no_show -20']);
+});
+
 test('three-player game needs both others', async () => {
   const [h, a, t] = await players('Three host', 'Three A', 'Three T');
   const gameId = await finishedGame([h, a, t]);
