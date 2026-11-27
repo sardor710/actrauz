@@ -147,6 +147,11 @@ void main() {
       }
     });
 
+    test('a rating notice without numbers reads as a plain notification', () {
+      final l = lookupAppLocalizations(const Locale('en'));
+      expect(notificationText(l, 'en', note('rating_updated', {'old': 'x', 'new': null})), l.notifUnknown);
+    });
+
     for (final code in ['en', 'ru', 'uz', 'kk']) {
       test('every score kind has its own sentence in $code', () {
         final l = lookupAppLocalizations(Locale(code));

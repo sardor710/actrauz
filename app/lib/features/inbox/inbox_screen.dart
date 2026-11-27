@@ -31,7 +31,10 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
   final tournament = name('title', l.notifTournamentFallback);
   final categoryName = name('category_name', '');
   final category = categoryName.isEmpty ? null : categoryName;
-  double? number(String key) => (p[key] as num?)?.toDouble();
+  double? number(String key) {
+    final value = p[key];
+    return value is num ? value.toDouble() : null;
+  }
   final oldRating = number('old');
   final newRating = number('new');
   return switch (n.kind) {

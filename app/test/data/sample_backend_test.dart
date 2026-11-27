@@ -841,7 +841,7 @@ void main() {
         () => timed.enterScoreAs('p1', 'gf1', sideA: ['p1'], sideB: ['p2'], sets: sixFourTwice),
         joinError(JoinError.forbidden),
       );
-      // A score someone else entered.
+      // Not the host of gf2 either, within 24 hours of its end.
       expect(
         () => timed.enterScore('gf2', sideA: [kMeId], sideB: ['p1'], sets: sixFourTwice),
         joinError(JoinError.forbidden),
@@ -871,6 +871,11 @@ void main() {
       now = utcNow.add(const Duration(hours: 25));
       final entered = await timed.enterScoreAs('p1', 'gf1', sideA: ['p1'], sideB: ['p2'], sets: sixFourTwice);
       expect(entered.result!.enteredBy, 'p1');
+      // A pending score someone else entered: even the host cannot replace it.
+      expect(
+        () => timed.enterScore('gf1', sideA: [kMeId], sideB: ['p1'], sets: sixFourTwice),
+        joinError(JoinError.forbidden),
+      );
       // 8 days after the end nobody may.
       now = utcNow.add(const Duration(days: 8));
       expect(
