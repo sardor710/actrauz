@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/admin.dart';
+import '../../domain/competitive.dart';
 import '../../domain/teams.dart';
 import '../../state/admin_providers.dart';
 import '../../state/providers.dart';
@@ -239,7 +240,7 @@ class _CorrectSheetState extends State<_CorrectSheet> {
     return AdminSheetFrame(
       title: l.reviewCorrectTitle,
       saveKey: const ValueKey('review-correct-save'),
-      busy: !SetsEditor.valid(_sets),
+      busy: !validSets(_sets),
       onSave: () => Navigator.of(context).pop(_sets),
       children: [
         Text(l.reviewCorrectHint, style: AppText.muted),

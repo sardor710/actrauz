@@ -287,6 +287,31 @@ class Leaderboard {
   final LeaderboardRow? me;
 }
 
+// ---- Scores (design §5.4), as `app.enter_score` and `app.whole_sets` ----
+
+/// Only the host may enter a score until this long after the end.
+const kScoreHostOnlyFor = Duration(hours: 24);
+
+/// Scores open at the end of a game and close this long after it.
+const kScoreOpenFor = Duration(days: 7);
+
+/// A pending score nobody disputed confirms itself this long after it was entered.
+const kScoreConfirmWithin = Duration(hours: 24);
+
+/// The most sets in a score.
+const kMaxSets = 5;
+
+/// The most games one side takes in a set.
+const kMaxGamesPerSet = 30;
+
+/// 1 to [kMaxSets] sets of 0 to [kMaxGamesPerSet] games each, none 0–0.
+bool validSets(List<(int, int)> sets) {
+  bool games(int n) => n >= 0 && n <= kMaxGamesPerSet;
+  return sets.isNotEmpty &&
+      sets.length <= kMaxSets &&
+      sets.every((s) => games(s.$1) && games(s.$2) && (s.$1 != 0 || s.$2 != 0));
+}
+
 // ---- After a game (design §6.1-§6.3) ----
 
 /// Thumbs can be given, and changed, until this long after a game ends.

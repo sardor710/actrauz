@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
@@ -90,7 +91,7 @@ class _ScoreSheetState extends ConsumerState<ScoreSheet> {
     final sidesOk = _doubles
         ? _partner != null && _opponents.length == 2 && !_opponents.contains(_partner)
         : _opponents.length == 1;
-    return sidesOk && SetsEditor.valid(_sets);
+    return sidesOk && validSets(_sets);
   }
 
   void _pickFormat(bool doubles) => setState(() {
@@ -255,15 +256,6 @@ class SetsEditor extends StatelessWidget {
     required this.secondSide,
   });
 
-  static const maxSets = 5;
-  static const maxGames = 30;
-
-  /// 1 to [maxSets] sets of 0 to [maxGames] games, none 0–0.
-  static bool valid(List<(int, int)> sets) =>
-      sets.isNotEmpty &&
-      sets.length <= maxSets &&
-      sets.every((s) => s.$1 >= 0 && s.$1 <= maxGames && s.$2 >= 0 && s.$2 <= maxGames && (s.$1 != 0 || s.$2 != 0));
-
   final List<(int, int)> sets;
   final ValueChanged<List<(int, int)>> onChanged;
 
@@ -331,7 +323,7 @@ class SetsEditor extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             key: const ValueKey('score-add-set'),
-            onPressed: sets.length < maxSets ? () => onChanged([...sets, (0, 0)]) : null,
+            onPressed: sets.length < kMaxSets ? () => onChanged([...sets, (0, 0)]) : null,
             icon: const Icon(Icons.add_rounded),
             label: Text(l.scoreAddSet),
           ),
@@ -362,8 +354,6 @@ class _SideLine extends StatelessWidget {
 /// Games won in a set, 0 to 30.
 class _GamesStepper extends StatelessWidget {
   const _GamesStepper({required this.keyPrefix, required this.value, required this.onChanged});
-
-  static const _max = 30;
 
   final String keyPrefix;
   final int value;
@@ -397,7 +387,7 @@ class _GamesStepper extends StatelessWidget {
           padding: EdgeInsets.zero,
           iconSize: 18,
           style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-          onPressed: value < _max ? () => onChanged(value + 1) : null,
+          onPressed: value < kMaxGamesPerSet ? () => onChanged(value + 1) : null,
           icon: const Icon(Icons.add),
         ),
       ],

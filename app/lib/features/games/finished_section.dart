@@ -16,13 +16,6 @@ import 'host_tools.dart';
 import 'report_sheet.dart';
 import 'score_sheet.dart';
 
-/// Only the host may enter a score until this long after the end (as the
-/// database's `app.enter_score`).
-const _hostOnlyFor = Duration(hours: 24);
-
-/// Scores close this long after the end.
-const _scoreOpenFor = Duration(days: 7);
-
 /// "Game finished" on the game page (design §5.8): for the players of a game
 /// that has ended, was not cancelled and had someone else in it. The score
 /// block in a rated sport, then the other players with thumbs up or down,
@@ -237,11 +230,11 @@ class _ScoreBlock extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
     final result = game.result;
-    final open = now.isBefore(game.end.add(_scoreOpenFor));
+    final open = now.isBefore(game.end.add(kScoreOpenFor));
 
     if (result == null) {
       if (!open) return _StatusLine(text: l.scoreEntryClosed, icon: Icons.lock_outline_rounded);
-      final mayEnter = game.myStatus == MyGameStatus.host || !now.isBefore(game.end.add(_hostOnlyFor));
+      final mayEnter = game.myStatus == MyGameStatus.host || !now.isBefore(game.end.add(kScoreHostOnlyFor));
       if (!mayEnter) return _StatusLine(text: l.scoreHostEnters, icon: Icons.schedule_rounded);
       return FilledButton.icon(
         key: const ValueKey('score-enter'),

@@ -121,23 +121,6 @@ class SampleScores {
     required this.notify,
   });
 
-  /// Scores open at the end of a game and close this long after it.
-  static const openFor = Duration(days: 7);
-
-  /// Only the host may enter a score until this long after the end.
-  static const hostOnlyFor = Duration(hours: 24);
-
-  /// A pending score nobody disputed confirms itself after this long.
-  static const confirmWithin = Duration(hours: 24);
-
-  /// 1 to 5 sets of 0–30 games, none 0–0 (as `app.whole_sets`).
-  static bool wholeSets(List<(int, int)> sets) {
-    bool games(int n) => n >= 0 && n <= 30;
-    return sets.isNotEmpty &&
-        sets.length <= 5 &&
-        sets.every((s) => games(s.$1) && games(s.$2) && (s.$1 != 0 || s.$2 != 0));
-  }
-
   /// Deadlines are kept in UTC.
   final DateTime Function() utcNow;
 
@@ -173,10 +156,10 @@ class SampleScores {
     if (game.cancelled || !rated || !game.participantIds.contains(userId)) {
       throw const JoinException(JoinError.notFound);
     }
-    if (localNow.isBefore(game.end) || !localNow.isBefore(game.end.add(openFor))) {
+    if (localNow.isBefore(game.end) || !localNow.isBefore(game.end.add(kScoreOpenFor))) {
       throw const JoinException(JoinError.scoreClosed);
     }
-    if (game.hostId != userId && localNow.isBefore(game.end.add(hostOnlyFor))) {
+    if (game.hostId != userId && localNow.isBefore(game.end.add(kScoreHostOnlyFor))) {
       throw const JoinException(JoinError.forbidden);
     }
     final players = [...sideA, ...sideB];
@@ -191,7 +174,7 @@ class SampleScores {
         players.any((id) => noShowIn(game.id, id))) {
       throw const JoinException(JoinError.invalidArgument);
     }
-    if (!wholeSets(sets)) throw const JoinException(JoinError.invalidArgument);
+    if (!validSets(sets)) throw const JoinException(JoinError.invalidArgument);
 
     final existing = _byGame[game.id];
     // already_exists and not_allowed in the database.
@@ -203,7 +186,7 @@ class SampleScores {
       ..sideA = [...sideA]
       ..sideB = [...sideB]
       ..sets = [...sets]
-      ..deadline = utcNow().add(confirmWithin);
+      ..deadline = utcNow().add(kScoreConfirmWithin);
     result.confirmedBy.clear();
     for (final id in players) {
       if (id != userId) notify(id, 'score_entered', 'ratings', result.note);
@@ -224,7 +207,7 @@ class SampleScores {
       ..sideA = [...sideA]
       ..sideB = [...sideB]
       ..sets = [...sets]
-      ..deadline = enteredAt.add(confirmWithin);
+      ..deadline = enteredAt.add(kScoreConfirmWithin);
   }
 
   /// A player in the result other than whoever entered it confirms it; one
@@ -305,7 +288,7 @@ class SampleScores {
       case 'confirm' || 'correct':
         if (result.status != ResultStatus.disputed) throw const JoinException(JoinError.notFound);
         if (action == 'correct') {
-          if (sets == null || !wholeSets(sets)) throw const JoinException(JoinError.invalidArgument);
+          if (sets == null || !validSets(sets)) throw const JoinException(JoinError.invalidArgument);
           result.sets = [...sets];
         }
         _apply(result);

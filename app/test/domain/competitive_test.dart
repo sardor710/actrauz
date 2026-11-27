@@ -119,6 +119,46 @@ void main() {
       expect(news(c.a), [2.63, 2.63]);
     });
 
+    test('2 against 2 with different side averages: 3.50 v 3.00, 6-4 6-4 → +0.06 and -0.06', () {
+      // Expected for A: 1 / (1 + 10^-0.5) = 0.7597; margin 0.75 + 0.50 × 4/20 = 0.85;
+      // 0.30 × 0.85 × 0.2403 = 0.0613.
+      final c = ratingChanges(
+        sideA: [const SportRating(rating: 3.0), const SportRating(rating: 4.0)],
+        sideB: [const SportRating(rating: 3.0), const SportRating(rating: 3.0)],
+        sets: [(6, 4), (6, 4)],
+      );
+      expect(news(c.a), [3.06, 4.06]);
+      expect(news(c.b), [2.94, 2.94]);
+    });
+
+    test('a winner with fewer games than the loser keeps the 0.75 margin', () {
+      // 0-6 7-6 7-6: two sets to one, but 14 games to 18. 0.30 × 0.75 × 0.5 = 0.1125.
+      final c = ratingChanges(sideA: [provisional], sideB: [provisional], sets: [(0, 6), (7, 6), (7, 6)]);
+      expect(deltas(c.a), [0.11]);
+      expect(deltas(c.b), [-0.11]);
+    });
+
+    test('established equal sides, 6-3 6-3: +0.06 and -0.06 (0.055 rounds away from zero)', () {
+      // Margin 0.75 + 0.50 × 6/18 = 0.9167; 0.12 × 0.9167 × 0.5 = 0.055.
+      final c = ratingChanges(
+        sideA: [established, established],
+        sideB: [established, established],
+        sets: [(6, 3), (6, 3)],
+      );
+      expect(deltas(c.a), [0.06, 0.06]);
+      expect(deltas(c.b), [-0.06, -0.06]);
+    });
+
+    test('a score is 1 to 5 sets of 0 to 30 games, none 0-0', () {
+      expect(validSets(const [(6, 4)]), isTrue);
+      expect(validSets(const [(30, 28), (0, 6), (6, 0), (7, 6), (6, 7)]), isTrue);
+      expect(validSets(const []), isFalse);
+      expect(validSets(const [(0, 0)]), isFalse);
+      expect(validSets(const [(31, 29)]), isFalse);
+      expect(validSets(const [(-1, 6)]), isFalse);
+      expect(validSets(const [(6, 4), (6, 4), (6, 4), (6, 4), (6, 4), (6, 4)]), isFalse);
+    });
+
     test('a rating stays within 1.00-7.00', () {
       final c = ratingChanges(
         sideA: [const SportRating(rating: 1.0)],
