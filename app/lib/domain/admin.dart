@@ -2,6 +2,7 @@ import '../core/localized_text.dart';
 import '../core/markets.dart';
 import 'competitive.dart';
 import 'models.dart';
+import 'teams.dart';
 
 /// Admin view of the catalog (product spec §12): every venue, court, sport
 /// and banner, active or not, and the audit log.
@@ -293,12 +294,16 @@ class AdminReport {
   bool get hasLiveScore => result != null && result!.status != ResultStatus.voided;
 }
 
-/// What waits for an admin: [disputes] first, then [reports].
+/// What waits for an admin: [disputes] first, then [reports]; and [teams],
+/// the list an admin removes a team from.
 class AdminReview {
-  const AdminReview({this.disputes = const [], this.reports = const []});
+  const AdminReview({this.disputes = const [], this.reports = const [], this.teams = const []});
 
   final List<AdminDispute> disputes;
   final List<AdminReport> reports;
+
+  /// Every team as a summary, newest first, at most 200. Not open items.
+  final List<Team> teams;
 
   /// The count the admin home shows.
   int get openCount => disputes.length + reports.length;

@@ -264,7 +264,8 @@ void main() {
     await tap(tester, find.text('Social'));
     expect(find.text('Yunusobod Padel'), findsOneWidget);
     expect(find.text('Alatau Smash'), findsNothing);
-    expect(find.text('2 games soon'), findsOneWidget);
+    // Chilonzor FC and Yunusobod Padel: a captain and three members each.
+    expect(find.text('4 members'), findsNWidgets(2));
     expect(find.text('Aziz'), findsOneWidget);
   });
 

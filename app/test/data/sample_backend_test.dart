@@ -7,6 +7,7 @@ import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/slot_generator.dart';
+import 'package:actra/domain/teams.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -1184,6 +1185,109 @@ void main() {
       votes = (await backend.profile('p1')).sportsmanship;
       expect(votes.votes, 5);
       expect(votes.percent, 80);
+    });
+  });
+
+  group('teams', () {
+    Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
+    TeamDraft draft(String name, {TeamJoinPolicy joinPolicy = TeamJoinPolicy.open}) =>
+        TeamDraft(name: name, sportId: 'padel', cityId: 'tashkent', joinPolicy: joinPolicy);
+
+    test('every seeded team has a known sport and city, a sample captain and 2 to 4 members, never me', () async {
+      final sportIds = (await backend.sports()).map((s) => s.id).toSet();
+      final playerIds = kSamplePlayers.map((p) => p.id).toSet();
+      expect(kTeamSeeds, hasLength(8));
+      for (final seed in kTeamSeeds) {
+        expect(sportIds, contains(seed.sportId), reason: seed.id);
+        expect(kCities.map((c) => c.id), contains(seed.cityId), reason: seed.id);
+        expect(playerIds, containsAll([seed.captainId, ...seed.memberIds]), reason: seed.id);
+        expect(seed.memberIds.length, inInclusiveRange(2, 4), reason: seed.id);
+        expect(seed.memberIds, isNot(contains(seed.captainId)), reason: seed.id);
+        final team = await backend.team(seed.id);
+        expect(team.memberCount, seed.memberIds.length + 1);
+        expect(team.members.map((m) => m.id), [seed.captainId, ...seed.memberIds]);
+        expect(team.myStatus, isNull);
+      }
+    });
+
+    test('a city lists its teams by size, then name', () async {
+      expect((await backend.teams('tashkent')).map((t) => t.name), [
+        'Chilonzor FC',
+        'Yunusobod Padel',
+        'Hoops TAS',
+        'Tennis Crew',
+      ]);
+    });
+
+    test('an invite and a join request reach the inbox and open the team', () async {
+      final theirs = await backend.createTeamAs('p1', draft('Aziz Squad'));
+      await backend.inviteToTeamAs('p1', theirs.id, kMeId);
+      final invite = (await backend.inbox()).firstWhere((n) => n.kind == 'team_invite');
+      expect(invite.category, 'teams');
+      expect(invite.payload, {'team_id': theirs.id, 'team_name': 'Aziz Squad', 'actor_name': 'Aziz'});
+      expect(invite.route, '/teams/${theirs.id}');
+      // Inviting again while the invite is open sends nothing new.
+      await backend.inviteToTeamAs('p1', theirs.id, kMeId);
+      expect((await backend.inbox()).where((n) => n.kind == 'team_invite'), hasLength(1));
+
+      final mine = await backend.createTeam(draft('Night Owls', joinPolicy: TeamJoinPolicy.approval));
+      await backend.joinTeamAs('p2', mine.id);
+      final ask = (await backend.inbox()).firstWhere((n) => n.kind == 'team_join_request');
+      expect(ask.payload, {'team_id': mine.id, 'team_name': 'Night Owls', 'actor_name': 'Dilnoza'});
+      expect(ask.route, '/teams/${mine.id}');
+
+      // Muted: nothing arrives.
+      await backend.saveSettings(const CommunitySettings(mutedCategories: {'teams'}));
+      await backend.joinTeamAs('p4', mine.id);
+      expect((await backend.inbox()).where((n) => n.kind == 'team_join_request'), hasLength(1));
+    });
+
+    test('a deleted captain hands the team to the member who joined first', () async {
+      backend.markDeleted('p1');
+      final team = await backend.team('tm1');
+      expect(team.captainId, 'p5');
+      expect(team.members.map((m) => m.id), ['p5', 'p7', 'p8']);
+      expect(team.members.first.captain, isTrue);
+      // Their memberships go too.
+      expect((await backend.team('tm2')).members.map((m) => m.id), isNot(contains('p1')));
+
+      // I joined first: I am the captain now, and hear about it.
+      final theirs = await backend.createTeamAs('p2', draft('Dilnoza Squad'));
+      await backend.joinTeam(theirs.id);
+      await backend.joinTeamAs('p4', theirs.id);
+      backend.markDeleted('p2');
+      final mine = await backend.team(theirs.id);
+      expect(mine.captainId, kMeId);
+      expect(mine.myStatus, MyTeamStatus.captain);
+      expect(mine.members.map((m) => m.id), [kMeId, 'p4']);
+      final notice = (await backend.inbox()).firstWhere((n) => n.kind == 'team_captain');
+      expect(notice.payload, {'team_id': theirs.id, 'team_name': 'Dilnoza Squad', 'actor_name': 'Dilnoza'});
+      expect(notice.route, '/teams/${theirs.id}');
+
+      // Nobody left: the team goes.
+      final solo = await backend.createTeamAs('p4', draft('Madina Solo'));
+      backend.markDeleted('p4');
+      expect(backend.team(solo.id), joinError(JoinError.notFound));
+    });
+
+    test('the admin removes a team, with an audit entry', () async {
+      final theirs = await backend.createTeamAs('p1', draft('Aziz Squad'));
+      final listed = (await backend.admin.review()).teams;
+      expect(listed.first.id, theirs.id, reason: 'newest first');
+      expect(listed.map((t) => t.id), containsAll([for (final s in kTeamSeeds) s.id]));
+
+      await backend.admin.deleteTeam(theirs.id);
+      expect(backend.team(theirs.id), joinError(JoinError.notFound));
+      final entry = (await backend.admin.auditLog()).first;
+      expect(entry.action, 'team_deleted');
+      expect(entry.entity, 'team');
+      expect(entry.entityId, theirs.id);
+      expect(entry.before!['name'], 'Aziz Squad');
+      expect(entry.after, isNull);
+      expect(
+        backend.admin.deleteTeam(theirs.id),
+        throwsA(isA<BookingException>().having((e) => e.error, 'error', BookingError.notFound)),
+      );
     });
   });
 }

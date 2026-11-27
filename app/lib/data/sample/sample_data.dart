@@ -1,6 +1,7 @@
 import '../../core/localized_text.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../domain/teams.dart';
 import '../../domain/tournaments.dart';
 
 /// Fictional sample content used until the backend is connected.
@@ -365,6 +366,118 @@ const kSamplePlayers = <Player>[
     name: 'Kamila',
     levels: {'padel': 3, 'tennis': 2},
     ratings: {'padel': SportRating(rating: 3.5, ratedGames: 12), 'tennis': SportRating(rating: 2.5, ratedGames: 12)},
+  ),
+];
+
+/// A sample team, created [daysAgo] days before the sample backend starts by
+/// its captain; the members joined a day apart after that, in order. The
+/// demo player is in none of them.
+class TeamSeed {
+  const TeamSeed({
+    required this.id,
+    required this.name,
+    required this.sportId,
+    required this.cityId,
+    required this.captainId,
+    required this.memberIds,
+    required this.daysAgo,
+    this.joinPolicy = TeamJoinPolicy.open,
+    this.description,
+  });
+
+  final String id;
+  final String name;
+  final String sportId;
+  final String cityId;
+  final String captainId;
+
+  /// Not counting the captain.
+  final List<String> memberIds;
+  final int daysAgo;
+  final TeamJoinPolicy joinPolicy;
+  final String? description;
+}
+
+const kTeamSeeds = <TeamSeed>[
+  TeamSeed(
+    id: 'tm1',
+    name: 'Yunusobod Padel',
+    sportId: 'padel',
+    cityId: 'tashkent',
+    captainId: 'p1',
+    memberIds: ['p5', 'p7', 'p8'],
+    daysAgo: 60,
+    description: 'Weekday evening doubles in Yunusobod. All levels welcome.',
+  ),
+  TeamSeed(
+    id: 'tm2',
+    name: 'Chilonzor FC',
+    sportId: 'football',
+    cityId: 'tashkent',
+    captainId: 'p3',
+    memberIds: ['p6', 'p7', 'p1'],
+    daysAgo: 45,
+    joinPolicy: TeamJoinPolicy.approval,
+    description: 'Five-a-side every Saturday morning.',
+  ),
+  TeamSeed(
+    id: 'tm3',
+    name: 'Tennis Crew',
+    sportId: 'tennis',
+    cityId: 'tashkent',
+    captainId: 'p4',
+    memberIds: ['p2', 'p8'],
+    daysAgo: 30,
+    joinPolicy: TeamJoinPolicy.approval,
+  ),
+  TeamSeed(
+    id: 'tm4',
+    name: 'Hoops TAS',
+    sportId: 'basketball',
+    cityId: 'tashkent',
+    captainId: 'p7',
+    memberIds: ['p3', 'p6'],
+    daysAgo: 20,
+    description: 'Pick-up games, bring a friend.',
+  ),
+  TeamSeed(
+    id: 'tm5',
+    name: 'Alatau Smash',
+    sportId: 'padel',
+    cityId: 'almaty',
+    captainId: 'p5',
+    memberIds: ['p2', 'p8'],
+    daysAgo: 50,
+  ),
+  TeamSeed(
+    id: 'tm6',
+    name: 'Medeu Volley',
+    sportId: 'volleyball',
+    cityId: 'almaty',
+    captainId: 'p6',
+    memberIds: ['p4', 'p1', 'p3'],
+    daysAgo: 40,
+    joinPolicy: TeamJoinPolicy.approval,
+    description: 'Indoor volleyball twice a week.',
+  ),
+  TeamSeed(
+    id: 'tm7',
+    name: 'Esil Ballers',
+    sportId: 'basketball',
+    cityId: 'astana',
+    captainId: 'p3',
+    memberIds: ['p7', 'p5'],
+    daysAgo: 35,
+  ),
+  TeamSeed(
+    id: 'tm8',
+    name: 'Astana Five',
+    sportId: 'football',
+    cityId: 'astana',
+    captainId: 'p6',
+    memberIds: ['p3', 'p1', 'p7', 'p5'],
+    daysAgo: 25,
+    joinPolicy: TeamJoinPolicy.approval,
   ),
 ];
 

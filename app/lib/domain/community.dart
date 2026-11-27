@@ -2,6 +2,7 @@
 // §9.4, §13). Pure types: the backend and the sample data fill them in.
 
 import 'competitive.dart';
+import 'teams.dart';
 
 // ---- Reliability ----
 
@@ -126,6 +127,7 @@ class PlayerProfile {
     this.reliability = Reliability.fresh,
     this.gamesPlayed = 0,
     this.sportsmanship = Sportsmanship.none,
+    this.teams = const [],
     this.deleted = false,
   });
 
@@ -149,6 +151,9 @@ class PlayerProfile {
 
   /// Thumbs up and down from other players (design §6.1).
   final Sportsmanship sportsmanship;
+
+  /// The teams they are in, by name.
+  final List<TeamRef> teams;
 
   int levelFor(String sportId) => levels[sportId] ?? 1;
 }
@@ -370,6 +375,14 @@ class AppNotification {
           'tournament_moved':
         final tournamentId = text('tournament_id');
         return tournamentId == null ? null : '/tournaments/$tournamentId';
+      case 'team_invite' ||
+          'team_join_request' ||
+          'team_join_approved' ||
+          'team_join_declined' ||
+          'team_removed' ||
+          'team_captain':
+        final teamId = text('team_id');
+        return teamId == null ? null : '/teams/$teamId';
       case 'request_interest' || 'request_expired':
         final requestId = text('request_id');
         return requestId == null ? null : '/games/requests/$requestId';

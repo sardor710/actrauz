@@ -1,33 +1,72 @@
 import '../domain/community.dart';
 import '../domain/competitive.dart';
 import '../domain/games.dart';
+import '../domain/teams.dart';
 import 'sample/sample_data.dart';
 
-/// A standing group of players (product spec §9.3).
-class Team {
-  const Team({
-    required this.id,
-    required this.name,
-    required this.sportId,
-    required this.cityId,
-    required this.memberCount,
-    required this.upcomingGames,
-  });
-
-  final String id;
-  final String name;
-  final String sportId;
-  final String cityId;
-  final int memberCount;
-  final int upcomingGames;
-}
-
 /// Teams, finding players, public profiles and the signed-in player's own
-/// sports (product spec §9.3, §9.4; M7 design §5.1). Teams are still sample
-/// data; players come from the backend. Never returns a phone number. The
-/// signed-in player is not in [players], and has id `kMeId` in [profile].
+/// sports (product spec §9.3, §9.4; M7 design §5.1, §7). Never returns a
+/// phone number. The signed-in player is not in [players], and has id
+/// `kMeId` in [profile].
 abstract class SocialRepository {
+  // ---- Teams (design §7) ----
+
+  /// The signed-in player's teams (any city) first, then the other teams of
+  /// [cityId]; each group by member count, largest first, then name.
+  /// Summaries: no members, requests or games.
   Future<List<Team>> teams(String cityId);
+
+  /// The team page: members, upcoming team games and, for the captain, the
+  /// pending requests. [JoinError.notFound] when it is gone.
+  Future<Team> team(String id);
+
+  /// The signed-in player becomes captain and first member.
+  /// [JoinError.teamLimit] at `Team.maxCaptained` teams as captain;
+  /// [JoinError.nameTaken] when the name (trimmed, any case) is taken in that
+  /// city and sport; [JoinError.invalidArgument] for a name outside 3–40
+  /// characters, a description over 500, or an unknown sport or city.
+  Future<Team> createTeam(TeamDraft draft);
+
+  /// Captain only ([JoinError.forbidden]): changes the name, description and
+  /// join policy; the sport and city stay. Pending requests stay when the
+  /// team turns open.
+  Future<Team> updateTeam(String id, TeamDraft draft);
+
+  /// Captain only; every member hears.
+  Future<void> deleteTeam(String id);
+
+  /// An open team, or one that invited the player: a member at once. An
+  /// approval team: a pending request ([JoinError.alreadyRequested] when one
+  /// is waiting), and the captain hears. [JoinError.alreadyJoined] for a
+  /// member.
+  Future<Team> joinTeam(String id);
+
+  /// [JoinError.captainCannotLeave] for the captain, who hands over first
+  /// ([transferCaptain]); [JoinError.notFound] for a non-member.
+  Future<void> leaveTeam(String id);
+
+  /// Takes back the signed-in player's pending request (`Team.myRequestId`).
+  Future<void> withdrawTeamRequest(String requestId);
+
+  /// Captain only. Approving makes the player a member; either way they hear.
+  Future<Team> decideTeamRequest(String requestId, {required bool approve});
+
+  /// Captain only; never the captain ([JoinError.invalidArgument]). The
+  /// player hears.
+  Future<Team> removeTeamMember(String teamId, String userId);
+
+  /// Captain only: a live player who is not a member. Inviting again reopens
+  /// a declined invite; the player hears once per open invite.
+  Future<void> inviteToTeam(String teamId, String userId);
+
+  /// Accepting makes the signed-in player a member, whatever the join
+  /// policy. [JoinError.notFound] without a pending invite.
+  Future<Team> respondTeamInvite(String teamId, {required bool accept});
+
+  /// Captain only: hands the role to another live member, who hears.
+  Future<Team> transferCaptain(String teamId, String userId);
+
+  // ---- Players ----
 
   /// In the city, by name and by level in [sportId] (no level counts as 1),
   /// leaving out players who hid themselves. Name order. In a rated sport a
@@ -72,18 +111,6 @@ abstract class SocialRepository {
   Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details});
 }
 
-/// Fictional sample teams.
-const kSampleTeams = <Team>[
-  Team(id: 'tm1', name: 'Yunusobod Padel', sportId: 'padel', cityId: 'tashkent', memberCount: 24, upcomingGames: 2),
-  Team(id: 'tm2', name: 'Chilonzor FC', sportId: 'football', cityId: 'tashkent', memberCount: 31, upcomingGames: 1),
-  Team(id: 'tm3', name: 'Tennis Crew', sportId: 'tennis', cityId: 'tashkent', memberCount: 12, upcomingGames: 0),
-  Team(id: 'tm4', name: 'Hoops TAS', sportId: 'basketball', cityId: 'tashkent', memberCount: 17, upcomingGames: 0),
-  Team(id: 'tm5', name: 'Alatau Smash', sportId: 'padel', cityId: 'almaty', memberCount: 18, upcomingGames: 1),
-  Team(id: 'tm6', name: 'Medeu Volley', sportId: 'volleyball', cityId: 'almaty', memberCount: 22, upcomingGames: 0),
-  Team(id: 'tm7', name: 'Esil Ballers', sportId: 'basketball', cityId: 'astana', memberCount: 15, upcomingGames: 1),
-  Team(id: 'tm8', name: 'Astana Five', sportId: 'football', cityId: 'astana', memberCount: 27, upcomingGames: 0),
-];
-
 /// Players matching a search, from [pool], as profiles with [reliabilityOf].
 /// Shared by the stand-alone sample repository and the sample backend.
 List<PlayerProfile> searchPlayers(
@@ -120,6 +147,7 @@ PlayerProfile profileOf(
   Reliability reliability = Reliability.fresh,
   int gamesPlayed = 0,
   Sportsmanship sportsmanship = Sportsmanship.none,
+  List<TeamRef> teams = const [],
 }) => PlayerProfile(
       id: p.id,
       name: p.name,
@@ -131,14 +159,57 @@ PlayerProfile profileOf(
       reliability: reliability,
       gamesPlayed: gamesPlayed,
       sportsmanship: sportsmanship,
+      teams: teams,
       deleted: p.deleted,
     );
 
 class SampleSocialRepository implements SocialRepository {
   const SampleSocialRepository();
 
+  /// The stand-alone repository has no teams; the app uses the sample
+  /// backend for them.
   @override
-  Future<List<Team>> teams(String cityId) async => kSampleTeams.where((t) => t.cityId == cityId).toList();
+  Future<List<Team>> teams(String cityId) async => const [];
+
+  @override
+  Future<Team> team(String id) async => throw const JoinException(JoinError.notFound);
+
+  @override
+  Future<Team> createTeam(TeamDraft draft) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> updateTeam(String id, TeamDraft draft) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<void> deleteTeam(String id) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> joinTeam(String id) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<void> leaveTeam(String id) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<void> withdrawTeamRequest(String requestId) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> decideTeamRequest(String requestId, {required bool approve}) async =>
+      throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> removeTeamMember(String teamId, String userId) async =>
+      throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<void> inviteToTeam(String teamId, String userId) async => throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> respondTeamInvite(String teamId, {required bool accept}) async =>
+      throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<Team> transferCaptain(String teamId, String userId) async =>
+      throw const JoinException(JoinError.unavailable);
 
   /// Sample players are not tied to a city yet.
   @override

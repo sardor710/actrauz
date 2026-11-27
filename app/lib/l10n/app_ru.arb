@@ -760,5 +760,15 @@
   "reviewCloseTitle": "Закрыть жалобу",
   "reviewNote": "Заметка (необязательно)",
   "reviewReportLine": "{reporter} — жалоба на {target}",
-  "reviewScoreLine": "Счёт: {sets}"
+  "reviewScoreLine": "Счёт: {sets}",
+  "errTeamLimit": "Можно создать не более {max} команд, где вы капитан",
+  "errCaptainCannotLeave": "Перед уходом передайте роль капитана другому участнику",
+  "errTeamNameTaken": "Команда с таким названием уже есть в этом городе и виде спорта",
+  "notifTeamInvite": "{actor} приглашает вас в команду «{team}»",
+  "notifTeamJoinRequest": "{actor} хочет вступить в команду «{team}»",
+  "notifTeamJoinApproved": "Вы теперь в команде «{team}»",
+  "notifTeamJoinDeclined": "Ваша заявка в команду «{team}» отклонена",
+  "notifTeamRemoved": "Капитан исключил вас из команды «{team}»",
+  "notifTeamCaptain": "Теперь вы капитан команды «{team}»",
+  "notifTeamDeleted": "Команда «{team}» удалена"
 }

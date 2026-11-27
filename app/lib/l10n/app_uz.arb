@@ -760,5 +760,15 @@
   "reviewCloseTitle": "Shikoyatni yopish",
   "reviewNote": "Izoh (ixtiyoriy)",
   "reviewReportLine": "{reporter} — {target} haqida shikoyat",
-  "reviewScoreLine": "Hisob: {sets}"
+  "reviewScoreLine": "Hisob: {sets}",
+  "errTeamLimit": "Siz sardor sifatida koʻpi bilan {max} ta jamoa yarata olasiz",
+  "errCaptainCannotLeave": "Chiqishdan oldin sardorlikni jamoadagi boshqa oʻyinchiga topshiring",
+  "errTeamNameTaken": "Bu shahar va sport turida shu nomli jamoa allaqachon bor",
+  "notifTeamInvite": "{actor} sizni «{team}» jamoasiga taklif qildi",
+  "notifTeamJoinRequest": "{actor} «{team}» jamoasiga qoʻshilmoqchi",
+  "notifTeamJoinApproved": "Endi siz «{team}» jamoasidasiz",
+  "notifTeamJoinDeclined": "«{team}» jamoasiga soʻrovingiz rad etildi",
+  "notifTeamRemoved": "Sardor sizni «{team}» jamoasidan chiqardi",
+  "notifTeamCaptain": "Endi siz «{team}» jamoasining sardorisiz",
+  "notifTeamDeleted": "«{team}» jamoasi oʻchirildi"
 }

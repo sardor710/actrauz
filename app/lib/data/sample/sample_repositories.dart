@@ -7,6 +7,7 @@ import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
+import '../../domain/teams.dart';
 import '../../domain/tournaments.dart';
 import '../../domain/pricing.dart';
 import '../admin_repository.dart';
@@ -17,6 +18,7 @@ import '../supabase/mappers.dart'
     show bannerDraftJson, categoryDraftJson, courtDraftJson, isoLocal, sportDraftJson, tournamentDraftJson, venueDraftJson;
 import 'sample_competitive.dart';
 import 'sample_data.dart';
+import 'sample_teams.dart';
 import 'sample_tournaments.dart';
 
 /// In-memory stand-in for the backend. State lives for one app run.
@@ -37,6 +39,7 @@ class SampleBackend
     _seedCommunity();
     // Dated from the clock at start-up, like the games.
     _rules;
+    _teams;
   }
 
   /// Current UTC time; injected so tests can fix the clock.
@@ -476,7 +479,12 @@ class SampleBackend
   /// Marks a sample player's account as deleted, so tests can see how their
   /// history reads to everyone else. (The demo player's own deletion is a
   /// sign-out: this backend goes with the name.)
-  void markDeleted(String userId) => _deleted.add(userId);
+  /// Their teams go as `app.delete_account` hands them over: see
+  /// [SampleTeams.accountDeleted].
+  void markDeleted(String userId) {
+    _teams.accountDeleted(userId);
+    _deleted.add(userId);
+  }
 
   bool _exists(String userId) => userId == kMeId || kSamplePlayers.any((p) => p.id == userId);
 
@@ -1362,10 +1370,71 @@ class SampleBackend
     return _view(current, kMeId);
   }
 
-  // ---- SocialRepository ----
+  // ---- SocialRepository: teams ----
+
+  late final SampleTeams _teams = SampleTeams(
+    utcNow: utcNow,
+    memberOf: _member,
+    nameOf: _nameOf,
+    userExists: _exists,
+    isDeleted: _deleted.contains,
+    activeSport: (id) => _sports[id]?.active ?? false,
+    knownCity: (id) => kCities.any((c) => c.id == id),
+    notify: _notify,
+  );
+
+  /// The team calls for any player, so tests can have a sample player create
+  /// a team, ask to join or invite the demo player. The demo player's own go
+  /// through the [SocialRepository] methods.
+  Future<Team> createTeamAs(String userId, TeamDraft draft) async => _teams.create(userId, draft);
+
+  Future<Team> joinTeamAs(String userId, String id) async => _teams.join(userId, id);
+
+  Future<void> inviteToTeamAs(String userId, String teamId, String inviteeId) async =>
+      _teams.invite(userId, teamId, inviteeId);
 
   @override
-  Future<List<Team>> teams(String cityId) async => kSampleTeams.where((t) => t.cityId == cityId).toList();
+  Future<List<Team>> teams(String cityId) async => _teams.list(kMeId, cityId);
+
+  @override
+  Future<Team> team(String id) async => _teams.team(kMeId, id);
+
+  @override
+  Future<Team> createTeam(TeamDraft draft) => createTeamAs(kMeId, draft);
+
+  @override
+  Future<Team> updateTeam(String id, TeamDraft draft) async => _teams.update(kMeId, id, draft);
+
+  @override
+  Future<void> deleteTeam(String id) async => _teams.delete(kMeId, id);
+
+  @override
+  Future<Team> joinTeam(String id) => joinTeamAs(kMeId, id);
+
+  @override
+  Future<void> leaveTeam(String id) async => _teams.leave(kMeId, id);
+
+  @override
+  Future<void> withdrawTeamRequest(String requestId) async => _teams.withdraw(kMeId, requestId);
+
+  @override
+  Future<Team> decideTeamRequest(String requestId, {required bool approve}) async =>
+      _teams.decide(kMeId, requestId, approve: approve);
+
+  @override
+  Future<Team> removeTeamMember(String teamId, String userId) async => _teams.remove(kMeId, teamId, userId);
+
+  @override
+  Future<void> inviteToTeam(String teamId, String userId) => inviteToTeamAs(kMeId, teamId, userId);
+
+  @override
+  Future<Team> respondTeamInvite(String teamId, {required bool accept}) async =>
+      _teams.respond(kMeId, teamId, accept: accept);
+
+  @override
+  Future<Team> transferCaptain(String teamId, String userId) async => _teams.transfer(kMeId, teamId, userId);
+
+  // ---- SocialRepository: players ----
 
   @override
   Future<List<PlayerProfile>> players(
@@ -1401,6 +1470,7 @@ class SampleBackend
     reliability: _reliability(userId),
     gamesPlayed: (_reliabilityEvents[userId] ?? const []).where((e) => e.kind == ReliabilityKind.gameCompleted).length,
     sportsmanship: _sportsmanship(userId),
+    teams: _teams.refsOf(userId),
   );
 
   @override
@@ -2241,6 +2311,7 @@ class _SampleAdminRepository implements AdminRepository {
               result: r.gameId == null ? null : _b._scores.resultOf(r.gameId!),
             ),
       ],
+      teams: _b._teams.all(kMeId),
     );
   }
 
@@ -2280,6 +2351,20 @@ class _SampleAdminRepository implements AdminRepository {
       before: {'status': 'open', 'admin_note': null},
       after: {'status': 'closed', 'admin_note': report.adminNote},
     );
+  }
+
+  // ---- Teams (`app.admin_delete_team`) ----
+
+  @override
+  Future<void> deleteTeam(String id) async {
+    final Map<String, dynamic> before;
+    try {
+      before = _b._teams.rowOf(id);
+    } on JoinException {
+      _notFound();
+    }
+    _b._teams.dropById(id, kMeId);
+    _b._log('team_deleted', 'team', id, before: before);
   }
 
   // ---- Tournaments ----

@@ -4667,6 +4667,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Score: {sets}'**
   String reviewScoreLine(String sets);
+
+  /// No description provided for @errTeamLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can create at most {max} teams as captain'**
+  String errTeamLimit(int max);
+
+  /// No description provided for @errCaptainCannotLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand the captain role to another member before you leave'**
+  String get errCaptainCannotLeave;
+
+  /// No description provided for @errTeamNameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'A team with this name already exists in this city and sport'**
+  String get errTeamNameTaken;
+
+  /// No description provided for @notifTeamInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} invited you to join {team}'**
+  String notifTeamInvite(String actor, String team);
+
+  /// No description provided for @notifTeamJoinRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} wants to join {team}'**
+  String notifTeamJoinRequest(String actor, String team);
+
+  /// No description provided for @notifTeamJoinApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'You are now a member of {team}'**
+  String notifTeamJoinApproved(String team);
+
+  /// No description provided for @notifTeamJoinDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request to join {team} was declined'**
+  String notifTeamJoinDeclined(String team);
+
+  /// No description provided for @notifTeamRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The captain removed you from {team}'**
+  String notifTeamRemoved(String team);
+
+  /// No description provided for @notifTeamCaptain.
+  ///
+  /// In en, this message translates to:
+  /// **'You are now the captain of {team}'**
+  String notifTeamCaptain(String team);
+
+  /// No description provided for @notifTeamDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'The team {team} was deleted'**
+  String notifTeamDeleted(String team);
 }
 
 class _AppLocalizationsDelegate

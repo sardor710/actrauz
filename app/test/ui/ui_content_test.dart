@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_media.dart';
-import 'package:actra/data/social.dart';
+import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/features/common/widgets.dart';
 import 'package:actra/state/ui_providers.dart';
 import 'package:flutter/material.dart';
@@ -64,21 +64,25 @@ void main() {
   });
 
   group('teams', () {
-    const repo = SampleSocialRepository();
-
-    test('every city has a team and each team is in its city', () async {
+    test('every city has a sample team and lists exactly its own', () async {
+      final backend = SampleBackend(utcNow: () => DateTime.utc(2026, 11, 22, 5));
       for (final cityId in ['tashkent', 'almaty', 'astana']) {
-        final teams = await repo.teams(cityId);
+        final teams = await backend.teams(cityId);
         expect(teams, isNotEmpty, reason: cityId);
-        expect(teams.every((t) => t.cityId == cityId), isTrue);
+        expect(teams.map((t) => t.id).toSet(), {
+          for (final seed in kTeamSeeds)
+            if (seed.cityId == cityId) seed.id,
+        });
       }
     });
 
-    test('every team plays a known sport', () {
+    test('every sample team plays a known sport, has members, and its name is unique in its city and sport', () {
       final sportIds = kSampleSports.map((s) => s.id).toSet();
-      for (final team in kSampleTeams) {
-        expect(sportIds, contains(team.sportId));
-        expect(team.memberCount, greaterThan(0));
+      final names = <String>{};
+      for (final seed in kTeamSeeds) {
+        expect(sportIds, contains(seed.sportId));
+        expect(seed.memberIds, isNotEmpty);
+        expect(names.add('${seed.cityId}/${seed.sportId}/${seed.name.toLowerCase()}'), isTrue, reason: seed.name);
       }
     });
   });

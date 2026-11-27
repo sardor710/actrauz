@@ -2639,4 +2639,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String reviewScoreLine(String sets) {
     return 'Score: $sets';
   }
+
+  @override
+  String errTeamLimit(int max) {
+    return 'You can create at most $max teams as captain';
+  }
+
+  @override
+  String get errCaptainCannotLeave =>
+      'Hand the captain role to another member before you leave';
+
+  @override
+  String get errTeamNameTaken =>
+      'A team with this name already exists in this city and sport';
+
+  @override
+  String notifTeamInvite(String actor, String team) {
+    return '$actor invited you to join $team';
+  }
+
+  @override
+  String notifTeamJoinRequest(String actor, String team) {
+    return '$actor wants to join $team';
+  }
+
+  @override
+  String notifTeamJoinApproved(String team) {
+    return 'You are now a member of $team';
+  }
+
+  @override
+  String notifTeamJoinDeclined(String team) {
+    return 'Your request to join $team was declined';
+  }
+
+  @override
+  String notifTeamRemoved(String team) {
+    return 'The captain removed you from $team';
+  }
+
+  @override
+  String notifTeamCaptain(String team) {
+    return 'You are now the captain of $team';
+  }
+
+  @override
+  String notifTeamDeleted(String team) {
+    return 'The team $team was deleted';
+  }
 }

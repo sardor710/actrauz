@@ -64,6 +64,18 @@ const kScoreErrors = <String, JoinError>{
 /// about the same player and game.
 const kReportErrors = <String, JoinError>{'already_exists': JoinError.alreadyReported};
 
+/// What the team calls mean by their own codes, and by `not_allowed` (not
+/// the captain).
+const kTeamErrors = <String, JoinError>{
+  'team_limit': JoinError.teamLimit,
+  'captain_cannot_leave': JoinError.captainCannotLeave,
+  'not_allowed': JoinError.forbidden,
+};
+
+/// [kTeamErrors] for `create_team` and `update_team`, where `already_exists`
+/// is a name taken in the city and sport (ruling R1).
+const kTeamEditErrors = <String, JoinError>{...kTeamErrors, 'already_exists': JoinError.nameTaken};
+
 const _tournamentErrors = <String, TournamentError>{
   'full': TournamentError.full,
   'deadline_passed': TournamentError.deadlinePassed,

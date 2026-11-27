@@ -2636,4 +2636,52 @@ class AppLocalizationsUz extends AppLocalizations {
   String reviewScoreLine(String sets) {
     return 'Hisob: $sets';
   }
+
+  @override
+  String errTeamLimit(int max) {
+    return 'Siz sardor sifatida koʻpi bilan $max ta jamoa yarata olasiz';
+  }
+
+  @override
+  String get errCaptainCannotLeave =>
+      'Chiqishdan oldin sardorlikni jamoadagi boshqa oʻyinchiga topshiring';
+
+  @override
+  String get errTeamNameTaken =>
+      'Bu shahar va sport turida shu nomli jamoa allaqachon bor';
+
+  @override
+  String notifTeamInvite(String actor, String team) {
+    return '$actor sizni «$team» jamoasiga taklif qildi';
+  }
+
+  @override
+  String notifTeamJoinRequest(String actor, String team) {
+    return '$actor «$team» jamoasiga qoʻshilmoqchi';
+  }
+
+  @override
+  String notifTeamJoinApproved(String team) {
+    return 'Endi siz «$team» jamoasidasiz';
+  }
+
+  @override
+  String notifTeamJoinDeclined(String team) {
+    return '«$team» jamoasiga soʻrovingiz rad etildi';
+  }
+
+  @override
+  String notifTeamRemoved(String team) {
+    return 'Sardor sizni «$team» jamoasidan chiqardi';
+  }
+
+  @override
+  String notifTeamCaptain(String team) {
+    return 'Endi siz «$team» jamoasining sardorisiz';
+  }
+
+  @override
+  String notifTeamDeleted(String team) {
+    return '«$team» jamoasi oʻchirildi';
+  }
 }

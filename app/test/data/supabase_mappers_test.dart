@@ -10,6 +10,7 @@ import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/pricing.dart';
 import 'package:actra/domain/slot_generator.dart';
+import 'package:actra/domain/teams.dart';
 import 'package:actra/domain/tournaments.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1737,6 +1738,201 @@ void main() {
         joinExceptionFor(const PostgrestException(message: 'already_exists'), kScoreErrors).error,
         JoinError.scoreClosed,
       );
+    });
+  });
+
+  group('teams', () {
+    Map<String, dynamic> summary([Map<String, dynamic> extra = const {}]) => {
+      'id': 'team-1',
+      'name': 'Night Owls',
+      'sport_id': 'padel',
+      'city_id': 'tashkent',
+      'description': 'Evenings only',
+      'join_policy': 'approval',
+      'color_seed': 5,
+      'captain_id': me,
+      'member_count': 3,
+      'upcoming_games': 2,
+      'my_status': 'captain',
+      'my_request_id': null,
+      ...extra,
+    };
+
+    test('a summary (list_teams): no members, requests or games', () {
+      final team = teamFromJson(summary(), myUserId: me);
+      expect(team.id, 'team-1');
+      expect(team.name, 'Night Owls');
+      expect(team.sportId, 'padel');
+      expect(team.cityId, 'tashkent');
+      expect(team.description, 'Evenings only');
+      expect(team.joinPolicy, TeamJoinPolicy.approval);
+      expect(team.colorSeed, 5);
+      expect(team.captainId, kMeId);
+      expect(team.memberCount, 3);
+      expect(team.upcomingGames, 2);
+      expect(team.myStatus, MyTeamStatus.captain);
+      expect(team.myRequestId, isNull);
+      expect(team.members, isEmpty);
+      expect(team.requests, isEmpty);
+      expect(team.games, isEmpty);
+    });
+
+    test('my status, my request and an open team', () {
+      expect(teamFromJson(summary({'my_status': null}), myUserId: me).myStatus, isNull);
+      expect(teamFromJson(summary({'my_status': 'member'}), myUserId: me).myStatus, MyTeamStatus.member);
+      expect(teamFromJson(summary({'my_status': 'invited'}), myUserId: me).myStatus, MyTeamStatus.invited);
+      final asked = teamFromJson(summary({'my_status': 'requested', 'my_request_id': 'req-1'}), myUserId: me);
+      expect(asked.myStatus, MyTeamStatus.requested);
+      expect(asked.myRequestId, 'req-1');
+      expect(teamFromJson(summary({'join_policy': 'open', 'description': null}), myUserId: me).joinPolicy,
+          TeamJoinPolicy.open);
+      expect(() => teamFromJson(summary({'my_status': 'boss'}), myUserId: me), throwsFormatException);
+      expect(() => teamFromJson(summary({'join_policy': 'closed'}), myUserId: me), throwsFormatException);
+    });
+
+    test('team_json: members captain first, requests for the captain, games', () {
+      final team = teamFromJson(
+        summary({
+          'members': [
+            {
+              'id': me,
+              'name': 'Demo',
+              'level': 3,
+              'rating': 3.25,
+              'provisional': true,
+              'reliability': {'score': 90, 'badge': 'reliable'},
+              'captain': true,
+            },
+            {
+              'id': other,
+              'name': 'Aziz',
+              'level': null,
+              'rating': null,
+              'provisional': null,
+              'reliability': {'score': 80, 'badge': 'new'},
+              'captain': false,
+            },
+            {
+              'id': '33333333-3333-3333-3333-333333333333',
+              'name': null,
+              'level': null,
+              'rating': null,
+              'provisional': null,
+              'reliability': {'score': 80, 'badge': 'new'},
+              'captain': false,
+              'deleted': true,
+            },
+          ],
+          'requests': [
+            {
+              'id': 'req-1',
+              'user_id': other,
+              'name': 'Aziz',
+              'level': 2,
+              'rating': 2.5,
+              'reliability': {'score': 60, 'badge': 'limited'},
+              'created_at': '2026-11-22T08:00:00+00:00',
+            },
+          ],
+          'games': [
+            {
+              'id': 'game-1',
+              'sport_id': 'padel',
+              'city_id': 'tashkent',
+              'host_id': me,
+              'starts_local': '2026-11-23T19:00:00',
+              'ends_local': '2026-11-23T20:30:00',
+              'spots': 4,
+              'participant_ids': [me],
+            },
+          ],
+        }),
+        myUserId: me,
+      );
+      expect(team.members.map((m) => m.id), [kMeId, other, '33333333-3333-3333-3333-333333333333']);
+      final captain = team.members.first;
+      expect(captain.captain, isTrue);
+      expect(captain.name, 'Demo');
+      expect(captain.level, 3);
+      expect(captain.rating, 3.25);
+      expect(captain.provisional, isTrue);
+      expect(captain.reliability.score, 90);
+      expect(captain.deleted, isFalse);
+      expect(team.members[1].level, 1, reason: 'no level counts as 1');
+      expect(team.members[1].rating, isNull);
+      expect(team.members[1].provisional, isFalse);
+      expect(team.members[1].captain, isFalse);
+      expect(team.members[2].deleted, isTrue);
+      expect(team.members[2].name, '');
+
+      final request = team.requests.single;
+      expect(request.id, 'req-1');
+      expect(request.userId, other);
+      expect(request.name, 'Aziz');
+      expect(request.level, 2);
+      expect(request.rating, 2.5);
+      expect(request.reliability.badge, ReliabilityBadge.limited);
+
+      final game = team.games.single;
+      expect(game.id, 'game-1');
+      expect(game.hostId, kMeId);
+    });
+
+    test('player_json.teams: id, name and sport; absent from an older backend', () {
+      final profile = playerProfileFromJson({
+        'id': other,
+        'name': 'Aziz',
+        'teams': [
+          {'id': 'team-1', 'name': 'Early Birds', 'sport_id': 'football'},
+          {'id': 'team-2', 'name': 'Night Owls', 'sport_id': 'padel'},
+        ],
+      }, myUserId: me);
+      expect(profile.teams.map((t) => t.id), ['team-1', 'team-2']);
+      expect(profile.teams.first.name, 'Early Birds');
+      expect(profile.teams.last.sportId, 'padel');
+      expect(playerProfileFromJson({'id': other, 'name': 'Aziz'}, myUserId: me).teams, isEmpty);
+    });
+
+    test('a draft as create_team and update_team take it; description always sent', () {
+      expect(
+        teamDraftJson(
+          const TeamDraft(
+            name: 'Night Owls',
+            sportId: 'padel',
+            cityId: 'tashkent',
+            description: 'Evenings',
+            joinPolicy: TeamJoinPolicy.approval,
+          ),
+        ),
+        {
+          'name': 'Night Owls',
+          'sport_id': 'padel',
+          'city_id': 'tashkent',
+          'description': 'Evenings',
+          'join_policy': 'approval',
+        },
+      );
+      final cleared = teamDraftJson(
+        const TeamDraft(name: 'Night Owls', sportId: 'padel', cityId: 'tashkent', joinPolicy: TeamJoinPolicy.open),
+      );
+      expect(cleared.containsKey('description'), isTrue);
+      expect(cleared['description'], isNull);
+      expect(cleared['join_policy'], 'open');
+    });
+
+    test('team error codes (ruling R1): the name only for create and update', () {
+      PostgrestException raised(String message) => PostgrestException(message: message);
+      expect(joinExceptionFor(raised('team_limit'), kTeamErrors).error, JoinError.teamLimit);
+      expect(joinExceptionFor(raised('captain_cannot_leave'), kTeamErrors).error, JoinError.captainCannotLeave);
+      expect(joinExceptionFor(raised('not_allowed'), kTeamErrors).error, JoinError.forbidden);
+      expect(joinExceptionFor(raised('already_joined'), kTeamErrors).error, JoinError.alreadyJoined);
+      expect(joinExceptionFor(raised('already_requested'), kTeamErrors).error, JoinError.alreadyRequested);
+      expect(joinExceptionFor(raised('not_found'), kTeamErrors).error, JoinError.notFound);
+      expect(joinExceptionFor(raised('invalid_argument'), kTeamErrors).error, JoinError.invalidArgument);
+      expect(joinExceptionFor(raised('already_exists'), kTeamErrors).error, JoinError.unavailable);
+      expect(joinExceptionFor(raised('already_exists'), kTeamEditErrors).error, JoinError.nameTaken);
+      expect(joinExceptionFor(raised('team_limit'), kTeamEditErrors).error, JoinError.teamLimit);
+      expect(joinExceptionFor(raised('already_exists')).error, JoinError.unavailable);
     });
   });
 }

@@ -23,6 +23,7 @@ import '../domain/competitive.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
 import '../domain/pricing.dart';
+import '../domain/teams.dart';
 import '../domain/tournaments.dart';
 import 'session.dart';
 
@@ -232,6 +233,9 @@ final leaderboardProvider = FutureProvider.family<Leaderboard, ({String sportId,
 final playerProfileProvider = FutureProvider.family<PlayerProfile, String>(
   (ref, id) => ref.watch(socialRepositoryProvider).profile(id),
 );
+
+/// A team page: members, upcoming team games and, for the captain, requests.
+final teamProvider = FutureProvider.family<Team, String>((ref, id) => ref.watch(socialRepositoryProvider).team(id));
 
 /// The sports the signed-in player has ticked, with levels and ratings.
 final mySportsProvider = FutureProvider<List<MySport>>((ref) => ref.watch(socialRepositoryProvider).mySports());

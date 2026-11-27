@@ -7,6 +7,7 @@ import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
+import '../../domain/teams.dart';
 import '../../domain/tournaments.dart';
 import '../sample/sample_data.dart' show kMeId;
 
@@ -623,7 +624,8 @@ MatchResult matchResultFromJson(Row json, {required String? myUserId}) {
 }
 
 /// `admin_review()`: `{disputes: [{result, game, players, disputed_by_name}],
-/// reports: [...], counts}`. Other keys are ignored.
+/// reports: [...], teams: [team summary], counts}`; `teams` is absent from a
+/// backend before teams. Other keys are ignored.
 AdminReview adminReviewFromJson(Row json, {required String? myUserId}) => AdminReview(
   disputes: [
     for (final d in _rows(json['disputes']))
@@ -657,6 +659,7 @@ AdminReview adminReviewFromJson(Row json, {required String? myUserId}) => AdminR
             : matchResultFromJson(Map<String, dynamic>.from(r['result'] as Map), myUserId: myUserId),
       ),
   ],
+  teams: [for (final t in _rows(json['teams'])) teamFromJson(t, myUserId: myUserId)],
 );
 
 /// `app.game_note`: `{game_id, sport_id, starts_local}`.
@@ -720,8 +723,80 @@ PlayerProfile playerProfileFromJson(Row json, {required String? myUserId}) => Pl
   reliability: _reliabilityOf(json['reliability']),
   gamesPlayed: json['games_played'] as int? ?? 0,
   sportsmanship: sportsmanshipFromJson(json['sportsmanship']),
+  teams: [
+    for (final t in _rows(json['teams']))
+      TeamRef(id: t['id'] as String, name: t['name'] as String? ?? '', sportId: t['sport_id'] as String),
+  ],
   deleted: json['deleted'] == true,
 );
+
+/// `app.team_summary_json` (`list_teams`, `admin_review`) or `app.team_json`
+/// (`get_team` and the team calls), which adds `members`, `games` and, for
+/// the captain, `requests`.
+Team teamFromJson(Row json, {required String? myUserId}) => Team(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  sportId: json['sport_id'] as String,
+  cityId: json['city_id'] as String,
+  description: json['description'] as String?,
+  joinPolicy: switch (json['join_policy']) {
+    'open' => TeamJoinPolicy.open,
+    'approval' => TeamJoinPolicy.approval,
+    final other => throw FormatException('Unknown join policy "$other"'),
+  },
+  colorSeed: (json['color_seed'] as num?)?.toInt() ?? 0,
+  captainId: _userId(json['captain_id'], myUserId),
+  memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
+  upcomingGames: (json['upcoming_games'] as num?)?.toInt() ?? 0,
+  myStatus: switch (json['my_status']) {
+    null => null,
+    'captain' => MyTeamStatus.captain,
+    'member' => MyTeamStatus.member,
+    'requested' => MyTeamStatus.requested,
+    'invited' => MyTeamStatus.invited,
+    final other => throw FormatException('Unknown team status "$other"'),
+  },
+  myRequestId: json['my_request_id'] as String?,
+  members: [
+    for (final m in _rows(json['members']))
+      TeamMember(
+        id: _userId(m['id'], myUserId),
+        name: m['name'] as String? ?? '',
+        level: (m['level'] as num?)?.toInt() ?? 1,
+        rating: _double(m['rating']),
+        provisional: m['provisional'] == true,
+        reliability: _reliabilityOf(m['reliability']),
+        captain: m['captain'] == true,
+        deleted: m['deleted'] == true,
+      ),
+  ],
+  requests: [
+    for (final r in _rows(json['requests']))
+      TeamRequest(
+        id: r['id'] as String,
+        userId: _userId(r['user_id'], myUserId),
+        name: r['name'] as String? ?? '',
+        level: (r['level'] as num?)?.toInt() ?? 1,
+        rating: _double(r['rating']),
+        reliability: _reliabilityOf(r['reliability']),
+      ),
+  ],
+  games: [for (final g in _rows(json['games'])) gameFromJson(g, myUserId: myUserId)],
+);
+
+/// `p_team` of `create_team` and `update_team` (which reads only the name,
+/// description and policy). `description` is always sent: on an update an
+/// absent key keeps the old text, a null clears it.
+Map<String, Object?> teamDraftJson(TeamDraft draft) => {
+  'name': draft.name,
+  'sport_id': draft.sportId,
+  'city_id': draft.cityId,
+  'description': draft.description,
+  'join_policy': switch (draft.joinPolicy) {
+    TeamJoinPolicy.open => 'open',
+    TeamJoinPolicy.approval => 'approval',
+  },
+};
 
 Map<String, int> _levelsOf(Object? value) => {
   for (final e in (value as Map? ?? const {}).entries) e.key as String: e.value as int,

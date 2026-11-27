@@ -1489,5 +1489,77 @@
         "type": "String"
       }
     }
+  },
+  "errTeamLimit": "You can create at most {max} teams as captain",
+  "@errTeamLimit": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "errCaptainCannotLeave": "Hand the captain role to another member before you leave",
+  "errTeamNameTaken": "A team with this name already exists in this city and sport",
+  "notifTeamInvite": "{actor} invited you to join {team}",
+  "@notifTeamInvite": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamJoinRequest": "{actor} wants to join {team}",
+  "@notifTeamJoinRequest": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamJoinApproved": "You are now a member of {team}",
+  "@notifTeamJoinApproved": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamJoinDeclined": "Your request to join {team} was declined",
+  "@notifTeamJoinDeclined": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamRemoved": "The captain removed you from {team}",
+  "@notifTeamRemoved": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamCaptain": "You are now the captain of {team}",
+  "@notifTeamCaptain": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamDeleted": "The team {team} was deleted",
+  "@notifTeamDeleted": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -760,5 +760,15 @@
   "reviewCloseTitle": "Шағымды жабу",
   "reviewNote": "Ескертпе (міндетті емес)",
   "reviewReportLine": "{reporter} — {target} туралы шағым",
-  "reviewScoreLine": "Есеп: {sets}"
+  "reviewScoreLine": "Есеп: {sets}",
+  "errTeamLimit": "Капитан ретінде ең көбі {max} команда құра аласыз",
+  "errCaptainCannotLeave": "Шықпас бұрын капитандықты басқа мүшеге беріңіз",
+  "errTeamNameTaken": "Бұл қала мен спорт түрінде осындай атаулы команда бар",
+  "notifTeamInvite": "{actor} сізді «{team}» командасына шақырды",
+  "notifTeamJoinRequest": "{actor} «{team}» командасына қосылғысы келеді",
+  "notifTeamJoinApproved": "Енді сіз «{team}» командасындасыз",
+  "notifTeamJoinDeclined": "«{team}» командасына өтінішіңіз қабылданбады",
+  "notifTeamRemoved": "Капитан сізді «{team}» командасынан шығарды",
+  "notifTeamCaptain": "Енді сіз «{team}» командасының капитанысыз",
+  "notifTeamDeleted": "«{team}» командасы жойылды"
 }

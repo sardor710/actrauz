@@ -111,6 +111,9 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<void> closeReport(String reportId, {String? note}) =>
       _call('admin_close_report', {'p_report_id': reportId, 'p_note': note});
 
+  @override
+  Future<void> deleteTeam(String id) => _call('admin_delete_team', {'p_team_id': id});
+
   // ---- Tournaments ----
 
   Future<AdminRegistration> _entry(String fn, Map<String, dynamic> params) => guardTournament(

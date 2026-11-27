@@ -31,6 +31,10 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
   final tournament = name('title', l.notifTournamentFallback);
   final categoryName = name('category_name', '');
   final category = categoryName.isEmpty ? null : categoryName;
+  // The team's name as it was when the notice was sent; without one a team
+  // notice reads as the generic line.
+  final teamValue = p['team_name'];
+  final team = teamValue is String && teamValue.isNotEmpty ? teamValue : null;
   double? number(String key) {
     final value = p[key];
     return value is num ? value.toDouble() : null;
@@ -78,6 +82,13 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'tournament_moved' => category == null
         ? l.notifTournamentMoved(tournament)
         : l.notifTournamentMovedTo(category, tournament),
+    'team_invite' when team != null => l.notifTeamInvite(actor, team),
+    'team_join_request' when team != null => l.notifTeamJoinRequest(actor, team),
+    'team_join_approved' when team != null => l.notifTeamJoinApproved(team),
+    'team_join_declined' when team != null => l.notifTeamJoinDeclined(team),
+    'team_removed' when team != null => l.notifTeamRemoved(team),
+    'team_captain' when team != null => l.notifTeamCaptain(team),
+    'team_deleted' when team != null => l.notifTeamDeleted(team),
     _ => l.notifUnknown,
   };
 }

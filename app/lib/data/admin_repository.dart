@@ -114,4 +114,8 @@ abstract class AdminRepository {
 
   /// Closes an open report with an optional note of at most 500 characters.
   Future<void> closeReport(String reportId, {String? note});
+
+  /// Removes a team (design §7): its members are told, the audit log keeps
+  /// it as `team_deleted`. `notFound` when it is gone.
+  Future<void> deleteTeam(String id);
 }

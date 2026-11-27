@@ -429,8 +429,52 @@ void main() {
     test('an empty review, unknown keys and a missing teams key are fine', () {
       expect(adminReviewFromJson({'disputes': [], 'reports': [], 'counts': {}}, myUserId: null).openCount, 0);
       expect(adminReviewFromJson(<String, dynamic>{}, myUserId: null).openCount, 0);
-      final json = reviewJson()..['teams'] = [{'id': 't1'}]..['something_new'] = 1;
+      expect(adminReviewFromJson(<String, dynamic>{}, myUserId: null).teams, isEmpty);
+      final json = reviewJson()..['something_new'] = 1;
       expect(adminReviewFromJson(json, myUserId: null).openCount, 5);
+      expect(adminReviewFromJson(json, myUserId: null).teams, isEmpty, reason: 'a backend before teams');
+    });
+
+    test('teams: the summaries, newest first, not counted as open items', () {
+      final json = reviewJson()
+        ..['teams'] = [
+          {
+            'id': 't2',
+            'name': 'Night Owls',
+            'sport_id': 'padel',
+            'city_id': 'tashkent',
+            'description': null,
+            'join_policy': 'approval',
+            'color_seed': 3,
+            'captain_id': 'u-x',
+            'member_count': 4,
+            'upcoming_games': 1,
+            'my_status': null,
+            'my_request_id': null,
+          },
+          {
+            'id': 't1',
+            'name': 'Early Birds',
+            'sport_id': 'football',
+            'city_id': 'almaty',
+            'description': 'Mornings',
+            'join_policy': 'open',
+            'color_seed': 0,
+            'captain_id': 'u-me',
+            'member_count': 1,
+            'upcoming_games': 0,
+            'my_status': 'captain',
+            'my_request_id': null,
+          },
+        ];
+      final review = adminReviewFromJson(json, myUserId: 'u-me');
+      expect(review.openCount, 5);
+      expect(review.teams.map((t) => t.id), ['t2', 't1']);
+      expect(review.teams.first.name, 'Night Owls');
+      expect(review.teams.first.memberCount, 4);
+      expect(review.teams.first.captainId, 'u-x');
+      expect(review.teams.last.captainId, kMeId);
+      expect(review.teams.last.members, isEmpty, reason: 'a summary has no members');
     });
   });
 

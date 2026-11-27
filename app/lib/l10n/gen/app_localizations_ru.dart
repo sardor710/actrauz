@@ -2672,4 +2672,52 @@ class AppLocalizationsRu extends AppLocalizations {
   String reviewScoreLine(String sets) {
     return 'Счёт: $sets';
   }
+
+  @override
+  String errTeamLimit(int max) {
+    return 'Можно создать не более $max команд, где вы капитан';
+  }
+
+  @override
+  String get errCaptainCannotLeave =>
+      'Перед уходом передайте роль капитана другому участнику';
+
+  @override
+  String get errTeamNameTaken =>
+      'Команда с таким названием уже есть в этом городе и виде спорта';
+
+  @override
+  String notifTeamInvite(String actor, String team) {
+    return '$actor приглашает вас в команду «$team»';
+  }
+
+  @override
+  String notifTeamJoinRequest(String actor, String team) {
+    return '$actor хочет вступить в команду «$team»';
+  }
+
+  @override
+  String notifTeamJoinApproved(String team) {
+    return 'Вы теперь в команде «$team»';
+  }
+
+  @override
+  String notifTeamJoinDeclined(String team) {
+    return 'Ваша заявка в команду «$team» отклонена';
+  }
+
+  @override
+  String notifTeamRemoved(String team) {
+    return 'Капитан исключил вас из команды «$team»';
+  }
+
+  @override
+  String notifTeamCaptain(String team) {
+    return 'Теперь вы капитан команды «$team»';
+  }
+
+  @override
+  String notifTeamDeleted(String team) {
+    return 'Команда «$team» удалена';
+  }
 }

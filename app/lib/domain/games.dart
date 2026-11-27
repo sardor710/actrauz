@@ -322,6 +322,16 @@ enum JoinError {
   /// The player already has an open report about this player (and game).
   alreadyReported,
 
+  /// The player already captains the most teams they can create
+  /// (`Team.maxCaptained`).
+  teamLimit,
+
+  /// The captain hands the team to a member before leaving it.
+  captainCannotLeave,
+
+  /// Another team in the same city and sport has this name.
+  nameTaken,
+
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
 }

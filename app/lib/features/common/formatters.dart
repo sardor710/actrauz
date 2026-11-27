@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../domain/booking_engine.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../domain/teams.dart';
 import '../../l10n/gen/app_localizations.dart';
 
 extension ContextL10n on BuildContext {
@@ -110,6 +111,9 @@ String joinErrorText(AppLocalizations l, Object error) {
     JoinError.notCancellable => l.errNotCancellable,
     JoinError.scoreClosed => l.errScoreClosed,
     JoinError.alreadyReported => l.errAlreadyReported,
+    JoinError.teamLimit => l.errTeamLimit(Team.maxCaptained),
+    JoinError.captainCannotLeave => l.errCaptainCannotLeave,
+    JoinError.nameTaken => l.errTeamNameTaken,
     JoinError.unavailable => l.errUnavailable,
   };
 }
