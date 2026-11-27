@@ -312,7 +312,7 @@ class _TeamStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 176,
+    height: 186,
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 14),

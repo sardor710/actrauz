@@ -88,6 +88,35 @@ void main() {
 
     await tap(tester, find.byType(BackButton));
     expect(find.descendant(of: _key('my-teams'), matching: find.text('Yunusobod Padel')), findsOneWidget);
+
+    // A member leaves after saying yes.
+    await tap(tester, find.text('Yunusobod Padel'));
+    await tap(tester, _key('team-leave'));
+    await tap(tester, _key('team-dialog-ok'));
+    expect(_key('team-join'), findsOneWidget);
+    expect(find.text('4 members'), findsOneWidget);
+  });
+
+  testWidgets('teams in the city follow my sports unless I show all', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, withSports: false);
+    await tap(tester, find.text('Social'));
+    // No sports yet: every team of the city, and no toggle.
+    for (final name in ['Yunusobod Padel', 'Chilonzor FC', 'Tennis Crew', 'Hoops TAS']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
+    expect(_key('teams-show-all'), findsNothing);
+
+    await containerOf(tester).read(sampleBackendProvider).setSport('football', level: 3);
+    containerOf(tester).invalidate(mySportsProvider);
+    await tester.pumpAndSettle();
+    expect(find.text('Chilonzor FC'), findsOneWidget);
+    expect(find.text('Yunusobod Padel'), findsNothing);
+    expect(find.text('Hoops TAS'), findsNothing);
+
+    await tap(tester, _key('teams-show-all'));
+    expect(find.text('Yunusobod Padel'), findsOneWidget);
+    expect(find.text('Hoops TAS'), findsOneWidget);
+    expect(find.text('My sports only'), findsOneWidget);
   });
 
   testWidgets('request to join and get approved', (tester) async {
