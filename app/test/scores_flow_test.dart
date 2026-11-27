@@ -227,6 +227,18 @@ void main() {
     expect(result.disputeReason, 'It was 6–4 7–5');
   });
 
+  testWidgets('a game that has ended says how many played, with no spots', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await _openPastGames(tester);
+    expect(find.text('4 played'), findsNWidgets(3));
+    expect(find.textContaining('going'), findsNothing);
+    expect(find.text('Full'), findsNothing);
+
+    await _openGame(tester, 'gf1');
+    expect(find.text('Full'), findsNothing);
+    expect(find.textContaining('spots left'), findsNothing);
+  });
+
   testWidgets('past games is empty for a new player', (tester) async {
     // Ruling R10: the sample's finished games always include the demo player.
     await _pumpAlone(

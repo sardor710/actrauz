@@ -2950,4 +2950,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get reviewCloseReport => 'Закрыть жалобу';
+
+  @override
+  String playedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Сыграли $count игрока',
+      many: 'Сыграли $count игроков',
+      few: 'Сыграли $count игрока',
+      one: 'Сыграл $count игрок',
+    );
+    return '$_temp0';
+  }
 }

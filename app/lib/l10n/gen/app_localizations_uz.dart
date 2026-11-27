@@ -2915,4 +2915,14 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get reviewCloseReport => 'Shikoyatni yopish';
+
+  @override
+  String playedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kishi oʻynadi',
+    );
+    return '$_temp0';
+  }
 }

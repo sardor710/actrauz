@@ -1715,5 +1715,13 @@
   "auditScoreKeep": "Score kept",
   "auditReportClosed": "Report closed",
   "auditTeamDeleted": "Team deleted",
-  "reviewCloseReport": "Close report"
+  "reviewCloseReport": "Close report",
+  "playedCount": "{count, plural, =1{1 played} other{{count} played}}",
+  "@playedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

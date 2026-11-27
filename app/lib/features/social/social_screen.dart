@@ -311,14 +311,18 @@ class _TeamStrip extends StatelessWidget {
   final List<Team> teams;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 186,
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      itemCount: teams.length,
-      separatorBuilder: (_, _) => const SizedBox(width: 6),
-      itemBuilder: (context, i) => _TeamTile(team: teams[i]),
+  Widget build(BuildContext context) => SingleChildScrollView(
+    // As tall as its tallest tile: no empty band under a short list.
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (i, team) in teams.indexed) ...[
+          if (i > 0) const SizedBox(width: 6),
+          _TeamTile(team: team),
+        ],
+      ],
     ),
   );
 }

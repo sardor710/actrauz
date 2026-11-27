@@ -227,11 +227,13 @@ class GameScreen extends ConsumerWidget {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
-                                    Pill(
-                                      text: l.spotsLeft(game.spotsLeft),
-                                      color: game.isFull ? AppColors.errorSoft : AppColors.amber,
-                                      onColor: game.isFull ? AppColors.error : AppColors.ink,
-                                    ),
+                                    // A game that has ended has no spots to offer.
+                                    if (!game.endedAt(gameNow))
+                                      Pill(
+                                        text: l.spotsLeft(game.spotsLeft),
+                                        color: game.isFull ? AppColors.errorSoft : AppColors.amber,
+                                        onColor: game.isFull ? AppColors.error : AppColors.ink,
+                                      ),
                                     Pill(
                                       text: gameRangeText(
                                         l,
@@ -278,6 +280,7 @@ class GameScreen extends ConsumerWidget {
                           children: [
                             for (final member in members)
                               _PlayerTile(
+                                key: ValueKey('game-player-${member.id}'),
                                 member: member,
                                 isHost: member.id == game.hostId,
                                 onRemove: isHost && canAct && member.id != game.hostId
@@ -342,7 +345,7 @@ class _Banner extends StatelessWidget {
 }
 
 class _PlayerTile extends ConsumerWidget {
-  const _PlayerTile({required this.member, required this.isHost, this.onRemove});
+  const _PlayerTile({super.key, required this.member, required this.isHost, this.onRemove});
 
   final GameMember member;
   final bool isHost;
@@ -361,39 +364,39 @@ class _PlayerTile extends ConsumerWidget {
     final name = member.id == kMeId ? l.you : known;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: LayoutBuilder(
-        builder: (context, box) => Row(
-          children: [
-            InitialAvatar(name: name, size: 42, deleted: deleted),
-            const SizedBox(width: 12),
-            Expanded(child: Text(name, style: manrope(15.5, 700))),
-            if (isHost || member.name.isNotEmpty)
-              // At their own width, but never more than about half the row:
-              // on a narrow phone the labels shrink with an ellipsis.
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.55),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isHost)
-                      Flexible(
-                        child: Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
-                      ),
-                    if (member.name.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Flexible(child: ReliabilityPill(reliability: member.reliability)),
+      child: Row(
+        children: [
+          InitialAvatar(name: name, size: 42, deleted: deleted),
+          const SizedBox(width: 12),
+          Expanded(
+            // The labels sit at the end of the name's line when both fit
+            // whole; otherwise they wrap onto the next line, never cut short.
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Text(name, style: manrope(15.5, 700)),
+                if (isHost || member.name.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (isHost) Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
+                      if (member.name.isNotEmpty) ReliabilityPill(reliability: member.reliability),
                     ],
-                  ],
-                ),
-              ),
-            if (onRemove != null)
-              IconButton(
-                tooltip: l.removePlayer,
-                onPressed: onRemove,
-                icon: const Icon(Icons.person_remove_outlined, color: AppColors.muted),
-              ),
-          ],
-        ),
+                  ),
+              ],
+            ),
+          ),
+          if (onRemove != null)
+            IconButton(
+              tooltip: l.removePlayer,
+              onPressed: onRemove,
+              icon: const Icon(Icons.person_remove_outlined, color: AppColors.muted),
+            ),
+        ],
       ),
     );
   }

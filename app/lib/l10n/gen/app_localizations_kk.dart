@@ -2925,4 +2925,14 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get reviewCloseReport => 'Шағымды жабу';
+
+  @override
+  String playedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count адам ойнады',
+    );
+    return '$_temp0';
+  }
 }

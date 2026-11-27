@@ -10,6 +10,7 @@ import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/router.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -86,13 +87,14 @@ void main() {
     await _openGame(tester, 'gf3');
 
     await _openMenu(tester, 'p2');
-    final item = find.widgetWithText(CheckedPopupMenuItem<String>, "Didn't show up");
-    expect(tester.widget<CheckedPopupMenuItem<String>>(item).checked, isFalse);
+    final item = find.byKey(const ValueKey('menu-no-show'));
+    final check = find.byKey(const ValueKey('menu-no-show-check'));
+    expect(check, findsNothing);
     await tap(tester, item);
     expect((await _backendGame(tester, 'gf3')).afterGame!.myNoShows, {'p2'});
 
     await _openMenu(tester, 'p2');
-    expect(tester.widget<CheckedPopupMenuItem<String>>(item).checked, isTrue);
+    expect(check, findsOneWidget);
     await tap(tester, item);
     expect((await _backendGame(tester, 'gf3')).afterGame!.myNoShows, isEmpty);
   });
@@ -184,6 +186,42 @@ void main() {
     await _go(tester, '/profile');
     expect(find.byType(ProfileScreen), findsOneWidget);
     expect(find.text('80% · 5 votes'), findsOneWidget);
+  });
+
+  testWidgets("\"Didn't show up\" and \"Report\" line up in the player menu", (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await _openGame(tester, 'gf1');
+    await tester.ensureVisible(find.byKey(const ValueKey('player-menu-p1')));
+    await tap(tester, find.byKey(const ValueKey('player-menu-p1')));
+    expect(
+      tester.getTopLeft(find.text("Didn't show up")).dx,
+      tester.getTopLeft(find.text('Report')).dx,
+    );
+
+    // Marked: the check is shown, and the two still line up.
+    await tap(tester, find.text("Didn't show up"));
+    await tap(tester, find.byKey(const ValueKey('player-menu-p1')));
+    expect(find.byKey(const ValueKey('menu-no-show-check')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Didn't show up")).dx,
+      tester.getTopLeft(find.text('Report')).dx,
+    );
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('my own row on the game page keeps its pills whole on a 375-wide phone in ru', (tester) async {
+    await pumpApp(tester, prefs: {...signedIn, 'lang': 'ru'}, utcNow: sundayMorning);
+    tester.view.physicalSize = const Size(375, 2400);
+    await tester.pumpAndSettle();
+    await _openGame(tester, 'gf1');
+    final row = find.byKey(const ValueKey('game-player-me'));
+    await tester.ensureVisible(row);
+    for (final text in ['Организатор', 'Надёжный']) {
+      final label = find.descendant(of: row, matching: find.textContaining(text));
+      expect(label, findsOneWidget, reason: text);
+      expect(tester.renderObject<RenderParagraph>(label).didExceedMaxLines, isFalse, reason: text);
+    }
   });
 
   group('by time', () {
@@ -297,8 +335,8 @@ void main() {
       await tap(tester, find.byKey(const ValueKey('vote-up-p2')));
 
       await _openMenu(tester, 'p2');
-      expect(find.byType(CheckedPopupMenuItem<String>), findsOneWidget);
-      await tap(tester, find.byType(CheckedPopupMenuItem<String>));
+      expect(find.byKey(const ValueKey('menu-no-show')), findsOneWidget);
+      await tap(tester, find.byKey(const ValueKey('menu-no-show')));
       await _openMenu(tester, 'p2');
       await tap(tester, find.byKey(const ValueKey('menu-report')));
       expect(find.byType(ReportSheet), findsOneWidget);

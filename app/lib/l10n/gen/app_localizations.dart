@@ -5129,6 +5129,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close report'**
   String get reviewCloseReport;
+
+  /// No description provided for @playedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 played} other{{count} played}}'**
+  String playedCount(int count);
 }
 
 class _AppLocalizationsDelegate

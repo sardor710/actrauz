@@ -2916,4 +2916,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reviewCloseReport => 'Close report';
+
+  @override
+  String playedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count played',
+      one: '1 played',
+    );
+    return '$_temp0';
+  }
 }

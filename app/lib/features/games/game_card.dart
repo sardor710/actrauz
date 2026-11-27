@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
 import '../../domain/games.dart';
@@ -63,6 +64,8 @@ class GameCard extends ConsumerWidget {
     final deleted = [for (final id in game.participantIds) id != kMeId && (playerOf(id)?.deleted ?? false)];
     final host = nameOf(game.hostId);
     final scarce = !game.isFull && game.spotsLeft <= 2;
+    // A game that has ended: how many played, and no spots.
+    final ended = game.endedAt(venueNow(cityById(game.cityId), utcNow: ref.watch(clockProvider)()));
 
     return Card(
       child: InkWell(
@@ -103,10 +106,10 @@ class GameCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          l.going(game.participantIds.length, game.spots),
+                          ended ? l.playedCount(game.participantIds.length) : l.going(game.participantIds.length, game.spots),
                           style: manrope(15, 600, color: AppColors.muted),
                         ),
-                        if (scarce || game.isFull)
+                        if (!ended && (scarce || game.isFull))
                           Pill(
                             text: l.spotsLeft(game.spotsLeft),
                             color: game.isFull ? AppColors.errorSoft : AppColors.amber,

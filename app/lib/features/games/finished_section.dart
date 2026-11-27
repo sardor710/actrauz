@@ -187,11 +187,19 @@ class _OtherPlayerRow extends StatelessWidget {
             onSelected: (action) => action == _noShow ? onNoShow?.call() : onReport(),
             itemBuilder: (context) => [
               if (onNoShow != null)
-                CheckedPopupMenuItem(
+                // The check trails, so both entries start at the same place.
+                PopupMenuItem(
                   key: const ValueKey('menu-no-show'),
                   value: _noShow,
-                  checked: markedNoShow,
-                  child: Text(l.noShowAction),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(l.noShowAction)),
+                      if (markedNoShow) ...[
+                        const SizedBox(width: 12),
+                        const Icon(Icons.check_rounded, key: ValueKey('menu-no-show-check'), size: 20),
+                      ],
+                    ],
+                  ),
                 ),
               PopupMenuItem(key: const ValueKey('menu-report'), value: _report, child: Text(l.reportAction)),
             ],

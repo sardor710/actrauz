@@ -147,6 +147,16 @@ void main() {
     expect(_key('team-post-game'), findsNothing);
   });
 
+  testWidgets('the team tiles on Social are as tall as their content', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await tap(tester, find.text('Social'));
+    final tile = find.byKey(const ValueKey('team-tile-tm1')).first;
+    final strip = find.ancestor(of: tile, matching: find.byType(Scrollable)).first;
+    // No empty band under the tallest tile's last line.
+    final contentBottom = tester.getBottomLeft(find.descendant(of: tile, matching: find.byType(Text)).last).dy;
+    expect(tester.getBottomLeft(strip).dy - contentBottom, lessThan(12));
+  });
+
   testWidgets('join an open team', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await tap(tester, find.text('Social'));

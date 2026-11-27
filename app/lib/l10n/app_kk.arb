@@ -837,5 +837,6 @@
   "auditScoreKeep": "Есеп күшінде қалдырылды",
   "auditReportClosed": "Шағым жабылды",
   "auditTeamDeleted": "Команда жойылды",
-  "reviewCloseReport": "Шағымды жабу"
+  "reviewCloseReport": "Шағымды жабу",
+  "playedCount": "{count, plural, other{{count} адам ойнады}}"
 }

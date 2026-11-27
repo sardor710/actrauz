@@ -837,5 +837,6 @@
   "auditScoreKeep": "Hisob kuchda qoldirildi",
   "auditReportClosed": "Shikoyat yopildi",
   "auditTeamDeleted": "Jamoa oʻchirildi",
-  "reviewCloseReport": "Shikoyatni yopish"
+  "reviewCloseReport": "Shikoyatni yopish",
+  "playedCount": "{count, plural, other{{count} kishi oʻynadi}}"
 }
