@@ -17,7 +17,12 @@ import 'tournament_tools.dart';
 /// may offer one after the deadline. Once the category's draw is published
 /// there is no cancelling either.
 class RegistrationBlock extends ConsumerWidget {
-  const RegistrationBlock({super.key, required this.registration, required this.cityId, required this.registrationOpen});
+  const RegistrationBlock({
+    super.key,
+    required this.registration,
+    required this.cityId,
+    required this.registrationOpen,
+  });
 
   final Registration registration;
   final String cityId;
@@ -67,8 +72,7 @@ class RegistrationBlock extends ConsumerWidget {
     final canClaim = r.status == RegistrationStatus.offered && _isMember;
     // A published draw locks the category's entries: the backend refuses a
     // cancel with draw_published (M8a §6.4).
-    final locked =
-        ref.watch(bracketProvider(r.tournamentId)).valueOrNull?.draw(r.categoryId)?.published ?? false;
+    final locked = ref.watch(bracketProvider(r.tournamentId)).valueOrNull?.draw(r.categoryId)?.published ?? false;
     final canCancel = registrationOpen && r.status.live && _isMember && !locked;
 
     final other = r.role == RegistrationRole.partner ? r.registrant : r.partner;
@@ -100,7 +104,12 @@ class RegistrationBlock extends ConsumerWidget {
           children: [
             RegistrationStatusPill(registration: r),
             if (r.status == RegistrationStatus.registered && r.paid)
-              Pill(text: l.statusPaid, icon: Icons.check_rounded, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
+              Pill(
+                text: l.statusPaid,
+                icon: Icons.check_rounded,
+                color: AppColors.primarySoft,
+                onColor: AppColors.primaryDark,
+              ),
             if (r.waitlistPlace != null) Text(l.waitlistPlaceLabel(r.waitlistPlace!), style: AppText.caption),
           ],
         ),

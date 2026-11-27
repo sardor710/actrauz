@@ -86,16 +86,12 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     return Scaffold(
       key: const ValueKey('tournament-detail'),
       appBar: value.hasValue ? null : AppBar(leading: BackButton(onPressed: () => _back(context))),
-      body: value.when(
-        skipLoadingOnReload: true,
-        // A failed reload keeps the page; the pull that failed says so.
-        skipError: true,
-        data: (tournament) => _body(context, tournament),
-        loading: () => const Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (error, _) => EmptyState(icon: Icons.error_outline, text: tournamentErrorText(context.l, error)),
+      // A failed refresh keeps the page (the pull that failed says so); a
+      // reload for another account never shows the previous one's.
+      body: AsyncBody(
+        value: value,
+        onRetry: () => ref.invalidate(tournamentProvider(tournamentId)),
+        builder: (tournament) => _body(context, tournament),
       ),
     );
   }
@@ -106,8 +102,10 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final now = tournamentNow(ref, t.cityId);
     final sport = ref.watch(sportsProvider).valueOrNull?.where((s) => s.id == t.sportId).firstOrNull;
     final description = t.description.resolve(lang);
-    // Kept through a failed reload; nothing of the draws until it first loads.
-    final bracket = ref.watch(bracketProvider(tournamentId)).valueOrNull;
+    // Kept through a failed refresh; nothing of the draws until it first
+    // loads, nor while it reloads for another account.
+    final bracketValue = ref.watch(bracketProvider(tournamentId));
+    final bracket = bracketValue.isReloading ? null : bracketValue.valueOrNull;
     final next = bracket?.myNextMatch;
     final nextDraw = next == null ? null : bracket?.draw(next.categoryId);
     CategoryDraw? published(String categoryId) {

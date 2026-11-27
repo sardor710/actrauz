@@ -59,76 +59,71 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
         leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
         title: Text(l.tournamentsMine),
       ),
-      body: ref
-          .watch(myRegistrationsProvider)
-          .when(
-            skipLoadingOnReload: true,
-            // A failed reload keeps the list; the pull that failed says so.
-            skipError: true,
-            data: (entries) {
-              final matches = ref.watch(myMatchesProvider).valueOrNull ?? const <MyMatch>[];
-              final next = matches.where((m) => m.match.status != MatchStatus.done).firstOrNull;
-              String? categoryName(String categoryId) =>
-                  entries.where((e) => e.categoryId == categoryId).firstOrNull?.categoryName.resolve(context.lang);
-              String? cityOf(String tournamentId) =>
-                  entries.where((e) => e.tournamentId == tournamentId).firstOrNull?.tournament?.cityId;
-              return RefreshIndicator(
-                onRefresh: _reload,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  children: [
-                    if (entries.isEmpty && matches.isEmpty)
-                      EmptyState(icon: Icons.emoji_events_outlined, text: l.myTournamentsEmpty),
-                    if (next != null) ...[
-                      _MatchOf(
-                        myMatch: next,
-                        categoryName: categoryName(next.categoryId),
-                        cityId: cityOf(next.tournamentId),
-                        next: true,
+      // A failed refresh keeps the list (the pull that failed says so); a
+      // reload for another account never shows the previous one's.
+      body: AsyncBody(
+        value: ref.watch(myRegistrationsProvider),
+        onRetry: () => ref.invalidate(myRegistrationsProvider),
+        builder: (entries) {
+          final matchesValue = ref.watch(myMatchesProvider);
+          final matches = (matchesValue.isReloading ? null : matchesValue.valueOrNull) ?? const <MyMatch>[];
+          final next = matches.where((m) => m.match.status != MatchStatus.done).firstOrNull;
+          String? categoryName(String categoryId) =>
+              entries.where((e) => e.categoryId == categoryId).firstOrNull?.categoryName.resolve(context.lang);
+          String? cityOf(String tournamentId) =>
+              entries.where((e) => e.tournamentId == tournamentId).firstOrNull?.tournament?.cityId;
+          return RefreshIndicator(
+            onRefresh: _reload,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              children: [
+                if (entries.isEmpty && matches.isEmpty)
+                  EmptyState(icon: Icons.emoji_events_outlined, text: l.myTournamentsEmpty),
+                if (next != null) ...[
+                  _MatchOf(
+                    myMatch: next,
+                    categoryName: categoryName(next.categoryId),
+                    cityId: cityOf(next.tournamentId),
+                    next: true,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (matches.isNotEmpty) ...[
+                  Card(
+                    key: const ValueKey('my-matches'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l.myMatchesTitle.toUpperCase(), style: AppText.sectionTitle),
+                          const SizedBox(height: 12),
+                          for (final m in matches)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _MatchOf(
+                                myMatch: m,
+                                categoryName: categoryName(m.categoryId),
+                                cityId: cityOf(m.tournamentId),
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (matches.isNotEmpty) ...[
-                      Card(
-                        key: const ValueKey('my-matches'),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l.myMatchesTitle.toUpperCase(), style: AppText.sectionTitle),
-                              const SizedBox(height: 12),
-                              for (final m in matches)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: _MatchOf(
-                                    myMatch: m,
-                                    categoryName: categoryName(m.categoryId),
-                                    cityId: cityOf(m.tournamentId),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    for (final entry in entries)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _EntryCard(entry: entry),
-                      ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                for (final entry in entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _EntryCard(entry: entry),
+                  ),
+              ],
             ),
-            error: (error, _) => EmptyState(icon: Icons.error_outline, text: tournamentErrorText(l, error)),
-          ),
+          );
+        },
+      ),
     );
   }
 }
@@ -149,7 +144,8 @@ class _MatchOf extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final m = myMatch;
-    final bracket = ref.watch(bracketProvider(m.tournamentId)).valueOrNull;
+    final bracketValue = ref.watch(bracketProvider(m.tournamentId));
+    final bracket = bracketValue.isReloading ? null : bracketValue.valueOrNull;
     final draw =
         bracket?.draw(m.categoryId) ??
         CategoryDraw(categoryId: m.categoryId, format: DrawFormat.knockout, published: true);

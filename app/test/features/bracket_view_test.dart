@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:actra/core/localized_text.dart';
 import 'package:actra/core/theme.dart';
 import 'package:actra/data/repositories.dart';
@@ -232,6 +234,7 @@ class _FlakyTournaments implements TournamentRepository {
   Future<PlayerRef?> findPlayerByPhone(String phone) => _inner.findPlayerByPhone(phone);
   @override
   Future<TournamentBracket> bracket(String tournamentId) => _guard(() async {
+    await _owner.gate?.future;
     final b = await _inner.bracket(tournamentId);
     if (!_owner.plainPlayer) return b;
     // As a player who does not organise it sees it.
@@ -254,6 +257,9 @@ class _Flaky extends SampleBackend {
   /// The demo player is an admin, so organises every tournament; with this
   /// on, brackets come as a plain player's.
   bool plainPlayer = false;
+
+  /// Brackets wait for it.
+  Completer<void>? gate;
 
   @override
   TournamentRepository get tournament => _flaky ??= _FlakyTournaments(super.tournament, this);
@@ -639,6 +645,96 @@ void main() {
 
       await _pull(tester, find.byKey(const ValueKey('tournament-detail')));
       expect(find.text('6–0 6–0'), findsOneWidget);
+    });
+  });
+
+  group('reloads', () {
+    Future<void> scoreSecondSemi(WidgetTester tester) async {
+      final semis = await _semis(tester);
+      await _backend(tester).organizer.enterScore(
+        semis[1].id,
+        MatchOutcome.played,
+        sets: const [
+          [6, 0],
+          [6, 0],
+        ],
+      );
+    }
+
+    testWidgets('opening the page again shows a score entered meanwhile', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      await _openT1(tester);
+      expect(find.text('6–0 6–0'), findsNothing);
+      final c = containerOf(tester);
+      c.read(routerProvider).go('/tournaments');
+      await tester.pumpAndSettle();
+      await scoreSecondSemi(tester);
+
+      c.read(routerProvider).go('/tournaments/t1');
+      await tester.pumpAndSettle();
+      expect(find.text('6–0 6–0'), findsOneWidget);
+    });
+
+    testWidgets('coming back to the app shows a score entered meanwhile', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      await _openT1(tester);
+      await scoreSecondSemi(tester);
+      expect(find.text('6–0 6–0'), findsNothing);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('6–0 6–0'), findsOneWidget);
+    });
+
+    testWidgets('a notice opened from the inbox shows the fresh bracket', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      await _openT1(tester);
+      // The demo player's semi-final.
+      final semis = await _semis(tester);
+      await _backend(tester).organizer.enterScore(
+        semis[0].id,
+        MatchOutcome.played,
+        sets: const [
+          [6, 1],
+          [6, 1],
+        ],
+      );
+      final c = containerOf(tester);
+      c.invalidate(inboxProvider);
+      c.invalidate(unreadCountProvider);
+      // The tournaments tab keeps the page underneath.
+      c.read(routerProvider).go('/home');
+      await tester.pumpAndSettle();
+
+      await tap(tester, find.byKey(const ValueKey('inbox-bell')));
+      await tap(tester, find.textContaining('Your match result in Tashkent Padel Cup').first);
+      expect(find.byKey(const ValueKey('tournament-detail')), findsOneWidget);
+      expect(find.text('6–1 6–1'), findsOneWidget);
+    });
+
+    testWidgets("another account never sees the previous one's next match or Manage", (tester) async {
+      final gate = Completer<void>();
+      var built = 0;
+      await pumpApp(
+        tester,
+        prefs: signedIn,
+        utcNow: sundayMorning,
+        backend: (clock) => _Flaky(utcNow: clock)..gate = built++ == 0 ? null : gate,
+      );
+      await _openT1(tester);
+      expect(find.byKey(const ValueKey('next-match')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tournament-manage')), findsOneWidget);
+
+      await containerOf(tester).read(sessionProvider.notifier).signIn('Other');
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('next-match')), findsNothing);
+      expect(find.byKey(const ValueKey('tournament-manage')), findsNothing);
+      expect(find.byKey(const ValueKey('draw-t1c2')), findsNothing);
+
+      gate.complete();
+      await tester.pumpAndSettle();
     });
   });
 
