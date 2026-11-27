@@ -1129,6 +1129,47 @@ void main() {
       expect(backend.reportPlayer('p5', reason: ReportReason.other), joinError(JoinError.notFound));
     });
 
+    test('a recorded no-show takes the game-completed credit, and gives it back with the penalty', () async {
+      backend.recordReliability(kMeId, ReliabilityKind.gameCompleted, 'gf3');
+      final before = await backend.profile(kMeId);
+
+      await backend.reportNoShowAs('p1', 'gf3', kMeId, reported: true);
+      await backend.reportNoShowAs('p2', 'gf3', kMeId, reported: true);
+      final recorded = await backend.profile(kMeId);
+      expect(
+        recorded.reliability.score,
+        before.reliability.score - ReliabilityKind.gameCompleted.delta + ReliabilityKind.noShow.delta,
+      );
+      expect(recorded.gamesPlayed, before.gamesPlayed - 1);
+
+      await backend.reportNoShowAs('p2', 'gf3', kMeId, reported: false);
+      final undone = await backend.profile(kMeId);
+      expect(undone.reliability.score, before.reliability.score);
+      expect(undone.gamesPlayed, before.gamesPlayed);
+    });
+
+    test('a host the venue already marked no-show is not penalised again for the game', () async {
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      // g4: hosted by p7, with p5, p8 and p1, on a booking.
+      final g4 = await timed.game('g4');
+      expect(g4.hostId, 'p7');
+      timed.recordReliability('p7', ReliabilityKind.noShow, g4.bookingId!);
+      final hostBefore = (await timed.profile('p7')).reliability.score;
+      final p1Before = (await timed.profile('p1')).reliability.score;
+      // Just after the end.
+      now = utcNow.add(g4.end.difference(venueNow(cityById(g4.cityId), utcNow: utcNow))).add(const Duration(minutes: 1));
+
+      await timed.reportNoShowAs('p5', 'g4', 'p7', reported: true);
+      await timed.reportNoShowAs('p8', 'g4', 'p7', reported: true);
+      expect((await timed.profile('p7')).reliability.score, hostBefore);
+
+      // The same majority does count against a player the venue did not mark.
+      await timed.reportNoShowAs('p5', 'g4', 'p1', reported: true);
+      await timed.reportNoShowAs('p8', 'g4', 'p1', reported: true);
+      expect((await timed.profile('p1')).reliability.score, p1Before + ReliabilityKind.noShow.delta);
+    });
+
     test('sportsmanship shows from five votes', () async {
       expect((await backend.profile('p1')).sportsmanship.votes, 0);
       await backend.vote('gf1', 'p1', true);
