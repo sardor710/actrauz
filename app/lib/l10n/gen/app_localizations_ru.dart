@@ -481,9 +481,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Одиночные и парные разряды для любого уровня';
 
   @override
-  String get discoverTeams => 'Команды рядом';
-
-  @override
   String get noTeams => 'В этом городе пока нет команд';
 
   @override
@@ -2720,4 +2717,152 @@ class AppLocalizationsRu extends AppLocalizations {
   String notifTeamDeleted(String team) {
     return 'Команда «$team» удалена';
   }
+
+  @override
+  String get myTeams => 'Мои команды';
+
+  @override
+  String get noMyTeams => 'Вы пока не состоите в команде';
+
+  @override
+  String teamsInCity(String city) {
+    return 'Команды · $city';
+  }
+
+  @override
+  String get noTeamsForMySports =>
+      'В этом городе пока нет команд по вашим видам спорта';
+
+  @override
+  String get showAllTeams => 'Показать все';
+
+  @override
+  String get showMySportsTeams => 'Только мои виды спорта';
+
+  @override
+  String get createTeam => 'Создать команду';
+
+  @override
+  String get teamOpen => 'Открытая';
+
+  @override
+  String get teamByApproval => 'По одобрению';
+
+  @override
+  String get teamJoin => 'Вступить в команду';
+
+  @override
+  String get teamRequestJoin => 'Подать заявку';
+
+  @override
+  String get teamRequestSent => 'Ваша заявка ждёт решения капитана';
+
+  @override
+  String get teamCancelRequest => 'Отозвать заявку';
+
+  @override
+  String get teamInvited => 'Вас пригласили в эту команду';
+
+  @override
+  String get teamAcceptInvite => 'Принять приглашение';
+
+  @override
+  String get teamLeave => 'Выйти из команды';
+
+  @override
+  String teamLeaveConfirm(String team) {
+    return 'Выйти из команды «$team»?';
+  }
+
+  @override
+  String get teamHandoverTitle => 'Выберите нового капитана';
+
+  @override
+  String get teamHandoverText =>
+      'Передайте роль капитана участнику, после этого вы выйдете из команды.';
+
+  @override
+  String get teamHandoverEmpty =>
+      'В команде больше никого нет. Вместо этого её можно удалить.';
+
+  @override
+  String get teamDelete => 'Удалить команду';
+
+  @override
+  String get teamCaptain => 'Капитан';
+
+  @override
+  String get teamMembersTitle => 'Участники';
+
+  @override
+  String get teamRequestsTitle => 'Заявки на вступление';
+
+  @override
+  String get teamMakeCaptain => 'Сделать капитаном';
+
+  @override
+  String teamMakeCaptainConfirm(String name) {
+    return 'Сделать $name капитаном?';
+  }
+
+  @override
+  String get teamMakeCaptainMsg => 'Вы останетесь в команде как участник.';
+
+  @override
+  String get teamRemoveMember => 'Исключить из команды';
+
+  @override
+  String teamRemoveConfirm(String name) {
+    return 'Исключить $name из команды?';
+  }
+
+  @override
+  String get teamRemove => 'Исключить';
+
+  @override
+  String get teamNew => 'Новая команда';
+
+  @override
+  String get teamEditTitle => 'Редактировать команду';
+
+  @override
+  String get teamChooseSport => 'Выберите вид спорта';
+
+  @override
+  String teamNameHelp(int min, int max) {
+    return 'От $min до $max символов';
+  }
+
+  @override
+  String get teamFixedHint =>
+      'Вид спорта и город нельзя изменить после создания команды.';
+
+  @override
+  String get teamPolicyTitle => 'Кто может вступить';
+
+  @override
+  String get teamPolicyOpenHint => 'Любой может вступить сразу';
+
+  @override
+  String get teamPolicyApprovalHint => 'Капитан одобряет каждую заявку';
+
+  @override
+  String get inviteToTeam => 'Пригласить в команду';
+
+  @override
+  String get chooseTeamToInvite => 'Выберите команду';
+
+  @override
+  String get noTeamsToInvite => 'Нет вашей команды, куда можно пригласить';
+
+  @override
+  String get profileTeams => 'Команды';
+
+  @override
+  String reviewTeamsTab(int count) {
+    return 'Команды · $count';
+  }
+
+  @override
+  String get reviewNoTeams => 'Команд нет';
 }

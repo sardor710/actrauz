@@ -930,12 +930,6 @@ abstract class AppLocalizations {
   /// **'Singles and pairs for every level'**
   String get tournamentsPromoText;
 
-  /// No description provided for @discoverTeams.
-  ///
-  /// In en, this message translates to:
-  /// **'Discover teams'**
-  String get discoverTeams;
-
   /// No description provided for @noTeams.
   ///
   /// In en, this message translates to:
@@ -4727,6 +4721,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The team {team} was deleted'**
   String notifTeamDeleted(String team);
+
+  /// No description provided for @myTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'My teams'**
+  String get myTeams;
+
+  /// No description provided for @noMyTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not in a team yet'**
+  String get noMyTeams;
+
+  /// No description provided for @teamsInCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams · {city}'**
+  String teamsInCity(String city);
+
+  /// No description provided for @noTeamsForMySports.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams for your sports in this city yet'**
+  String get noTeamsForMySports;
+
+  /// No description provided for @showAllTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get showAllTeams;
+
+  /// No description provided for @showMySportsTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'My sports only'**
+  String get showMySportsTeams;
+
+  /// No description provided for @createTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a team'**
+  String get createTeam;
+
+  /// No description provided for @teamOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get teamOpen;
+
+  /// No description provided for @teamByApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'By approval'**
+  String get teamByApproval;
+
+  /// No description provided for @teamJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Join team'**
+  String get teamJoin;
+
+  /// No description provided for @teamRequestJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Request to join'**
+  String get teamRequestJoin;
+
+  /// No description provided for @teamRequestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request is waiting for the captain'**
+  String get teamRequestSent;
+
+  /// No description provided for @teamCancelRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel request'**
+  String get teamCancelRequest;
+
+  /// No description provided for @teamInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'You are invited to this team'**
+  String get teamInvited;
+
+  /// No description provided for @teamAcceptInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept invite'**
+  String get teamAcceptInvite;
+
+  /// No description provided for @teamLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave team'**
+  String get teamLeave;
+
+  /// No description provided for @teamLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave {team}?'**
+  String teamLeaveConfirm(String team);
+
+  /// No description provided for @teamHandoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the new captain'**
+  String get teamHandoverTitle;
+
+  /// No description provided for @teamHandoverText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand the captain role to a member, then you leave the team.'**
+  String get teamHandoverText;
+
+  /// No description provided for @teamHandoverEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else is in the team. You can delete it instead.'**
+  String get teamHandoverEmpty;
+
+  /// No description provided for @teamDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete team'**
+  String get teamDelete;
+
+  /// No description provided for @teamCaptain.
+  ///
+  /// In en, this message translates to:
+  /// **'Captain'**
+  String get teamCaptain;
+
+  /// No description provided for @teamMembersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamMembersTitle;
+
+  /// No description provided for @teamRequestsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests to join'**
+  String get teamRequestsTitle;
+
+  /// No description provided for @teamMakeCaptain.
+  ///
+  /// In en, this message translates to:
+  /// **'Make captain'**
+  String get teamMakeCaptain;
+
+  /// No description provided for @teamMakeCaptainConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Make {name} the captain?'**
+  String teamMakeCaptainConfirm(String name);
+
+  /// No description provided for @teamMakeCaptainMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'You stay in the team as a member.'**
+  String get teamMakeCaptainMsg;
+
+  /// No description provided for @teamRemoveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from team'**
+  String get teamRemoveMember;
+
+  /// No description provided for @teamRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the team?'**
+  String teamRemoveConfirm(String name);
+
+  /// No description provided for @teamRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get teamRemove;
+
+  /// No description provided for @teamNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New team'**
+  String get teamNew;
+
+  /// No description provided for @teamEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit team'**
+  String get teamEditTitle;
+
+  /// No description provided for @teamChooseSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a sport'**
+  String get teamChooseSport;
+
+  /// No description provided for @teamNameHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'From {min} to {max} characters'**
+  String teamNameHelp(int min, int max);
+
+  /// No description provided for @teamFixedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport and city cannot be changed after the team is created.'**
+  String get teamFixedHint;
+
+  /// No description provided for @teamPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can join'**
+  String get teamPolicyTitle;
+
+  /// No description provided for @teamPolicyOpenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone can join at once'**
+  String get teamPolicyOpenHint;
+
+  /// No description provided for @teamPolicyApprovalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The captain approves each request'**
+  String get teamPolicyApprovalHint;
+
+  /// No description provided for @inviteToTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to team'**
+  String get inviteToTeam;
+
+  /// No description provided for @chooseTeamToInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a team'**
+  String get chooseTeamToInvite;
+
+  /// No description provided for @noTeamsToInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'No team of yours to invite them to'**
+  String get noTeamsToInvite;
+
+  /// No description provided for @profileTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get profileTeams;
+
+  /// No description provided for @reviewTeamsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams · {count}'**
+  String reviewTeamsTab(int count);
+
+  /// No description provided for @reviewNoTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams'**
+  String get reviewNoTeams;
 }
 
 class _AppLocalizationsDelegate

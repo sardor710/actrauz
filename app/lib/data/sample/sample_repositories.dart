@@ -1393,6 +1393,9 @@ class SampleBackend
   Future<void> inviteToTeamAs(String userId, String teamId, String inviteeId) async =>
       _teams.invite(userId, teamId, inviteeId);
 
+  Future<Team> decideTeamRequestAs(String userId, String requestId, {required bool approve}) async =>
+      _teams.decide(userId, requestId, approve: approve);
+
   @override
   Future<List<Team>> teams(String cityId) async => _teams.list(kMeId, cityId);
 

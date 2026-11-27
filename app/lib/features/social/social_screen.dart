@@ -15,9 +15,10 @@ import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import '../games/game_pickers.dart';
+import 'team_screen.dart' show TeamAvatar;
 
-/// Teams in the city and players to meet: search by name, sport and level.
-/// Joining a team arrives in a later milestone.
+/// The player's teams and the city's others, leaderboards, and players to
+/// meet: search by name, sport and level.
 class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
 
@@ -32,6 +33,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
 
   /// Used instead of [_levels] when the sport is rated (padel, tennis).
   RangeValues _ratings = kAllRatings;
+
+  /// Teams in the city of every sport, not only the player's own.
+  bool _showAllTeams = false;
 
   @override
   void dispose() {
@@ -83,21 +87,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
             const SizedBox(height: 4),
             AsyncBody(
               value: ref.watch(teamsProvider),
-              builder: (teams) => SectionCard(
-                title: l.discoverTeams,
-                contentPadding: const EdgeInsets.only(bottom: 16),
-                child: teams.isEmpty
-                    ? EmptyState(icon: Icons.groups_outlined, text: l.noTeams)
-                    : SizedBox(
-                        height: 186,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          itemCount: teams.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 6),
-                          itemBuilder: (context, i) => _TeamTile(team: teams[i]),
-                        ),
-                      ),
+              builder: (teams) => _TeamSections(
+                teams: teams,
+                showAll: _showAllTeams,
+                onToggle: () => setState(() => _showAllTeams = !_showAllTeams),
               ),
             ),
             if (sports.where((s) => s.competitiveRating).toList() case final ratedSports when ratedSports.isNotEmpty)
@@ -228,6 +221,108 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
   }
 }
 
+/// "My teams" (captain, member or invited, from any city) with "Create a
+/// team", then "Teams · {city}": the city's other teams in the player's
+/// sports, or all of them with "Show all" (and always all when the player
+/// has picked no sports yet).
+class _TeamSections extends ConsumerWidget {
+  const _TeamSections({required this.teams, required this.showAll, required this.onToggle});
+
+  final List<Team> teams;
+  final bool showAll;
+  final VoidCallback onToggle;
+
+  static bool _mine(Team t) => t.isMember || t.myStatus == MyTeamStatus.invited;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final city = ref.watch(currentCityProvider);
+    final mySports = {for (final m in ref.watch(mySportsProvider).valueOrNull ?? const <MySport>[]) m.sportId};
+    final mine = teams.where(_mine).toList();
+    final others = teams.where((t) => !_mine(t) && t.cityId == city.id).toList();
+    final filtering = !showAll && mySports.isNotEmpty;
+    final shown = filtering ? others.where((t) => mySports.contains(t.sportId)).toList() : others;
+
+    return Column(
+      children: [
+        SectionCard(
+          key: const ValueKey('my-teams'),
+          title: l.myTeams,
+          contentPadding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (mine.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Text(l.noMyTeams, style: AppText.muted.copyWith(fontSize: 15)),
+                )
+              else
+                _TeamStrip(teams: mine),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: OutlinedButton.icon(
+                  key: const ValueKey('teams-create'),
+                  onPressed: () => context.push('/teams/new'),
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(l.createTeam),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SectionCard(
+          key: const ValueKey('city-teams'),
+          title: l.teamsInCity(city.name.resolve(context.lang)),
+          contentPadding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (shown.isEmpty)
+                EmptyState(icon: Icons.groups_outlined, text: filtering ? l.noTeamsForMySports : l.noTeams)
+              else
+                _TeamStrip(teams: shown),
+              // Offered only when the filter hides something, or to undo it.
+              if (mySports.isNotEmpty && (showAll || shown.length < others.length))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: TextButton(
+                      key: const ValueKey('teams-show-all'),
+                      onPressed: onToggle,
+                      child: Text(showAll ? l.showMySportsTeams : l.showAllTeams),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A row of team tiles that scrolls sideways.
+class _TeamStrip extends StatelessWidget {
+  const _TeamStrip({required this.teams});
+
+  final List<Team> teams;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 176,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      itemCount: teams.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 6),
+      itemBuilder: (context, i) => _TeamTile(team: teams[i]),
+    ),
+  );
+}
+
 class _TeamTile extends StatelessWidget {
   const _TeamTile({required this.team});
 
@@ -236,20 +331,30 @@ class _TeamTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final tint = tintFor(team.name);
     return InkWell(
+      key: ValueKey('team-tile-${team.id}'),
       borderRadius: BorderRadius.circular(16),
-      onTap: () => showMessage(context, l.comingSoon),
+      onTap: () => context.push('/teams/${team.id}'),
       child: SizedBox(
         width: 112,
         child: Column(
           children: [
-            Container(
+            SizedBox(
               width: 84,
               height: 84,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: tint.background, shape: BoxShape.circle),
-              child: SportBadge(sportId: team.sportId, size: 50),
+              child: Stack(
+                children: [
+                  TeamAvatar(name: team.name, colorSeed: team.colorSeed, size: 84),
+                  Positioned(right: 0, bottom: 0, child: SportBadge(sportId: team.sportId, size: 32)),
+                  // A pending invite to answer.
+                  if (team.myStatus == MyTeamStatus.invited)
+                    Positioned(
+                      right: 4,
+                      top: 4,
+                      child: Badge(key: ValueKey('team-invite-dot-${team.id}'), smallSize: 12),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             Text(

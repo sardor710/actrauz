@@ -35,6 +35,8 @@ import 'features/shell/home_shell.dart';
 import 'features/social/player_profile_screen.dart';
 import 'features/social/leaderboard_screen.dart';
 import 'features/social/social_screen.dart';
+import 'features/social/team_editor_screen.dart';
+import 'features/social/team_screen.dart';
 import 'features/tournaments/my_tournaments_screen.dart';
 import 'features/tournaments/tournament_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
@@ -70,6 +72,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/players/:id',
         builder: (context, state) => PlayerProfileScreen(playerId: state.pathParameters['id']!),
+      ),
+      // Teams, opened from the Social tab, profiles and notifications.
+      // 'new' before ':id', which would take it for a team id.
+      GoRoute(path: '/teams/new', builder: (context, state) => const TeamEditorScreen()),
+      GoRoute(
+        path: '/teams/:id',
+        builder: (context, state) => TeamScreen(teamId: state.pathParameters['id']!),
+        routes: [
+          GoRoute(
+            path: 'edit',
+            builder: (context, state) => TeamEditorScreen(teamId: state.pathParameters['id']!),
+          ),
+        ],
       ),
       // A rated sport's leaderboard in the current city, from the Social tab
       // and from the rating on the profile.

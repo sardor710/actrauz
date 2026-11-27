@@ -8,17 +8,21 @@ import '../../domain/community.dart';
 import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../domain/teams.dart';
 import '../../state/providers.dart';
+import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import '../games/host_tools.dart';
 import '../games/report_sheet.dart';
+import 'team_screen.dart';
 
 /// A player's public profile: name, level per sport, reliability, games
-/// played and sportsmanship. The host can invite them to one of their own
-/// open games, and anyone can report them from the menu. Opens for players
+/// played, sportsmanship and teams. The host can invite them to one of their
+/// own open games, a captain to one of their teams, and anyone can report
+/// them from the menu. Opens for players
 /// who hid themselves from search too.
 class PlayerProfileScreen extends ConsumerWidget {
   const PlayerProfileScreen({super.key, required this.playerId});
@@ -33,6 +37,8 @@ class PlayerProfileScreen extends ConsumerWidget {
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     String sportName(String id) => sports.where((s) => s.id == id).firstOrNull?.name.resolve(context.lang) ?? id;
     final loaded = ref.watch(playerProfileProvider(playerId)).valueOrNull;
+    // Whether the signed-in player captains a team to invite this player to.
+    final captains = (ref.watch(teamsProvider).valueOrNull ?? const <Team>[]).any((t) => t.isCaptain);
 
     return Scaffold(
       appBar: AppBar(
@@ -128,6 +134,11 @@ class PlayerProfileScreen extends ConsumerWidget {
                               ],
                             ),
                     ),
+                    if (player.teams.isNotEmpty)
+                      SectionCard(
+                        title: l.profileTeams,
+                        child: TeamPills(teams: player.teams),
+                      ),
                   ],
                 ),
               ),
@@ -142,13 +153,24 @@ class PlayerProfileScreen extends ConsumerWidget {
                     top: false,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () => showInviteSheet(context, player),
-                          icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: Text(l.inviteToGame),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: () => showInviteSheet(context, player),
+                            icon: const Icon(Icons.person_add_alt_1_rounded),
+                            label: Text(l.inviteToGame),
+                          ),
+                          if (captains) ...[
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              key: const ValueKey('profile-invite-team'),
+                              onPressed: () => showTeamInviteSheet(context, player),
+                              icon: const Icon(Icons.group_add_outlined),
+                              label: Text(l.inviteToTeam),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -268,6 +290,136 @@ class _InviteSheet extends ConsumerWidget {
                   );
                 },
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A player's teams as pills that open the team page.
+class TeamPills extends StatelessWidget {
+  const TeamPills({super.key, required this.teams});
+
+  final List<TeamRef> teams;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final t in teams)
+        InkWell(
+          key: ValueKey('profile-team-${t.id}'),
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => context.push('/teams/${t.id}'),
+          child: Pill(text: t.name, icon: Icons.groups_outlined),
+        ),
+    ],
+  );
+}
+
+/// The teams the signed-in player captains that [player] is not in.
+List<Team> invitableTeams(List<Team> teams, PlayerProfile player) => [
+  for (final t in teams)
+    if (t.isCaptain && !player.teams.any((r) => r.id == t.id)) t,
+];
+
+Future<void> showTeamInviteSheet(BuildContext context, PlayerProfile player) => showModalBottomSheet<void>(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (context) => _TeamInviteSheet(player: player),
+);
+
+class _TeamInviteSheet extends ConsumerStatefulWidget {
+  const _TeamInviteSheet({required this.player});
+
+  final PlayerProfile player;
+
+  @override
+  ConsumerState<_TeamInviteSheet> createState() => _TeamInviteSheetState();
+}
+
+class _TeamInviteSheetState extends ConsumerState<_TeamInviteSheet> {
+  String? _error;
+  bool _busy = false;
+
+  Future<void> _invite(Team team) async {
+    final l = context.l;
+    // The sheet closes with the invite; keep the screen's messenger for the answer.
+    final messenger = ScaffoldMessenger.of(context);
+    final social = ref.read(socialRepositoryProvider);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final error = await teamActionError(l, () => social.inviteToTeam(team.id, widget.player.id));
+    if (!mounted) return;
+    refreshTeams(ref);
+    if (error != null) {
+      setState(() {
+        _busy = false;
+        _error = error;
+      });
+      return;
+    }
+    Navigator.of(context).pop();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l.inviteSent(widget.player.name)), behavior: SnackBarBehavior.floating));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l.chooseTeamToInvite, style: AppText.title),
+              const SizedBox(height: 8),
+              AsyncBody(
+                value: ref.watch(teamsProvider),
+                builder: (teams) {
+                  final open = invitableTeams(teams, widget.player);
+                  if (open.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(l.noTeamsToInvite, style: AppText.muted.copyWith(fontSize: 15)),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final team in open)
+                        ListTile(
+                          key: ValueKey('invite-team-${team.id}'),
+                          contentPadding: EdgeInsets.zero,
+                          enabled: !_busy,
+                          leading: TeamAvatar(name: team.name, colorSeed: team.colorSeed, size: 36),
+                          title: Text(team.name, style: manrope(15.5, 700)),
+                          subtitle: Text(
+                            '${teamSportName(context, sports, team.sportId)} · ${teamCityName(context, team.cityId)}',
+                            style: AppText.muted,
+                          ),
+                          onTap: () => _invite(team),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: manrope(13.5, 600, color: AppColors.error)),
+              ],
             ],
           ),
         ),

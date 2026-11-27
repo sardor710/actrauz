@@ -256,7 +256,6 @@
   "noTournaments": "No tournaments announced yet",
   "tournamentsPromoTitle": "Play for the cup",
   "tournamentsPromoText": "Singles and pairs for every level",
-  "discoverTeams": "Discover teams",
   "noTeams": "No teams in this city yet",
   "members": "{count, plural, one{{count} member} other{{count} members}}",
   "@members": {
@@ -1561,5 +1560,94 @@
         "type": "String"
       }
     }
-  }
+  },
+  "myTeams": "My teams",
+  "noMyTeams": "You are not in a team yet",
+  "teamsInCity": "Teams · {city}",
+  "@teamsInCity": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "noTeamsForMySports": "No teams for your sports in this city yet",
+  "showAllTeams": "Show all",
+  "showMySportsTeams": "My sports only",
+  "createTeam": "Create a team",
+  "teamOpen": "Open",
+  "teamByApproval": "By approval",
+  "teamJoin": "Join team",
+  "teamRequestJoin": "Request to join",
+  "teamRequestSent": "Your request is waiting for the captain",
+  "teamCancelRequest": "Cancel request",
+  "teamInvited": "You are invited to this team",
+  "teamAcceptInvite": "Accept invite",
+  "teamLeave": "Leave team",
+  "teamLeaveConfirm": "Leave {team}?",
+  "@teamLeaveConfirm": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "teamHandoverTitle": "Choose the new captain",
+  "teamHandoverText": "Hand the captain role to a member, then you leave the team.",
+  "teamHandoverEmpty": "Nobody else is in the team. You can delete it instead.",
+  "teamDelete": "Delete team",
+  "teamCaptain": "Captain",
+  "teamMembersTitle": "Members",
+  "teamRequestsTitle": "Requests to join",
+  "teamMakeCaptain": "Make captain",
+  "teamMakeCaptainConfirm": "Make {name} the captain?",
+  "@teamMakeCaptainConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamMakeCaptainMsg": "You stay in the team as a member.",
+  "teamRemoveMember": "Remove from team",
+  "teamRemoveConfirm": "Remove {name} from the team?",
+  "@teamRemoveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamRemove": "Remove",
+  "teamNew": "New team",
+  "teamEditTitle": "Edit team",
+  "teamChooseSport": "Choose a sport",
+  "teamNameHelp": "From {min} to {max} characters",
+  "@teamNameHelp": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "teamFixedHint": "Sport and city cannot be changed after the team is created.",
+  "teamPolicyTitle": "Who can join",
+  "teamPolicyOpenHint": "Anyone can join at once",
+  "teamPolicyApprovalHint": "The captain approves each request",
+  "inviteToTeam": "Invite to team",
+  "chooseTeamToInvite": "Choose a team",
+  "noTeamsToInvite": "No team of yours to invite them to",
+  "profileTeams": "Teams",
+  "reviewTeamsTab": "Teams · {count}",
+  "@reviewTeamsTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewNoTeams": "No teams"
 }

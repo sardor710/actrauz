@@ -17,10 +17,10 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
-import '../social/player_profile_screen.dart' show SportsmanshipPill;
+import '../social/player_profile_screen.dart' show SportsmanshipPill, TeamPills;
 import 'delete_account.dart';
 
-/// The player's card, their sports, and the settings menu.
+/// The player's card, their sports and teams, and the settings menu.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -33,7 +33,9 @@ class ProfileScreen extends ConsumerWidget {
     final name = session.userName ?? '';
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     final reliability = ref.watch(communitySettingsProvider).valueOrNull?.reliability;
-    final sportsmanship = ref.watch(playerProfileProvider(kMeId)).valueOrNull?.sportsmanship;
+    final me = ref.watch(playerProfileProvider(kMeId)).valueOrNull;
+    final sportsmanship = me?.sportsmanship;
+    final teams = me?.teams ?? const [];
 
     final bookings = ref.watch(myBookingsProvider).valueOrNull ?? const <Booking>[];
     final games = ref.watch(gamesProvider).valueOrNull ?? const <Game>[];
@@ -148,6 +150,23 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (teams.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const ValueKey('my-teams-card'),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l.myTeams.toUpperCase(), style: AppText.sectionTitle),
+                    const SizedBox(height: 12),
+                    TeamPills(teams: teams),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Card(
             child: Column(

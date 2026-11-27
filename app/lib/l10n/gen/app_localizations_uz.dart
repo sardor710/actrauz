@@ -477,9 +477,6 @@ class AppLocalizationsUz extends AppLocalizations {
       'Har qanday daraja uchun yakkalik va juftlik bahslari';
 
   @override
-  String get discoverTeams => 'Jamoalar';
-
-  @override
   String get noTeams => 'Bu shaharda hozircha jamoalar yoʻq';
 
   @override
@@ -2684,4 +2681,152 @@ class AppLocalizationsUz extends AppLocalizations {
   String notifTeamDeleted(String team) {
     return '«$team» jamoasi oʻchirildi';
   }
+
+  @override
+  String get myTeams => 'Mening jamoalarim';
+
+  @override
+  String get noMyTeams => 'Siz hali hech qaysi jamoada emassiz';
+
+  @override
+  String teamsInCity(String city) {
+    return 'Jamoalar · $city';
+  }
+
+  @override
+  String get noTeamsForMySports =>
+      'Bu shaharda sizning sport turlaringiz boʻyicha jamoalar hali yoʻq';
+
+  @override
+  String get showAllTeams => 'Hammasini koʻrsatish';
+
+  @override
+  String get showMySportsTeams => 'Faqat mening sport turlarim';
+
+  @override
+  String get createTeam => 'Jamoa yaratish';
+
+  @override
+  String get teamOpen => 'Ochiq';
+
+  @override
+  String get teamByApproval => 'Tasdiqlash orqali';
+
+  @override
+  String get teamJoin => 'Jamoaga qoʻshilish';
+
+  @override
+  String get teamRequestJoin => 'Ariza yuborish';
+
+  @override
+  String get teamRequestSent => 'Arizangiz sardor qarorini kutmoqda';
+
+  @override
+  String get teamCancelRequest => 'Arizani qaytarib olish';
+
+  @override
+  String get teamInvited => 'Sizni bu jamoaga taklif qilishdi';
+
+  @override
+  String get teamAcceptInvite => 'Taklifni qabul qilish';
+
+  @override
+  String get teamLeave => 'Jamoadan chiqish';
+
+  @override
+  String teamLeaveConfirm(String team) {
+    return '«$team» jamoasidan chiqasizmi?';
+  }
+
+  @override
+  String get teamHandoverTitle => 'Yangi sardorni tanlang';
+
+  @override
+  String get teamHandoverText =>
+      'Sardorlikni aʼzolardan biriga topshiring, shundan soʻng jamoadan chiqasiz.';
+
+  @override
+  String get teamHandoverEmpty =>
+      'Jamoada boshqa hech kim yoʻq. Uning oʻrniga jamoani oʻchirishingiz mumkin.';
+
+  @override
+  String get teamDelete => 'Jamoani oʻchirish';
+
+  @override
+  String get teamCaptain => 'Sardor';
+
+  @override
+  String get teamMembersTitle => 'Aʼzolar';
+
+  @override
+  String get teamRequestsTitle => 'Qoʻshilish arizalari';
+
+  @override
+  String get teamMakeCaptain => 'Sardor qilish';
+
+  @override
+  String teamMakeCaptainConfirm(String name) {
+    return '$name sardor boʻlsinmi?';
+  }
+
+  @override
+  String get teamMakeCaptainMsg => 'Siz jamoada aʼzo sifatida qolasiz.';
+
+  @override
+  String get teamRemoveMember => 'Jamoadan chiqarish';
+
+  @override
+  String teamRemoveConfirm(String name) {
+    return '$name jamoadan chiqarilsinmi?';
+  }
+
+  @override
+  String get teamRemove => 'Chiqarish';
+
+  @override
+  String get teamNew => 'Yangi jamoa';
+
+  @override
+  String get teamEditTitle => 'Jamoani tahrirlash';
+
+  @override
+  String get teamChooseSport => 'Sport turini tanlang';
+
+  @override
+  String teamNameHelp(int min, int max) {
+    return '$min dan $max gacha belgi';
+  }
+
+  @override
+  String get teamFixedHint =>
+      'Jamoa yaratilgandan soʻng sport turi va shaharni oʻzgartirib boʻlmaydi.';
+
+  @override
+  String get teamPolicyTitle => 'Kim qoʻshila oladi';
+
+  @override
+  String get teamPolicyOpenHint => 'Istalgan kishi darhol qoʻshila oladi';
+
+  @override
+  String get teamPolicyApprovalHint => 'Sardor har bir arizani tasdiqlaydi';
+
+  @override
+  String get inviteToTeam => 'Jamoaga taklif qilish';
+
+  @override
+  String get chooseTeamToInvite => 'Jamoani tanlang';
+
+  @override
+  String get noTeamsToInvite => 'Taklif qilish uchun jamoangiz yoʻq';
+
+  @override
+  String get profileTeams => 'Jamoalar';
+
+  @override
+  String reviewTeamsTab(int count) {
+    return 'Jamoalar · $count';
+  }
+
+  @override
+  String get reviewNoTeams => 'Jamoalar yoʻq';
 }

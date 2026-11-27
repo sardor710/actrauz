@@ -476,9 +476,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tournamentsPromoText => 'Singles and pairs for every level';
 
   @override
-  String get discoverTeams => 'Discover teams';
-
-  @override
   String get noTeams => 'No teams in this city yet';
 
   @override
@@ -2687,4 +2684,151 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifTeamDeleted(String team) {
     return 'The team $team was deleted';
   }
+
+  @override
+  String get myTeams => 'My teams';
+
+  @override
+  String get noMyTeams => 'You are not in a team yet';
+
+  @override
+  String teamsInCity(String city) {
+    return 'Teams · $city';
+  }
+
+  @override
+  String get noTeamsForMySports => 'No teams for your sports in this city yet';
+
+  @override
+  String get showAllTeams => 'Show all';
+
+  @override
+  String get showMySportsTeams => 'My sports only';
+
+  @override
+  String get createTeam => 'Create a team';
+
+  @override
+  String get teamOpen => 'Open';
+
+  @override
+  String get teamByApproval => 'By approval';
+
+  @override
+  String get teamJoin => 'Join team';
+
+  @override
+  String get teamRequestJoin => 'Request to join';
+
+  @override
+  String get teamRequestSent => 'Your request is waiting for the captain';
+
+  @override
+  String get teamCancelRequest => 'Cancel request';
+
+  @override
+  String get teamInvited => 'You are invited to this team';
+
+  @override
+  String get teamAcceptInvite => 'Accept invite';
+
+  @override
+  String get teamLeave => 'Leave team';
+
+  @override
+  String teamLeaveConfirm(String team) {
+    return 'Leave $team?';
+  }
+
+  @override
+  String get teamHandoverTitle => 'Choose the new captain';
+
+  @override
+  String get teamHandoverText =>
+      'Hand the captain role to a member, then you leave the team.';
+
+  @override
+  String get teamHandoverEmpty =>
+      'Nobody else is in the team. You can delete it instead.';
+
+  @override
+  String get teamDelete => 'Delete team';
+
+  @override
+  String get teamCaptain => 'Captain';
+
+  @override
+  String get teamMembersTitle => 'Members';
+
+  @override
+  String get teamRequestsTitle => 'Requests to join';
+
+  @override
+  String get teamMakeCaptain => 'Make captain';
+
+  @override
+  String teamMakeCaptainConfirm(String name) {
+    return 'Make $name the captain?';
+  }
+
+  @override
+  String get teamMakeCaptainMsg => 'You stay in the team as a member.';
+
+  @override
+  String get teamRemoveMember => 'Remove from team';
+
+  @override
+  String teamRemoveConfirm(String name) {
+    return 'Remove $name from the team?';
+  }
+
+  @override
+  String get teamRemove => 'Remove';
+
+  @override
+  String get teamNew => 'New team';
+
+  @override
+  String get teamEditTitle => 'Edit team';
+
+  @override
+  String get teamChooseSport => 'Choose a sport';
+
+  @override
+  String teamNameHelp(int min, int max) {
+    return 'From $min to $max characters';
+  }
+
+  @override
+  String get teamFixedHint =>
+      'Sport and city cannot be changed after the team is created.';
+
+  @override
+  String get teamPolicyTitle => 'Who can join';
+
+  @override
+  String get teamPolicyOpenHint => 'Anyone can join at once';
+
+  @override
+  String get teamPolicyApprovalHint => 'The captain approves each request';
+
+  @override
+  String get inviteToTeam => 'Invite to team';
+
+  @override
+  String get chooseTeamToInvite => 'Choose a team';
+
+  @override
+  String get noTeamsToInvite => 'No team of yours to invite them to';
+
+  @override
+  String get profileTeams => 'Teams';
+
+  @override
+  String reviewTeamsTab(int count) {
+    return 'Teams · $count';
+  }
+
+  @override
+  String get reviewNoTeams => 'No teams';
 }

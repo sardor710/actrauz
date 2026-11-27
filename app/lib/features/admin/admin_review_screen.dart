@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../domain/admin.dart';
+import '../../domain/teams.dart';
 import '../../state/admin_providers.dart';
 import '../../state/providers.dart';
+import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
 import '../games/finished_section.dart';
@@ -15,7 +18,7 @@ import '../games/score_sheet.dart';
 import 'admin_common.dart';
 
 /// What an admin has to decide (design §6.4): disputed and flagged scores,
-/// and open abuse reports, in two tabs.
+/// open abuse reports, and teams to remove, in three tabs.
 class AdminReviewScreen extends StatelessWidget {
   const AdminReviewScreen({super.key});
 
@@ -56,6 +59,11 @@ class _ReviewBody extends ConsumerWidget {
         key: const ValueKey('review-tab-reports'),
         label: l.reviewReportsTab(review.reports.length),
         view: _ReportsTab(reports: review.reports),
+      ),
+      (
+        key: const ValueKey('review-tab-teams'),
+        label: l.reviewTeamsTab(review.teams.length),
+        view: _TeamsTab(teams: review.teams),
       ),
     ];
 
@@ -402,6 +410,72 @@ class _CloseSheetState extends State<_CloseSheet> {
           decoration: InputDecoration(labelText: l.reviewNote),
         ),
       ],
+    );
+  }
+}
+
+// ---- Teams ----
+
+/// Every team, newest first, for names or descriptions that should not stay
+/// up (design §6.4).
+class _TeamsTab extends StatelessWidget {
+  const _TeamsTab({required this.teams});
+
+  final List<Team> teams;
+
+  @override
+  Widget build(BuildContext context) => teams.isEmpty
+      ? Center(child: EmptyState(icon: Icons.groups_outlined, text: context.l.reviewNoTeams))
+      : AdminListView(
+          bottom: 24,
+          children: [for (final t in teams) _TeamCard(key: ValueKey('review-team-${t.id}'), team: t)],
+        );
+}
+
+class _TeamCard extends ConsumerWidget {
+  const _TeamCard({super.key, required this.team});
+
+  final Team team;
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    if (!await confirmDelete(context, team.name) || !context.mounted) return;
+    final ok = await adminWrite(context, ref, () => ref.read(adminRepositoryProvider).deleteTeam(team.id));
+    if (ok) {
+      refreshTeams(ref);
+    } else {
+      ref.invalidate(adminReviewProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final city = kCities.where((c) => c.id == team.cityId).firstOrNull?.name.resolve(context.lang) ?? team.cityId;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(team.name, style: AppText.cardTitle),
+            const SizedBox(height: 4),
+            Text('${_sportName(context, ref, team.sportId)} · $city', style: AppText.muted),
+            const SizedBox(height: 4),
+            Text(l.members(team.memberCount), style: AppText.caption),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                key: ValueKey('review-delete-team-${team.id}'),
+                onPressed: () => _delete(context, ref),
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                child: Text(l.deleteLabel),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
