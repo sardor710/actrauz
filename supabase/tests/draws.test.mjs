@@ -509,12 +509,12 @@ test('the public calls: organiser list, draws and the bracket', async () => {
   assert.equal(made.status, 'draft');
   assert.equal(made.matches.length, 3);
   assert.deepEqual(Object.keys(made.matches[0]).sort(), [
-    'a_empty', 'b_empty', 'court_id', 'group_id', 'id', 'outcome', 'place_note', 'position', 'round', 'sets', 'side_a', 'side_b',
-    'stage', 'starts_at', 'status', 'winner',
+    'a_empty', 'b_empty', 'clash', 'court_id', 'court_name', 'ends_at', 'group_id', 'id', 'outcome', 'place_note', 'position', 'round',
+    'sets', 'side_a', 'side_b', 'stage', 'starts_at', 'status', 'winner',
   ]);
 
   const playerView = await asUser(pool, users[0], async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
-  assert.deepEqual(playerView, { organizer: false, draws: [] });
+  assert.deepEqual(playerView, { organizer: false, draws: [], courts: [] });
   const orgView = await asUser(pool, organizer, async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
   assert.equal(orgView.organizer, true);
   assert.equal(orgView.draws.length, 1);

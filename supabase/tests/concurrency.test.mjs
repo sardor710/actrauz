@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createUser, errorOf, expectError, freshDb } from './helpers/db.mjs';
-import { addCourt, addVenue, at, monday, tashkent } from './helpers/fixtures.mjs';
+import { addAdmin, addCategory, addCourt, addEntries, addTournament, addVenue, at, monday, tashkent } from './helpers/fixtures.mjs';
 
 let db;
 let pool;
@@ -385,5 +385,94 @@ test('auto-confirm and a confirm on another result do not deadlock', async () =>
       );
       assert.deepEqual(per.rows[0], { n: 4, players: 4 });
     }
+  }
+});
+
+test('tournament scheduling: fill the day racing an app hold, two organisers racing for one player', async () => {
+  const admin = await addAdmin(pool, await createUser(pool, 'Admin'));
+  const organizers = [await createUser(pool, 'Organiser 1'), await createUser(pool, 'Organiser 2')];
+  // A tournament on Monday at the venue, organised by both, with one
+  // published knockout per list of players.
+  const tournamentWith = async (entrants) => {
+    const t = await addTournament(pool, { venueId, startsOn: monday });
+    for (const o of organizers) {
+      await pool.query(`insert into tournament_organizers (tournament_id, user_id) values ($1, $2)`, [t, o]);
+    }
+    const cats = [];
+    for (const users of entrants) {
+      const cat = await addCategory(pool, t);
+      await addEntries(pool, cat, users);
+      await pool.query(`select app.make_draw($1, $2, 'knockout', null, null, $3)`, [admin, cat, now]);
+      await pool.query(`select app.publish_draw($1, $2, $3)`, [admin, cat, now]);
+      cats.push(cat);
+    }
+    return { t, cats };
+  };
+  const firstMatch = async (cat) =>
+    (await pool.query(`select * from tournament_matches where category_id = $1 order by round, position limit 1`, [cat])).rows[0];
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    // Fill the day and a player's hold on the same 10:00 slot of one court.
+    const courtId = await addCourt(pool, venueId, { slot: 60 });
+    const { t, cats } = await tournamentWith([[await createUser(pool, 'A'), await createUser(pool, 'B')]]);
+    const booker = await createUser(pool, `Booker ${attempt}`);
+    // Staggered both ways, so each side gets to win some rounds.
+    const fillDelay = attempt % 2 === 0 ? 0 : attempt % 4;
+    const holdDelay = attempt % 2 === 0 ? attempt % 3 : 0;
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const [filled, held] = await Promise.all([
+      wait(fillDelay).then(() =>
+        pool
+          .query(`select app.fill_day($1, $2, $3::date, $4::uuid[], '10:00'::time, null, $5) as r`, [organizers[0], t, monday, [courtId], now])
+          .then((r) => r.rows[0].r),
+      ),
+      wait(holdDelay).then(() => errorOf(hold(booker, courtId, [at(monday, 10)]))),
+    ]);
+    assert.equal(filled.scheduled, 1, `attempt ${attempt}`);
+    const { rows } = await pool.query(
+      `select source, lower(during) as start from bookings
+       where court_id = $1 and status in ('held', 'confirmed') order by lower(during)`,
+      [courtId],
+    );
+    const at10 = rows.filter((r) => r.start.toISOString() === '2026-11-23T05:00:00.000Z');
+    assert.equal(at10.length, 1, `attempt ${attempt}: ${JSON.stringify(rows)}`);
+    const match = await firstMatch(cats[0]);
+    if (held === null) {
+      // The hold came first: fill the day skipped 10:00 and took 11:00.
+      assert.equal(at10[0].source, 'app');
+      assert.equal(match.starts_at.toISOString(), '2026-11-23T06:00:00.000Z');
+    } else {
+      assert.equal(held, 'slot_taken', `attempt ${attempt}`);
+      assert.equal(at10[0].source, 'block');
+      assert.equal(match.starts_at.toISOString(), '2026-11-23T05:00:00.000Z');
+    }
+
+    // Two organisers putting one player on two courts at 10:00 at once.
+    const shared = await createUser(pool, `Shared ${attempt}`);
+    const courts = [await addCourt(pool, venueId, { slot: 60 }), await addCourt(pool, venueId, { slot: 60 })];
+    const race = await tournamentWith([
+      [shared, await createUser(pool, 'C')],
+      [shared, await createUser(pool, 'D')],
+    ]);
+    const matches = [await firstMatch(race.cats[0]), await firstMatch(race.cats[1])];
+    const results = await Promise.all(
+      [0, 1].map((i) =>
+        errorOf(
+          pool.query(`select app.schedule_match($1, $2, $3, $4::timestamp, null, $5)`, [
+            organizers[i],
+            matches[i].id,
+            courts[i],
+            at(monday, 10),
+            now,
+          ]),
+        ),
+      ),
+    );
+    assert.deepEqual([...results].sort(), [null, 'player_busy'].sort(), `attempt ${attempt}`);
+    const scheduled = await pool.query(
+      `select count(*)::int as n from tournament_matches where id = any ($1::uuid[]) and starts_at is not null`,
+      [matches.map((m) => m.id)],
+    );
+    assert.equal(scheduled.rows[0].n, 1);
   }
 });
