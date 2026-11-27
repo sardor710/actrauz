@@ -199,7 +199,15 @@ begin
       where r.game_id = p_game.id
         and exists (select 1 from public.match_result_players mp where mp.result_id = r.id and mp.user_id = p_target)
       for update;
-      if found and v_result.status = 'confirmed' and v_result.flagged_no_show and v_result.resolved_at is null then
+      if found and v_result.status = 'confirmed' and v_result.flagged_no_show and v_result.resolved_at is null
+         -- Another player of the result whose majority still stands keeps it.
+         and not exists (
+           select 1 from public.match_result_players mp
+           where mp.result_id = v_result.id and mp.user_id <> p_target
+             and (select count(*) from public.game_no_show_reports nr
+                  where nr.game_id = p_game.id and nr.target_id = mp.user_id) * 2 > v_others
+             and (select count(*) from public.game_no_show_reports nr
+                  where nr.game_id = p_game.id and nr.target_id = mp.user_id) >= 2) then
         update public.match_results r set flagged_no_show = false where r.id = v_result.id;
       end if;
     end if;

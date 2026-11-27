@@ -681,6 +681,21 @@ test('losing the majority clears the flag', async () => {
   assert.equal(cleared.flagged_no_show, false);
   assert.equal(cleared.resolved_at, null);
   assert.equal((await review(admin)).counts.disputes, 0);
+
+  // Two players of the result reported: the flag stays while one majority does.
+  const [h2, a2, b2, t2] = await players('Two flags host', 'Two flags A', 'Two flags B', 'Two flags T');
+  const game = await finishedGame([h2, a2, b2, t2]);
+  const r = await enterScore(h2, game, [h2, a2], [b2, t2]);
+  await pool.query(`select app.confirm_score($1, $2, $3)`, [b2, r.id, now]);
+  for (const target of [t2, b2]) {
+    await noShow(h2, game, target);
+    await noShow(a2, game, target);
+  }
+  assert.equal((await resultRow(r.id)).flagged_no_show, true);
+  await noShow(a2, game, t2, false, plus(1));
+  assert.equal((await resultRow(r.id)).flagged_no_show, true);
+  await noShow(a2, game, b2, false, plus(2));
+  assert.equal((await resultRow(r.id)).flagged_no_show, false);
 });
 
 test('keep needs a flagged confirmed result', async () => {
