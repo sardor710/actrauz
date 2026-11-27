@@ -636,7 +636,10 @@ test('team page lists its games', async () => {
   await pool.query(`update games set during = tstzrange(now() - interval '1 hour', now() + interval '1 hour') where id = $1`, [started.id]);
   await pool.query(`update games set status = 'cancelled' where id = $1`, [cancelled.id]);
   // Another team's game and an ordinary game do not count.
-  await createGame(cap, run({ starts_local: tashkentLocal(Date.now() + 50 * HOUR), ends_local: tashkentLocal(Date.now() + 51 * HOUR) }), at);
+  const otherTeam = await create(cap, spec('Page other', { sport_id: 'running' }));
+  const elsewhere = { starts_local: tashkentLocal(Date.now() + 50 * HOUR), ends_local: tashkentLocal(Date.now() + 51 * HOUR) };
+  await createGame(cap, run({ ...elsewhere, team_id: otherTeam.id }), at);
+  await createGame(cap, run(elsewhere), at);
 
   const view = await teamJson(team.id, m);
   assert.deepEqual(view.games.map((x) => x.id), [sooner.id, later.id]);
