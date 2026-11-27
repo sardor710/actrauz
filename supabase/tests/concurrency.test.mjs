@@ -512,3 +512,59 @@ test('tournament scores: two organisers entering one match at once leave one win
     assert.equal(final.status, 'waiting');
   }
 });
+
+test('tournament ratings: two organisers entering one rated match at once apply ratings once', async () => {
+  // Tennis is rated (see ratedPlayer); padel stays a simple sport above.
+  await pool.query(
+    `insert into sports (id, name_en, icon_key, default_players, competitive_rating)
+     values ('tennis', 'Tennis', 'tennis', 2, true) on conflict (id) do update set competitive_rating = true`,
+  );
+  const admin = await addAdmin(pool, await createUser(pool, 'Rating admin'));
+  const organizers = [await createUser(pool, 'Rater 1'), await createUser(pool, 'Rater 2')];
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const t = await addTournament(pool, { startsOn: monday, sportId: 'tennis' });
+    for (const o of organizers) {
+      await pool.query(`insert into tournament_organizers (tournament_id, user_id) values ($1, $2)`, [t, o]);
+    }
+    const cat = await addCategory(pool, t);
+    const users = [];
+    for (let i = 0; i < 4; i++) users.push(await ratedPlayer(`R${attempt}-${i}`, '2.50'));
+    await addEntries(pool, cat, users);
+    await pool.query(`select app.make_draw($1, $2, 'knockout', null, null, $3)`, [admin, cat, now]);
+    await pool.query(`select app.publish_draw($1, $2, $3)`, [admin, cat, now]);
+    const semi = (
+      await pool.query(`select * from tournament_matches where category_id = $1 and round = 1 order by position limit 1`, [cat])
+    ).rows[0];
+
+    // Each enters a played score with a different winner; the later one is a
+    // correction of the earlier.
+    const results = await Promise.all(
+      [[[6, 2], [6, 3]], [[2, 6], [3, 6]]].map((sets, i) =>
+        errorOf(
+          pool.query(`select app.enter_match_score($1, $2, 'played', null, $3::jsonb, $4)`, [
+            organizers[i],
+            semi.id,
+            JSON.stringify(sets),
+            now,
+          ]),
+        ),
+      ),
+    );
+    for (const r of results) assert.equal(r, null, `attempt ${attempt}`);
+
+    const live = (
+      await pool.query(`select * from match_results where tournament_match_id = $1 and status <> 'void'`, [semi.id])
+    ).rows;
+    assert.equal(live.length, 1, `attempt ${attempt}`);
+    const done = (await pool.query(`select * from tournament_matches where id = $1`, [semi.id])).rows[0];
+    assert.equal(live[0].winner, done.winner, `attempt ${attempt}`);
+    for (const reg of [semi.side_a, semi.side_b]) {
+      const [u] = (await pool.query(`select app.entry_players($1) as p`, [reg])).rows[0].p;
+      const ev = (await pool.query(`select * from rating_events where user_id = $1`, [u])).rows;
+      assert.equal(ev.length, 1, `attempt ${attempt}`);
+      assert.equal(ev[0].result_id, live[0].id, `attempt ${attempt}`);
+      const row = (await pool.query(`select rated_games from player_ratings where user_id = $1 and sport_id = 'tennis'`, [u])).rows[0];
+      assert.equal(row.rated_games, 1, `attempt ${attempt}`);
+    }
+  }
+});
