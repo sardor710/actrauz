@@ -8,10 +8,11 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
 import { asUser, createUser, expectError, freshDb } from './helpers/db.mjs';
-import { addAdmin, addRatedSports, tashkent } from './helpers/fixtures.mjs';
+import { addAdmin, addCourt, addRatedSports, addVenue, tashkent } from './helpers/fixtures.mjs';
 
 let db;
 let pool;
+let venueId;
 
 const now = tashkent('2026-11-22', 20);
 
@@ -19,6 +20,7 @@ before(async () => {
   db = await freshDb('teams');
   pool = db.pool;
   await addRatedSports(pool);
+  venueId = await addVenue(pool, { name: 'Team venue' });
 });
 after(() => db.end());
 
@@ -436,6 +438,252 @@ test('captain account deleted', async () => {
   // A second call does nothing; the deleted account can no longer be invited.
   await pool.query(`select app.delete_account($1, $2)`, [cap, now]);
   await expectError(invite(joiner, elsewhere.id, cap), 'not_found');
+});
+
+// --- team games (Task 12) ------------------------------------------------------
+
+const HOUR = 3600 * 1000;
+const plusHours = (h, from = now) => new Date(Date.parse(from) + h * HOUR).toISOString();
+/** Tashkent wall-clock time (UTC+5) of an instant, as starts_local takes it. */
+const tashkentLocal = (ms) => new Date(ms + 5 * HOUR).toISOString().slice(0, 16) + ':00';
+
+const createGame = (user, game, at = now) =>
+  one(`select app.game_json(app.create_game($1, $2::jsonb, $3), $1) as g`, [user, JSON.stringify(game), at]).then((r) => r.g);
+const joinGame = (user, gameId, at = now) =>
+  one(`select app.game_json(app.join_game($1, $2, $3), $1) as g`, [user, gameId, at]).then((r) => r.g);
+const requestJoin = (user, gameId, at = now) => pool.query(`select app.request_to_join($1, $2, $3)`, [user, gameId, at]);
+const inviteToGame = (host, gameId, invitee, at = now) =>
+  pool.query(`select app.invite_to_game($1, $2, $3, $4)`, [host, gameId, invitee, at]);
+const listedIds = (user, at = now) =>
+  pool.query(`select g->>'id' as id from app.list_games($1, 'tashkent', $2) g`, [user, at]).then((r) => r.rows.map((x) => x.id));
+const canSee = (user, gameId, at) =>
+  one(`select app.can_see_game($1, g, $3) as v from games g where g.id = $2`, [user, gameId, at]).then((r) => r.v);
+const gameJson = (gameId, user) => one(`select app.game_json(g, $2) as j from games g where g.id = $1`, [gameId, user]).then((r) => r.j);
+const getGame = (user, gameId) =>
+  asUser(pool, user, (c) => c.query(`select public.get_game($1) as g`, [gameId])).then((r) => r.rows[0].g);
+
+/** A running game (no booking needed) on Tuesday evening, 48 hours after `now`. */
+const run = (extra = {}) => ({
+  sport_id: 'running',
+  spots: 6,
+  meeting_point: 'Park gate',
+  starts_local: '2026-11-24T20:00:00',
+  ends_local: '2026-11-24T21:00:00',
+  ...extra,
+});
+
+/** A confirmed app booking on a new court of that sport, Monday 10:00. */
+async function booking(user, sportId = 'padel') {
+  const courtId = await addCourt(pool, venueId, { basePrice: 400000, sportId });
+  const held = await one(`select (app.hold_slots($1, $2, $3::timestamp[], $4)).id`, [user, courtId, ['2026-11-23T10:00:00'], now]);
+  await pool.query(`select app.confirm_booking($1, $2, null, null, $3)`, [user, held.id, now]);
+  return held.id;
+}
+
+/** A player with a padel rating and the level that follows from it. */
+async function rated(name, rating) {
+  const id = await player(name);
+  await pool.query(
+    `insert into player_ratings (user_id, sport_id, rating, rated_games, source) values ($1, 'padel', $2, 0, 'questionnaire')`,
+    [id, rating],
+  );
+  await pool.query(`select app.sync_level($1, 'padel')`, [id]);
+  return id;
+}
+
+test('captain posts a team game', async () => {
+  const [cap, a, b, outsider] = await players('Post cap', 'Post A', 'Post B', 'Post outsider');
+  const team = await teamWith(cap, [a, b], { name: 'Runners', sport_id: 'running' });
+
+  const g = await createGame(cap, run({ team_id: team.id }));
+  assert.deepEqual(g.team, { id: team.id, name: 'Runners' });
+  assert.equal(g.public_from_local, null);
+
+  const sent = await notices('team_game_posted');
+  assert.deepEqual(sent.map((n) => n.user_id), sorted([a, b]));
+  assert.deepEqual(sent[0], {
+    user_id: sent[0].user_id,
+    category: 'teams',
+    payload: { game_id: g.id, sport_id: 'running', starts_local: '2026-11-24T20:00:00', team_id: team.id, team_name: 'Runners' },
+  });
+
+  // Members see it and join with one tap.
+  assert.ok((await listedIds(a)).includes(g.id));
+  assert.equal(await canSee(a, g.id, now), true);
+  const joined = await joinGame(a, g.id);
+  assert.equal(joined.my_status, 'participant');
+  assert.ok((await getGame(b, g.id)) !== null);
+
+  // Nobody else does.
+  assert.ok(!(await listedIds(outsider)).includes(g.id));
+  assert.equal(await canSee(outsider, g.id, now), false);
+  assert.equal(await getGame(outsider, g.id), null);
+  await expectError(joinGame(outsider, g.id), 'not_found');
+  await expectError(requestJoin(outsider, g.id), 'not_found');
+
+  // Through the API too.
+  const [{ g: viaApi }] = await asUser(pool, cap, (c) =>
+    c.query(`select public.create_game($1) as g`, [run({ team_id: team.id, starts_local: tashkentLocal(Date.now() + 48 * HOUR), ends_local: tashkentLocal(Date.now() + 49 * HOUR) })]),
+  ).then((r) => r.rows);
+  assert.equal(viaApi.team.id, team.id);
+  assert.equal((await getGame(a, viaApi.id)).id, viaApi.id);
+  assert.equal(await getGame(outsider, viaApi.id), null);
+});
+
+test("only the captain, only the team's sport", async () => {
+  const [cap, m] = await players('Only cap', 'Only member');
+  const runners = await teamWith(cap, [m], { sport_id: 'running' });
+  await expectError(createGame(m, run({ team_id: runners.id })), 'not_allowed');
+
+  const padel = await create(cap, spec('Only padel', { sport_id: 'padel' }));
+  const footballBooking = await booking(cap, 'football');
+  await expectError(createGame(cap, { sport_id: 'football', booking_id: footballBooking, spots: 10, team_id: padel.id }), 'invalid_argument');
+
+  // The game's city is the team's city.
+  const almaty = await create(cap, spec('Only Almaty', { sport_id: 'running', city_id: 'almaty' }));
+  await expectError(createGame(cap, run({ team_id: almaty.id })), 'invalid_argument');
+
+  await expectError(createGame(cap, run({ team_id: '00000000-0000-0000-0000-000000000001' })), 'not_found');
+  await expectError(createGame(cap, run({ team_id: 'nonsense' })), 'invalid_argument');
+  await expectError(createGame(cap, run({ team_id: runners.id, open_hours_before: 6 })), 'invalid_argument');
+  await expectError(createGame(cap, run({ team_id: runners.id, open_hours_before: 'soon' })), 'invalid_argument');
+  // Opening to everyone is a team-game option only.
+  await expectError(createGame(cap, run({ open_hours_before: 24 })), 'invalid_argument');
+  assert.equal((await one(`select count(*)::int as n from games where team_id is not null and host_id = $1`, [m])).n, 0);
+});
+
+test('team game reads as invite-only', async () => {
+  const cap = await rated('Read cap', 3.5);
+  const team = await create(cap, spec('Read padel', { sport_id: 'padel' }));
+  const g = await createGame(cap, {
+    sport_id: 'padel',
+    booking_id: await booking(cap),
+    spots: 4,
+    visibility: 'public',
+    min_rating: 2.5,
+    max_rating: 4.25,
+    team_id: team.id,
+    open_hours_before: 12,
+  });
+  assert.equal(g.visibility, 'invite_only');
+  assert.equal((await one(`select visibility from games where id = $1`, [g.id])).visibility, 'invite_only');
+  assert.equal(g.team.name, 'Read padel');
+  assert.ok(Number.isInteger(g.min_level) && Number.isInteger(g.max_level));
+  assert.deepEqual([g.min_level, g.max_level], [2, 4]);
+  // Monday 10:00 less 12 hours, in the same local format as starts_local.
+  assert.equal(g.starts_local, '2026-11-23T10:00:00');
+  assert.equal(g.public_from_local, '2026-11-22T22:00:00');
+});
+
+test('opens to everyone', async () => {
+  const [cap, m, outsider, late] = await players('Open cap', 'Open member', 'Open outsider', 'Open late');
+  const team = await teamWith(cap, [m], { sport_id: 'running' });
+  const g = await createGame(cap, run({ team_id: team.id, open_hours_before: 24 }));
+  assert.equal(g.public_from_local, '2026-11-23T20:00:00');
+
+  assert.ok(!(await listedIds(outsider)).includes(g.id));
+  assert.equal(await canSee(outsider, g.id, now), false);
+  await expectError(joinGame(outsider, g.id), 'not_found');
+  await expectError(requestJoin(outsider, g.id), 'not_found');
+
+  const opened = plusHours(25);
+  assert.ok((await listedIds(outsider, opened)).includes(g.id));
+  assert.equal(await canSee(outsider, g.id, opened), true);
+  const joined = await joinGame(outsider, g.id, opened);
+  assert.equal(joined.my_status, 'participant');
+  assert.equal(joined.visibility, 'invite_only');
+
+  // While spots remain: a full game leaves the open list.
+  await pool.query(`update games set spots = 2 where id = $1`, [g.id]);
+  assert.ok(!(await listedIds(late, opened)).includes(g.id));
+  await expectError(joinGame(late, g.id, opened), 'full');
+  // The member still sees it.
+  assert.ok((await listedIds(m, opened)).includes(g.id));
+});
+
+test('rating range still applies to members', async () => {
+  const cap = await rated('Range cap', 3.5);
+  const low = await rated('Range low', 2.0);
+  const mid = await rated('Range mid', 3.25);
+  const invited = await rated('Range invited', 1.5);
+  const team = await teamWith(cap, [low, mid, invited], { sport_id: 'padel' });
+  const g = await createGame(cap, {
+    sport_id: 'padel',
+    booking_id: await booking(cap),
+    spots: 4,
+    min_rating: 3.0,
+    max_rating: 4.0,
+    team_id: team.id,
+  });
+  await expectError(joinGame(low, g.id), 'level_out_of_range');
+  assert.equal((await joinGame(mid, g.id)).my_status, 'participant');
+  // An invited player skips the range, as today.
+  await inviteToGame(cap, g.id, invited);
+  assert.equal((await joinGame(invited, g.id)).my_status, 'participant');
+});
+
+test('team page lists its games', async () => {
+  const [cap, m, outsider] = await players('Page cap', 'Page member', 'Page outsider');
+  const team = await teamWith(cap, [m], { sport_id: 'running' });
+  // team_json reads the real clock, so these games are placed around it.
+  const at = new Date().toISOString();
+  const game = (hours) =>
+    createGame(cap, run({ team_id: team.id, starts_local: tashkentLocal(Date.now() + hours * HOUR), ends_local: tashkentLocal(Date.now() + (hours + 1) * HOUR) }), at);
+  const later = await game(72);
+  const sooner = await game(48);
+  const started = await game(24);
+  const cancelled = await game(30);
+  await pool.query(`update games set during = tstzrange(now() - interval '1 hour', now() + interval '1 hour') where id = $1`, [started.id]);
+  await pool.query(`update games set status = 'cancelled' where id = $1`, [cancelled.id]);
+  // Another team's game and an ordinary game do not count.
+  await createGame(cap, run({ starts_local: tashkentLocal(Date.now() + 50 * HOUR), ends_local: tashkentLocal(Date.now() + 51 * HOUR) }), at);
+
+  const view = await teamJson(team.id, m);
+  assert.deepEqual(view.games.map((x) => x.id), [sooner.id, later.id]);
+  assert.equal(view.games[0].team.id, team.id);
+  assert.equal(view.games[0].my_status, null);
+  assert.equal(view.upcoming_games, 2);
+  assert.equal((await summary(team.id, m)).upcoming_games, 2);
+
+  // Someone outside the team sees the count but not the games they may not see.
+  const outside = await teamJson(team.id, outsider);
+  assert.deepEqual(outside.games, []);
+  assert.equal(outside.upcoming_games, 2);
+});
+
+test('deleting the team keeps the game', async () => {
+  const [cap, m, outsider] = await players('Keep cap', 'Keep member', 'Keep outsider');
+  const team = await teamWith(cap, [m], { sport_id: 'running' });
+  const g = await createGame(cap, run({ team_id: team.id, open_hours_before: 24 }));
+  await joinGame(m, g.id);
+  await deleteTeam(cap, team.id);
+
+  const row = await one(`select team_id, visibility, status from games where id = $1`, [g.id]);
+  assert.deepEqual(row, { team_id: null, visibility: 'invite_only', status: 'open' });
+  const json = await gameJson(g.id, m);
+  assert.equal(json.team, null);
+  assert.equal(json.public_from_local, null);
+  assert.equal(json.my_status, 'participant');
+
+  // It no longer opens to everyone: an ordinary invite-only game.
+  const opened = plusHours(25);
+  assert.equal(await canSee(outsider, g.id, opened), false);
+  assert.ok(!(await listedIds(outsider, opened)).includes(g.id));
+  await expectError(joinGame(outsider, g.id, opened), 'not_found');
+  await expectError(requestJoin(outsider, g.id, opened), 'not_found');
+  assert.equal(await canSee(m, g.id, opened), true);
+  assert.ok((await listedIds(m, opened)).includes(g.id));
+});
+
+test('admin review lists teams', async () => {
+  const [a, b, admin] = await players('Review A', 'Review B', 'Review admin');
+  await addAdmin(pool, admin);
+  const older = await create(a, spec('Review older'), now);
+  const newer = await create(b, spec('Review newer'), plusHours(1));
+  const review = await one(`select app.admin_review($1) as r`, [admin]).then((r) => r.r);
+  assert.deepEqual(review.teams.map((t) => t.id), [newer.id, older.id]);
+  assert.deepEqual(review.teams[0], await summary(newer.id, admin));
+  assert.ok(Array.isArray(review.disputes) && Array.isArray(review.reports));
 });
 
 // --- through the API -----------------------------------------------------------

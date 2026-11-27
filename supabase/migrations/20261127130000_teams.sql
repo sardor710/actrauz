@@ -1,10 +1,11 @@
 -- Milestone 7c: teams — creating and editing a team, joining (open or by
 -- the captain's approval), invites, leaving, removing members, handing over
 -- the captain role, deleting, admin removal, the team JSON and lists
--- (design 2026-11-27-actra-m7-competitive §7). Team games come later.
+-- (design 2026-11-27-actra-m7-competitive §7), and team games (at the end).
 --
 -- Additive: new server-only tables and functions. app.player_json and
--- app.delete_account are copied from 20261127120000_after_game.sql; every
+-- app.delete_account are copied from 20261127120000_after_game.sql; the game
+-- functions redefined in the team games part say where they come from. Every
 -- signature stays.
 --
 -- Lock order: every function that changes a team locks its row first
@@ -482,7 +483,7 @@ as $$
     'color_seed', t.color_seed,
     'captain_id', t.captain_id,
     'member_count', (select count(*) from public.team_members m where m.team_id = t.id),
-    -- Team games come with the next migration.
+    -- Redefined with the team games below.
     'upcoming_games', 0,
     'my_status', case
       when p_user is null then null
@@ -525,7 +526,7 @@ as $$
        left join public.player_levels l on l.user_id = m.user_id and l.sport_id = t.sport_id
        where m.team_id = t.id),
       '[]'::jsonb),
-    -- Team games come with the next migration.
+    -- Redefined with the team games below.
     'games', '[]'::jsonb)
   || case when p_user is not null and p_user = t.captain_id then
        jsonb_build_object('requests', coalesce(
@@ -982,3 +983,631 @@ grant execute on function
   public.list_teams(text),
   public.admin_delete_team(uuid)
 to authenticated, service_role;
+
+-- ===========================================================================
+-- Team games (design §7): the captain posts a game for the team; members are
+-- told (team_game_posted), see it and join it; it may open to everyone a set
+-- number of hours before the start. Stored and shown as invite_only, so a
+-- build made before M7 reads a team game as an invite-only game (design §3).
+-- ===========================================================================
+
+-- A deleted team leaves its games as ordinary invite-only games. public_from
+-- stays on the row, but every rule reads it only while team_id is set
+-- (app.team_game_open), so no delete path has to clear it.
+alter table public.games
+  add column team_id uuid references public.teams (id) on delete set null,
+  add column public_from timestamptz;
+create index games_team_idx on public.games (team_id) where team_id is not null;
+
+-- The team part of who may see and join a game: a team game is open to the
+-- team's members, and to everyone from public_from on. False for a game
+-- without a team (never null). Not stable, like app.can_see_game.
+create function app.team_game_open(p_user uuid, g public.games, p_now timestamptz) returns boolean
+language sql
+set search_path = ''
+as $$
+  select g.team_id is not null
+    and (coalesce(g.public_from <= p_now, false)
+         or (p_user is not null
+             and exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user)))
+$$;
+
+-- Redefined from 20261124110000_games_v2.sql as an overload with a clock:
+-- public games, team games open to the player (app.team_game_open), and
+-- invite-only ones the player is part of: host, participant, invited
+-- (whatever the answer) or has asked to join.
+-- Not stable: it must see rows written earlier in the same statement.
+create function app.can_see_game(p_user uuid, g public.games, p_now timestamptz) returns boolean
+language sql
+set search_path = ''
+as $$
+  select g.visibility = 'public'
+    or app.team_game_open(p_user, g, p_now)
+    or (p_user is not null and (
+      g.host_id = p_user
+      or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)
+      or exists (select 1 from public.game_invites i where i.game_id = g.id and i.user_id = p_user)
+      or exists (select 1 from public.game_join_requests r where r.game_id = g.id and r.user_id = p_user)))
+$$;
+
+-- The form without a clock (public.get_game) asks at now().
+create or replace function app.can_see_game(p_user uuid, g public.games) returns boolean
+language sql
+set search_path = ''
+as $$ select app.can_see_game(p_user, g, now()) $$;
+
+-- Redefined from 20261127100000_ratings.sql: `team_id` and
+-- `open_hours_before` (null, 12, 24 or 48; only with team_id). A team game:
+-- the caller captains the team (not_found for an unknown team, not_allowed
+-- otherwise), the team's sport and city are the game's (invalid_argument),
+-- the game is stored invite_only whatever was asked, public_from is the
+-- start less open_hours_before, and every other member hears
+-- (team_game_posted). The team row is locked after the booking, the order
+-- delete_account uses.
+create or replace function app.create_game(p_user uuid, p_game jsonb, p_now timestamptz) returns public.games
+language plpgsql
+set search_path = ''
+as $$
+declare
+  c_max_days_ahead constant integer := 14;
+  c_max_duration constant interval := interval '12 hours';
+
+  v_sport public.sports;
+  v_spots integer;
+  v_min integer;
+  v_max integer;
+  v_min_rating numeric;
+  v_max_rating numeric;
+  v_visibility text;
+  v_note text;
+  v_distance numeric;
+  v_pace text;
+  v_booking_id uuid;
+  v_venue_id uuid;
+  v_meeting text;
+  v_lat double precision;
+  v_lng double precision;
+  v_starts timestamp;
+  v_ends timestamp;
+  v_booking public.bookings;
+  v_kind text;
+  v_city_id text;
+  v_offset integer;
+  v_during tstzrange;
+  v_price integer;
+  v_team_id uuid;
+  v_open_hours integer;
+  v_team public.teams;
+  v_public_from timestamptz;
+  v_game public.games;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+  perform app.require_reliable(p_user, p_now);
+  if p_game is null or jsonb_typeof(p_game) <> 'object' then raise exception 'invalid_argument'; end if;
+
+  begin
+    v_spots := (p_game->>'spots')::integer;
+    v_min := coalesce((p_game->>'min_level')::integer, 1);
+    v_max := coalesce((p_game->>'max_level')::integer, 5);
+    v_distance := (p_game->>'distance_km')::numeric;
+    v_lat := (p_game->>'meeting_lat')::double precision;
+    v_lng := (p_game->>'meeting_lng')::double precision;
+    v_booking_id := (p_game->>'booking_id')::uuid;
+    v_venue_id := (p_game->>'venue_id')::uuid;
+    v_starts := (p_game->>'starts_local')::timestamp;
+    v_ends := (p_game->>'ends_local')::timestamp;
+    v_team_id := (p_game->>'team_id')::uuid;
+    v_open_hours := (p_game->>'open_hours_before')::integer;
+  exception when invalid_text_representation or invalid_datetime_format or datetime_field_overflow
+                 or numeric_value_out_of_range then
+    raise exception 'invalid_argument';
+  end;
+  v_visibility := coalesce(p_game->>'visibility', 'public');
+  v_note := nullif(btrim(p_game->>'note'), '');
+  v_pace := nullif(btrim(p_game->>'pace'), '');
+  -- Checked as stored (numeric(5,1)), so 9999.95 is refused here, not by the column.
+  v_distance := round(v_distance, 1);
+
+  if v_spots is null or v_spots not between 2 and 30
+     or v_min not between 1 and 5 or v_max not between 1 and 5 or v_min > v_max
+     or v_visibility not in ('public', 'invite_only')
+     or (v_distance is not null and (v_distance <= 0 or v_distance >= 10000))
+     or (v_open_hours is not null and (v_team_id is null or v_open_hours not in (12, 24, 48))) then
+    raise exception 'invalid_argument';
+  end if;
+
+  select s.* into v_sport from public.sports s where s.id = p_game->>'sport_id' and s.active;
+  if not found then raise exception 'not_found'; end if;
+
+  select rr.min_rating, rr.max_rating into v_min_rating, v_max_rating
+  from app.rating_range(v_sport.id, p_game, v_min, v_max) rr;
+  if v_min_rating is not null then
+    v_min := least(5, floor(v_min_rating))::integer;
+    v_max := least(5, floor(v_max_rating))::integer;
+  end if;
+
+  if v_sport.bookable then
+    if v_booking_id is null then raise exception 'booking_not_usable'; end if;
+    -- The lock makes two simultaneous games on one booking take turns.
+    select b.* into v_booking from public.bookings b where b.id = v_booking_id for update;
+    if not found
+       or v_booking.user_id is distinct from p_user
+       or v_booking.source <> 'app'
+       or v_booking.status <> 'confirmed'
+       or lower(v_booking.during) <= p_now
+       or (select c.sport_id from public.courts c where c.id = v_booking.court_id) <> v_sport.id then
+      raise exception 'booking_not_usable';
+    end if;
+    if exists (select 1 from public.games g where g.booking_id = v_booking.id and g.status = 'open') then
+      raise exception 'game_exists';
+    end if;
+
+    v_kind := 'booked';
+    v_venue_id := v_booking.venue_id;
+    select v.city_id into v_city_id from public.venues v where v.id = v_booking.venue_id;
+    v_offset := v_booking.utc_offset_minutes;
+    v_during := v_booking.during;
+    v_price := ceil(v_booking.total_price::numeric / v_spots)::integer;
+    v_meeting := null;
+    v_lat := null;
+    v_lng := null;
+  else
+    if v_venue_id is not null then
+      select v.city_id into v_city_id from public.venues v where v.id = v_venue_id and v.active;
+      if not found then raise exception 'not_found'; end if;
+      v_kind := 'place';
+      v_meeting := null;
+      v_lat := null;
+      v_lng := null;
+    else
+      v_meeting := nullif(btrim(p_game->>'meeting_point'), '');
+      if v_meeting is null
+         or (v_lat is null) <> (v_lng is null)
+         or v_lat not between -90 and 90
+         or v_lng not between -180 and 180 then
+        raise exception 'invalid_argument';
+      end if;
+      select p.city_id into v_city_id from public.profiles p where p.id = p_user;
+      -- A meeting point needs the player's city to be listed anywhere.
+      if v_city_id is null then raise exception 'invalid_argument'; end if;
+      v_kind := 'map_point';
+    end if;
+
+    select ci.utc_offset_minutes into v_offset from public.cities ci where ci.id = v_city_id;
+    if v_starts is null or v_ends is null then raise exception 'invalid_argument'; end if;
+    if app.to_instant(v_starts, v_offset) <= p_now then raise exception 'in_past'; end if;
+    if v_starts::date - app.to_local(p_now, v_offset)::date > c_max_days_ahead then
+      raise exception 'too_far_ahead';
+    end if;
+    if v_ends <= v_starts or v_ends - v_starts > c_max_duration then raise exception 'invalid_argument'; end if;
+    v_during := tstzrange(app.to_instant(v_starts, v_offset), app.to_instant(v_ends, v_offset), '[)');
+    v_price := null;
+    v_booking_id := null;
+  end if;
+
+  if v_team_id is not null then
+    v_team := app.lock_team(p_user, v_team_id, true);
+    if v_team.sport_id <> v_sport.id or v_team.city_id is distinct from v_city_id then
+      raise exception 'invalid_argument';
+    end if;
+    -- Old builds read a team game as invite-only (design §3).
+    v_visibility := 'invite_only';
+    v_public_from := lower(v_during) - make_interval(hours => v_open_hours);
+  end if;
+
+  insert into public.games (
+    sport_id, city_id, venue_id, host_id, booking_id, during, utc_offset_minutes, spots, min_level, max_level,
+    min_rating, max_rating,
+    price_per_player, note, kind, visibility, meeting_point, meeting_lat, meeting_lng, distance_km, pace, created_at,
+    reminded_at, team_id, public_from)
+  values (
+    v_sport.id, v_city_id, v_venue_id, p_user, v_booking_id, v_during, v_offset, v_spots, v_min, v_max,
+    v_min_rating, v_max_rating,
+    v_price, v_note, v_kind, v_visibility, v_meeting, v_lat, v_lng, v_distance, v_pace, p_now,
+    -- Created inside the reminder window (send_reminders: at most 2 h ahead):
+    -- the host just made it, so no reminder follows straight away.
+    case when lower(v_during) <= p_now + interval '2 hours' then p_now end,
+    v_team_id, v_public_from)
+  returning * into v_game;
+
+  insert into public.game_participants (game_id, user_id, joined_at) values (v_game.id, p_user, p_now);
+
+  if v_team_id is not null then
+    perform app.notify(m.user_id, 'team_game_posted', 'teams',
+      app.game_note(v_game) || jsonb_build_object('team_id', v_team.id, 'team_name', v_team.name), p_now)
+    from public.team_members m
+    where m.team_id = v_team.id and m.user_id <> p_user;
+  end if;
+  return v_game;
+end $$;
+
+-- Redefined from 20261127100000_ratings.sql: a team game open to the player
+-- (app.team_game_open: a member, or anyone from public_from on) is joined as
+-- a public game, with the level or rating check; an invite still opens any
+-- invite-only game and skips the check.
+create or replace function app.join_game(p_user uuid, p_game_id uuid, p_now timestamptz) returns public.games
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_game public.games;
+  v_invited boolean;
+  v_level integer;
+  v_rating numeric;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+  perform app.require_reliable(p_user, p_now);
+
+  -- The row lock makes simultaneous joins and approvals take turns, so the
+  -- last spot goes to exactly one player.
+  select g.* into v_game from public.games g where g.id = p_game_id and g.status = 'open' for update;
+  -- A game that has started takes nobody new, invited or not.
+  if not found or lower(v_game.during) <= p_now then raise exception 'not_found'; end if;
+
+  v_invited := exists (select 1 from public.game_invites i
+                       where i.game_id = p_game_id and i.user_id = p_user and i.status = 'pending');
+  if v_game.visibility = 'invite_only' and not v_invited and not app.team_game_open(p_user, v_game, p_now) then
+    raise exception 'not_found';
+  end if;
+  -- Removed by the host: the game is closed to them until they are invited.
+  if app.removed_from_game(p_game_id, p_user) then raise exception 'not_found'; end if;
+
+  if exists (select 1 from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user) then
+    raise exception 'already_joined';
+  end if;
+  if (select count(*) from public.game_participants p where p.game_id = p_game_id) >= v_game.spots then
+    raise exception 'full';
+  end if;
+
+  if not v_invited then
+    if v_game.min_rating is not null then
+      v_rating := app.effective_rating(p_user, v_game.sport_id);
+      if v_rating < v_game.min_rating or v_rating > v_game.max_rating then
+        raise exception 'level_out_of_range';
+      end if;
+    else
+      select coalesce((select l.level from public.player_levels l
+                       where l.user_id = p_user and l.sport_id = v_game.sport_id), 1) into v_level;
+      if v_level < v_game.min_level or v_level > v_game.max_level then
+        raise exception 'level_out_of_range';
+      end if;
+    end if;
+  end if;
+
+  insert into public.game_participants (game_id, user_id, joined_at) values (p_game_id, p_user, p_now);
+  perform app.close_pending_for(p_game_id, p_user, p_now);
+
+  perform app.notify(v_game.host_id, 'game_joined', 'games',
+    app.game_note(v_game) || jsonb_build_object('actor_name', (select p.full_name from public.profiles p where p.id = p_user)),
+    p_now);
+  perform app.notify_if_full(v_game, p_user, p_now);
+  return v_game;
+end $$;
+
+-- Redefined from 20261124110000_games_v2.sql: visibility at p_now
+-- (app.can_see_game with a clock), so a team game takes requests from its
+-- members, and from everyone once it is open.
+create or replace function app.request_to_join(p_user uuid, p_game_id uuid, p_now timestamptz) returns public.game_join_requests
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_game public.games;
+  v_request public.game_join_requests;
+begin
+  if p_user is null then raise exception 'not_authenticated'; end if;
+  perform app.require_reliable(p_user, p_now);
+
+  select g.* into v_game from public.games g where g.id = p_game_id for update;
+  if not found or not app.can_see_game(p_user, v_game, p_now) or v_game.status <> 'open' or lower(v_game.during) <= p_now
+     or app.removed_from_game(p_game_id, p_user) then
+    raise exception 'not_found';
+  end if;
+  if exists (select 1 from public.game_participants p where p.game_id = p_game_id and p.user_id = p_user) then
+    raise exception 'already_joined';
+  end if;
+  if exists (select 1 from public.game_join_requests r
+             where r.game_id = p_game_id and r.user_id = p_user and r.status = 'pending') then
+    raise exception 'already_requested';
+  end if;
+  if (select count(*) from public.game_participants p where p.game_id = p_game_id) >= v_game.spots then
+    raise exception 'full';
+  end if;
+
+  begin
+    insert into public.game_join_requests (game_id, user_id, created_at)
+    values (p_game_id, p_user, p_now)
+    returning * into v_request;
+  exception when unique_violation then
+    raise exception 'already_requested';
+  end;
+
+  perform app.notify(v_game.host_id, 'join_request', 'games',
+    app.game_note(v_game) || jsonb_build_object(
+      'request_id', v_request.id,
+      'actor_name', (select p.full_name from public.profiles p where p.id = p_user)),
+    p_now);
+  return v_request;
+end $$;
+
+-- Redefined from 20261126110000_launch.sql: a team game that is open to
+-- everyone (public_from passed) is listed like a public game (its city, an
+-- active venue, spots left), and the team's members always see its games.
+create or replace function app.list_games(p_user uuid, p_city_id text, p_now timestamptz) returns setof jsonb
+language sql
+set search_path = ''
+as $$
+  select app.game_json(g, p_user)
+  from public.games g
+  where g.status = 'open'
+    and lower(g.during) > p_now
+    and (
+      (g.city_id = p_city_id
+       and (g.visibility = 'public' or app.team_game_open(p_user, g, p_now))
+       and (g.venue_id is null
+            or exists (select 1 from public.venues v where v.id = g.venue_id and v.active))
+       and ((select count(*) from public.game_participants p where p.game_id = g.id) < g.spots
+            or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)))
+      or (p_user is not null and (
+        g.host_id = p_user
+        or exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user)
+        or exists (select 1 from public.game_invites i
+                   where i.game_id = g.id and i.user_id = p_user and i.status = 'pending')
+        or exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = p_user))))
+  order by lower(g.during), g.id
+$$;
+
+-- Redefined from 20261127120000_after_game.sql: `team` ({"id", "name"}, null
+-- for an ordinary game) and `public_from_local` (local time the team game
+-- opens to everyone, formatted like starts_local; null when it never does or
+-- has no team any more). visibility stays as stored: invite_only for a team
+-- game, even once it is open to everyone.
+create or replace function app.game_json(g public.games, p_user uuid) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', g.id,
+    'sport_id', g.sport_id,
+    'city_id', g.city_id,
+    'venue_id', g.venue_id,
+    'host_id', g.host_id,
+    'kind', g.kind,
+    'visibility', g.visibility,
+    'status', g.status,
+    'starts_local', app.to_local(lower(g.during), g.utc_offset_minutes),
+    'ends_local', app.to_local(upper(g.during), g.utc_offset_minutes),
+    'spots', g.spots,
+    'min_level', g.min_level,
+    'max_level', g.max_level,
+    'min_rating', g.min_rating,
+    'max_rating', g.max_rating,
+    'price_per_player', g.price_per_player,
+    'booking_id', g.booking_id,
+    'note', g.note,
+    -- '' only for a deleted host's meeting point (delete_account).
+    'meeting_point', nullif(g.meeting_point, ''),
+    'meeting_lat', g.meeting_lat,
+    'meeting_lng', g.meeting_lng,
+    'distance_km', g.distance_km,
+    'pace', g.pace,
+    'team', (select jsonb_build_object('id', t.id, 'name', t.name) from public.teams t where t.id = g.team_id),
+    'public_from_local', case when g.team_id is not null then app.to_local(g.public_from, g.utc_offset_minutes) end,
+    'my_status', case
+      when p_user is null then null
+      when g.host_id = p_user then 'host'
+      when exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user) then 'participant'
+      when exists (select 1 from public.game_invites i
+                   where i.game_id = g.id and i.user_id = p_user and i.status = 'pending') then 'invited'
+      when exists (select 1 from public.game_join_requests r
+                   where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') then 'requested'
+    end,
+    -- What a requester needs to withdraw: their own pending request.
+    'my_request_id', case when p_user is null then null else
+      (select r.id from public.game_join_requests r
+       where r.game_id = g.id and r.user_id = p_user and r.status = 'pending') end,
+    'participant_ids', coalesce(
+      (select jsonb_agg(p.user_id order by (p.user_id = g.host_id) desc, p.joined_at, p.user_id)
+       from public.game_participants p where p.game_id = g.id),
+      '[]'::jsonb),
+    'participants', coalesce(
+      (select jsonb_agg(
+                jsonb_build_object(
+                  'id', p.user_id,
+                  'name', pr.full_name,
+                  'level', l.level,
+                  'rating', rt.rating,
+                  'provisional', rt.rated_games < app.rating_const('provisional_games'),
+                  'reliability', app.reliability(p.user_id, now()))
+                || app.deleted_json(p.user_id)
+                order by (p.user_id = g.host_id) desc, p.joined_at, p.user_id)
+       from public.game_participants p
+       join public.profiles pr on pr.id = p.user_id
+       left join public.player_levels l on l.user_id = p.user_id and l.sport_id = g.sport_id
+       left join public.player_ratings rt on rt.user_id = p.user_id and rt.sport_id = g.sport_id
+       where p.game_id = g.id),
+      '[]'::jsonb),
+    'result', (select app.result_json(mr) from public.match_results mr where mr.game_id = g.id))
+  || case when p_user is not null and p_user = g.host_id then
+       jsonb_build_object('join_requests', coalesce(
+         (select jsonb_agg(
+                   jsonb_build_object(
+                     'id', r.id,
+                     'user_id', r.user_id,
+                     'name', pr.full_name,
+                     'level', l.level,
+                     'rating', rt.rating,
+                     'provisional', rt.rated_games < app.rating_const('provisional_games'),
+                     'reliability', app.reliability(r.user_id, now()),
+                     'created_at', r.created_at)
+                   || app.deleted_json(r.user_id)
+                   order by r.created_at, r.id)
+          from public.game_join_requests r
+          join public.profiles pr on pr.id = r.user_id
+          left join public.player_levels l on l.user_id = r.user_id and l.sport_id = g.sport_id
+          left join public.player_ratings rt on rt.user_id = r.user_id and rt.sport_id = g.sport_id
+          where r.game_id = g.id and r.status = 'pending'),
+         '[]'::jsonb))
+     else '{}'::jsonb end
+  || case when p_user is not null and g.status <> 'cancelled' and upper(g.during) <= now()
+               and exists (select 1 from public.game_participants p where p.game_id = g.id and p.user_id = p_user) then
+       jsonb_build_object('after_game', jsonb_build_object(
+         'votes', coalesce(
+           (select jsonb_object_agg(v.target_id, v.up)
+            from public.game_votes v where v.game_id = g.id and v.voter_id = p_user),
+           '{}'::jsonb),
+         'no_shows', coalesce(
+           (select jsonb_agg(r.target_id order by r.target_id)
+            from public.game_no_show_reports r where r.game_id = g.id and r.reporter_id = p_user),
+           '[]'::jsonb)))
+     else '{}'::jsonb end
+$$;
+
+-- Redefined from above: `upcoming_games` counts the team's games that have
+-- not started and are not cancelled (all of them, whoever asks).
+create or replace function app.team_summary_json(t public.teams, p_user uuid) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', t.id,
+    'name', t.name,
+    'sport_id', t.sport_id,
+    'city_id', t.city_id,
+    'description', t.description,
+    'join_policy', t.join_policy,
+    'color_seed', t.color_seed,
+    'captain_id', t.captain_id,
+    'member_count', (select count(*) from public.team_members m where m.team_id = t.id),
+    'upcoming_games', (select count(*) from public.games g
+                       where g.team_id = t.id and g.status <> 'cancelled' and lower(g.during) > now()),
+    'my_status', case
+      when p_user is null then null
+      when t.captain_id = p_user then 'captain'
+      when exists (select 1 from public.team_members m where m.team_id = t.id and m.user_id = p_user) then 'member'
+      when exists (select 1 from public.team_invites i
+                   where i.team_id = t.id and i.user_id = p_user and i.status = 'pending') then 'invited'
+      when exists (select 1 from public.team_join_requests r
+                   where r.team_id = t.id and r.user_id = p_user and r.status = 'pending') then 'requested'
+    end,
+    'my_request_id', case when p_user is null then null else
+      (select r.id from public.team_join_requests r
+       where r.team_id = t.id and r.user_id = p_user and r.status = 'pending') end)
+$$;
+
+-- Redefined from above: `games`, the team's games that have not started and
+-- are not cancelled, soonest first, as app.game_json; only those the caller
+-- may see (public.get_team answers anyone signed in).
+create or replace function app.team_json(t public.teams, p_user uuid) returns jsonb
+language sql
+set search_path = ''
+as $$
+  select app.team_summary_json(t, p_user)
+  || jsonb_build_object(
+    'members', coalesce(
+      (select jsonb_agg(
+                jsonb_build_object(
+                  'id', m.user_id,
+                  'name', pr.full_name,
+                  'level', l.level,
+                  'rating', app.rating_json(m.user_id, t.sport_id)->'rating',
+                  'provisional', app.rating_json(m.user_id, t.sport_id)->'provisional',
+                  'reliability', app.reliability(m.user_id, now()),
+                  'captain', m.user_id = t.captain_id)
+                || app.deleted_json(m.user_id)
+                order by (m.user_id = t.captain_id) desc, m.joined_at, m.user_id)
+       from public.team_members m
+       join public.profiles pr on pr.id = m.user_id
+       left join public.player_levels l on l.user_id = m.user_id and l.sport_id = t.sport_id
+       where m.team_id = t.id),
+      '[]'::jsonb),
+    'games', coalesce(
+      (select jsonb_agg(app.game_json(g, p_user) order by lower(g.during), g.id)
+       from public.games g
+       where g.team_id = t.id and g.status <> 'cancelled' and lower(g.during) > now()
+         and app.can_see_game(p_user, g, now())),
+      '[]'::jsonb))
+  || case when p_user is not null and p_user = t.captain_id then
+       jsonb_build_object('requests', coalesce(
+         (select jsonb_agg(
+                   jsonb_build_object(
+                     'id', r.id,
+                     'user_id', r.user_id,
+                     'name', pr.full_name,
+                     'level', l.level,
+                     'rating', app.rating_json(r.user_id, t.sport_id)->'rating',
+                     'reliability', app.reliability(r.user_id, now()),
+                     'created_at', r.created_at)
+                   order by r.created_at, r.id)
+          from public.team_join_requests r
+          join public.profiles pr on pr.id = r.user_id
+          left join public.player_levels l on l.user_id = r.user_id and l.sport_id = t.sport_id
+          where r.team_id = t.id and r.status = 'pending'),
+         '[]'::jsonb))
+     else '{}'::jsonb end
+$$;
+
+-- Redefined from 20261127120000_after_game.sql: `teams`, the summaries of
+-- every team (as app.team_summary_json for the admin), newest first, at most
+-- 200, for the removal list.
+create or replace function app.admin_review(p_user uuid) returns jsonb
+language plpgsql
+set search_path = ''
+as $$
+begin
+  perform app.require_admin(p_user);
+  return (
+    with disputes as (
+      select r.* from public.match_results r
+      where r.status = 'disputed' or (r.status = 'confirmed' and r.flagged_no_show)
+    ),
+    reports as (
+      select a.* from public.abuse_reports a where a.status = 'open'
+    ),
+    all_teams as (
+      select t.* from public.teams t order by t.created_at desc, t.id desc limit 200
+    )
+    select jsonb_build_object(
+      'disputes', coalesce(
+        (select jsonb_agg(
+                  jsonb_build_object(
+                    'result', app.result_json(d),
+                    'game', app.game_note(g),
+                    'players', (select jsonb_agg(jsonb_build_object('id', mp.user_id, 'name', pr.full_name, 'side', mp.side)
+                                                 order by mp.side, mp.user_id)
+                                from public.match_result_players mp
+                                join public.profiles pr on pr.id = mp.user_id
+                                where mp.result_id = d.id),
+                    'disputed_by_name', (select pr.full_name from public.profiles pr where pr.id = d.dispute_by))
+                  order by d.entered_at, d.id)
+         from disputes d
+         join public.games g on g.id = d.game_id),
+        '[]'::jsonb),
+      'reports', coalesce(
+        (select jsonb_agg(
+                  jsonb_build_object(
+                    'id', a.id,
+                    'reporter_id', a.reporter_id,
+                    'reporter_name', reporter.full_name,
+                    'target_id', a.target_id,
+                    'target_name', target.full_name,
+                    'game_id', a.game_id,
+                    'game', case when g.id is not null then app.game_note(g) end,
+                    'result', (select app.result_json(mr) from public.match_results mr where mr.game_id = a.game_id),
+                    'reason', a.reason,
+                    'details', a.details,
+                    'created_at', a.created_at)
+                  order by a.created_at, a.id)
+         from reports a
+         join public.profiles reporter on reporter.id = a.reporter_id
+         join public.profiles target on target.id = a.target_id
+         left join public.games g on g.id = a.game_id),
+        '[]'::jsonb),
+      'teams', coalesce(
+        (select jsonb_agg(app.team_summary_json(t, p_user) order by t.created_at desc, t.id desc) from all_teams t),
+        '[]'::jsonb),
+      'counts', jsonb_build_object(
+        'disputes', (select count(*) from disputes),
+        'reports', (select count(*) from reports)))
+  );
+end $$;
