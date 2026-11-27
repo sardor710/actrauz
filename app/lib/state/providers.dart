@@ -292,6 +292,8 @@ void refreshGames(WidgetRef ref) {
   ref.invalidate(leaderboardProvider);
   ref.invalidate(gameRequestsProvider);
   ref.invalidate(gameRequestProvider);
+  // Team pages list their upcoming games.
+  ref.invalidate(teamProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }

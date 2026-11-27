@@ -2865,4 +2865,42 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get reviewNoTeams => 'Команд нет';
+
+  @override
+  String get whoCanJoin => 'Кто может присоединиться';
+
+  @override
+  String teamGameChoice(String team) {
+    return 'Команда: $team';
+  }
+
+  @override
+  String get openToEveryoneLabel => 'Открыть для всех, если есть места';
+
+  @override
+  String get openNever => 'Никогда';
+
+  @override
+  String openHoursBefore(int hours) {
+    return 'За $hours ч';
+  }
+
+  @override
+  String get teamUpcomingGamesTitle => 'Ближайшие игры';
+
+  @override
+  String get teamPostGame => 'Создать игру';
+
+  @override
+  String get teamNoGames => 'Ближайших игр команды нет';
+
+  @override
+  String teamGameOpens(String when) {
+    return 'Откроется для всех · $when';
+  }
+
+  @override
+  String notifTeamGamePosted(String team) {
+    return 'Новая игра команды «$team»';
+  }
 }

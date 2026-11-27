@@ -1649,5 +1649,43 @@
       }
     }
   },
-  "reviewNoTeams": "No teams"
+  "reviewNoTeams": "No teams",
+  "whoCanJoin": "Who can join",
+  "teamGameChoice": "Team: {team}",
+  "@teamGameChoice": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "openToEveryoneLabel": "Open to everyone if spots remain",
+  "openNever": "Never",
+  "openHoursBefore": "{hours} h before",
+  "@openHoursBefore": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "teamUpcomingGamesTitle": "Upcoming games",
+  "teamPostGame": "Post a game",
+  "teamNoGames": "No upcoming team games",
+  "teamGameOpens": "Opens to everyone · {when}",
+  "@teamGameOpens": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTeamGamePosted": "New game for the team {team}",
+  "@notifTeamGamePosted": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -813,5 +813,15 @@
   "noTeamsToInvite": "Taklif qilish uchun jamoangiz yoʻq",
   "profileTeams": "Jamoalar",
   "reviewTeamsTab": "Jamoalar · {count}",
-  "reviewNoTeams": "Jamoalar yoʻq"
+  "reviewNoTeams": "Jamoalar yoʻq",
+  "whoCanJoin": "Kim qoʻshila oladi",
+  "teamGameChoice": "Jamoa: {team}",
+  "openToEveryoneLabel": "Joy qolsa, hammaga ochish",
+  "openNever": "Hech qachon",
+  "openHoursBefore": "{hours} soat oldin",
+  "teamUpcomingGamesTitle": "Yaqin oʻyinlar",
+  "teamPostGame": "Oʻyin eʼlon qilish",
+  "teamNoGames": "Jamoaning yaqin oʻyinlari yoʻq",
+  "teamGameOpens": "Hammaga ochiladi · {when}",
+  "notifTeamGamePosted": "«{team}» jamoasi uchun yangi oʻyin"
 }

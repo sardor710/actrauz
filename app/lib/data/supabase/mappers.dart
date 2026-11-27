@@ -560,6 +560,15 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
   afterGame: json['after_game'] == null
       ? null
       : afterGameFromJson(Map<String, dynamic>.from(json['after_game'] as Map), myUserId: myUserId),
+  team: json['team'] is Map
+      ? TeamRef(
+          id: (json['team'] as Map)['id'] as String,
+          name: (json['team'] as Map)['name'] as String,
+          // A team game is always in the team's sport.
+          sportId: json['sport_id'] as String,
+        )
+      : null,
+  publicFrom: json['public_from_local'] == null ? null : wallClock(json['public_from_local'] as String),
 );
 
 /// `after_game` of the game JSON, for a participant of a finished game:
@@ -841,6 +850,9 @@ Map<String, Object?> gameDraftJson(GameDraft draft) => {
   if (draft.meetingLng != null) 'meeting_lng': draft.meetingLng,
   if (draft.start != null) 'starts_local': isoLocal(draft.start!),
   if (draft.end != null) 'ends_local': isoLocal(draft.end!),
+  if (draft.teamId != null) 'team_id': draft.teamId,
+  // The backend takes a lead time only together with a team.
+  if (draft.teamId != null && draft.openHoursBefore != null) 'open_hours_before': draft.openHoursBefore,
 };
 
 /// `p_place` of `convert_game_request`. Only what the player chose is sent:

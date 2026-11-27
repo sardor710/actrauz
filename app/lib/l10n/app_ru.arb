@@ -813,5 +813,15 @@
   "noTeamsToInvite": "Нет вашей команды, куда можно пригласить",
   "profileTeams": "Команды",
   "reviewTeamsTab": "Команды · {count}",
-  "reviewNoTeams": "Команд нет"
+  "reviewNoTeams": "Команд нет",
+  "whoCanJoin": "Кто может присоединиться",
+  "teamGameChoice": "Команда: {team}",
+  "openToEveryoneLabel": "Открыть для всех, если есть места",
+  "openNever": "Никогда",
+  "openHoursBefore": "За {hours} ч",
+  "teamUpcomingGamesTitle": "Ближайшие игры",
+  "teamPostGame": "Создать игру",
+  "teamNoGames": "Ближайших игр команды нет",
+  "teamGameOpens": "Откроется для всех · {when}",
+  "notifTeamGamePosted": "Новая игра команды «{team}»"
 }

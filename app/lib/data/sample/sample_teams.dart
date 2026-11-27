@@ -18,6 +18,8 @@ class SampleTeams {
     required this.activeSport,
     required this.knownCity,
     required this.notify,
+    required this.upcomingGames,
+    required this.gamesFor,
   }) {
     for (final (i, seed) in kTeamSeeds.indexed) {
       final created = utcNow().subtract(Duration(days: seed.daysAgo));
@@ -49,6 +51,14 @@ class SampleTeams {
   final bool Function(String sportId) activeSport;
   final bool Function(String cityId) knownCity;
   final void Function(String userId, String kind, String category, Map<String, Object?> payload) notify;
+
+  /// How many of the team's games have not started and are not cancelled,
+  /// whoever asks (`team_summary_json.upcoming_games`).
+  final int Function(String teamId) upcomingGames;
+
+  /// Those games as [viewer] sees them, only the ones they may see, soonest
+  /// first (`team_json.games`).
+  final List<Game> Function(String teamId, String viewer) gamesFor;
 
   final Map<String, _Team> _teams = {};
   final List<_Ask> _asks = [];
@@ -95,6 +105,31 @@ class SampleTeams {
       })))
       TeamRef(id: t.id, name: t.name, sportId: t.sportId),
   ];
+
+  /// The team a game points to, while it exists: its current name, as
+  /// `game_json.team` reads it.
+  TeamRef? refOf(String id) {
+    final t = _teams[id];
+    return t == null ? null : TeamRef(id: t.id, name: t.name, sportId: t.sportId);
+  }
+
+  /// Whether [userId] is the captain or a member of the team (false once it
+  /// is gone).
+  bool isMember(String id, String userId) => _teams[id]?.members.containsKey(userId) ?? false;
+
+  // ---- Team games ----
+
+  /// The team [userId] posts a game for, as `app.create_game` checks it:
+  /// [JoinError.notFound] for an unknown team, [JoinError.forbidden] unless
+  /// they are its captain. Gives the members to tell, the poster excluded.
+  ({TeamRef team, String cityId, List<String> others}) postingFor(String userId, String id) {
+    final t = _captained(userId, id);
+    return (
+      team: TeamRef(id: t.id, name: t.name, sportId: t.sportId),
+      cityId: t.cityId,
+      others: [for (final m in _ordered(t)) if (m != userId) m],
+    );
+  }
 
   // ---- Creating, editing, deleting ----
 
@@ -344,8 +379,13 @@ class SampleTeams {
       ? MyTeamStatus.requested
       : null;
 
-  /// Team games come with Task 14: none yet in sample mode.
-  Team _summary(_Team t, String viewer, {List<TeamMember> members = const [], List<TeamRequest> requests = const []}) =>
+  Team _summary(
+    _Team t,
+    String viewer, {
+    List<TeamMember> members = const [],
+    List<TeamRequest> requests = const [],
+    List<Game> games = const [],
+  }) =>
       Team(
         id: t.id,
         name: t.name,
@@ -356,10 +396,12 @@ class SampleTeams {
         colorSeed: t.colorSeed,
         captainId: t.captainId,
         memberCount: t.members.length,
+        upcomingGames: upcomingGames(t.id),
         myStatus: _status(t, viewer),
         myRequestId: _pendingAsk(t.id, viewer)?.id,
         members: members,
         requests: requests,
+        games: games,
       );
 
   Team _view(_Team t, String viewer) => _summary(
@@ -376,6 +418,7 @@ class SampleTeams {
               _request(a, memberOf(a.userId, t.sportId)),
           ]
         : const [],
+    games: gamesFor(t.id, viewer),
   );
 }
 

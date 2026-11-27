@@ -360,7 +360,8 @@ class AppNotification {
           'score_disputed' ||
           'score_resolved' ||
           'rating_updated' ||
-          'no_show_recorded':
+          'no_show_recorded' ||
+          'team_game_posted':
         final gameId = text('game_id');
         return gameId == null ? null : '/games/$gameId';
       case 'tournament_registered' ||

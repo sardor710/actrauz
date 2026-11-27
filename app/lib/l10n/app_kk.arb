@@ -813,5 +813,15 @@
   "noTeamsToInvite": "Шақыратын командаңыз жоқ",
   "profileTeams": "Командалар",
   "reviewTeamsTab": "Командалар · {count}",
-  "reviewNoTeams": "Командалар жоқ"
+  "reviewNoTeams": "Командалар жоқ",
+  "whoCanJoin": "Кім қосыла алады",
+  "teamGameChoice": "Команда: {team}",
+  "openToEveryoneLabel": "Орын қалса, барлығына ашу",
+  "openNever": "Ешқашан",
+  "openHoursBefore": "{hours} сағ бұрын",
+  "teamUpcomingGamesTitle": "Алдағы ойындар",
+  "teamPostGame": "Ойын жариялау",
+  "teamNoGames": "Команданың алдағы ойындары жоқ",
+  "teamGameOpens": "Барлығына ашылады · {when}",
+  "notifTeamGamePosted": "«{team}» командасының жаңа ойыны"
 }

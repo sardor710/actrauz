@@ -14,6 +14,7 @@ import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import 'finished_section.dart';
+import 'game_card.dart' show accessPills;
 import 'host_tools.dart';
 
 /// Game details: who is in, and what the signed-in player can do about it
@@ -59,8 +60,11 @@ class GameScreen extends ConsumerWidget {
     final requestId = game.myRequestId;
     if (requestId == null) return;
     final done = await runGameAction(context, ref, () => ref.read(gameRepositoryProvider).withdrawRequest(requestId));
-    // Without the request an invite-only game is no longer the player's to see.
-    if (done && context.mounted && game.visibility == GameVisibility.inviteOnly) context.go('/games');
+    // Without the request an invite-only game is no longer the player's to see (a team game still is: they
+    // could ask only while it was open to them).
+    if (done && context.mounted && game.visibility == GameVisibility.inviteOnly && game.team == null) {
+      context.go('/games');
+    }
   }
 
   Future<void> _declineInvite(BuildContext context, WidgetRef ref) async {
@@ -236,8 +240,7 @@ class GameScreen extends ConsumerWidget {
                                     color: AppColors.primarySoft,
                                     onColor: AppColors.primaryDark,
                                   ),
-                                  if (game.visibility == GameVisibility.inviteOnly)
-                                    Pill(text: l.visibilityInviteOnly, icon: Icons.lock_outline_rounded),
+                                  ...accessPills(context, game, gameNow),
                                   if (distance != null)
                                     Pill(
                                       text: l.distanceValue(

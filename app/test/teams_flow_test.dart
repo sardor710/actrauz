@@ -1,5 +1,9 @@
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/domain/games.dart';
 import 'package:actra/domain/teams.dart';
+import 'package:actra/features/games/create_game_screen.dart';
+import 'package:actra/features/games/game_card.dart';
+import 'package:actra/features/games/game_screen.dart';
 import 'package:actra/features/social/team_editor_screen.dart';
 import 'package:actra/features/social/team_screen.dart';
 import 'package:actra/router.dart';
@@ -10,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'app_flow_test.dart';
-import 'games_host_flow_test.dart' show containerOf;
+import 'games_host_flow_test.dart' show bookPadel, containerOf;
 
 Finder _key(String value) => find.byKey(ValueKey(value));
 
@@ -309,7 +313,110 @@ void main() {
     expect(find.text('Night Owls'), findsOneWidget);
   });
 
+  testWidgets('captain posts a team game', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    final team = await backend.createTeam(_owls);
+    await backend.joinTeamAs('p1', team.id);
+    final booking = await bookPadel(tester);
+    await _refresh(tester);
+
+    await _push(tester, '/teams/${team.id}');
+    expect(find.text('UPCOMING GAMES'), findsOneWidget);
+    expect(find.text('No upcoming team games'), findsOneWidget);
+    await tester.ensureVisible(_key('team-post-game'));
+    await tap(tester, _key('team-post-game'));
+
+    // The create form, with the team's sport and the team already chosen.
+    expect(find.byType(CreateGameScreen), findsOneWidget);
+    await tap(tester, _key('booking-${booking.id}'));
+    await tester.ensureVisible(_key('who-team-${team.id}'));
+    expect(tester.widget<RadioListTile<String>>(_key('who-team-${team.id}')).checked, isTrue);
+    expect(find.text('Open to everyone if spots remain'.toUpperCase()), findsOneWidget);
+    await tester.ensureVisible(_key('open-hours-24'));
+    await tap(tester, _key('open-hours-24'));
+    await tap(tester, find.byKey(const ValueKey('create-game-submit')));
+
+    // The game shows the team, not "Invite only", and when it opens to everyone (24 h before Monday 11:30).
+    expect(find.byType(GameScreen), findsOneWidget);
+    expect(find.text('Night Owls'), findsOneWidget);
+    expect(find.text('Invite only'), findsNothing);
+    expect(find.text('Opens to everyone · Today 11:30'), findsOneWidget);
+
+    // Listed on the team page and in the Games tab.
+    await _go(tester, '/teams/${team.id}');
+    expect(find.text('No upcoming team games'), findsNothing);
+    expect(find.descendant(of: find.byType(GameCard), matching: find.text('Night Owls')), findsOneWidget);
+    expect(find.text('1 game soon'), findsOneWidget);
+    await _go(tester, '/games');
+    expect(find.descendant(of: find.byType(GameCard), matching: find.text('Night Owls')), findsOneWidget);
+  });
+
+  testWidgets('team choice is hidden without a team', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    // A team in another sport, and another captain's padel team I am in.
+    final runners = await backend.createTeam(
+      const TeamDraft(name: 'Night Runners', sportId: 'running', cityId: 'tashkent'),
+    );
+    await backend.joinTeam('tm1');
+    await _refresh(tester);
+
+    await _go(tester, '/games/new');
+    await tap(tester, find.text('Padel'));
+    expect(find.text('Who can join'.toUpperCase()), findsNothing);
+    expect(find.byType(SegmentedButton<GameVisibility>), findsOneWidget);
+    expect(_key('who-team-tm1'), findsNothing);
+
+    await tap(tester, find.text('Running'));
+    await tester.ensureVisible(_key('who-team-${runners.id}'));
+    expect(find.byType(SegmentedButton<GameVisibility>), findsNothing);
+    expect(_key('who-public'), findsOneWidget);
+    expect(_key('who-invite'), findsOneWidget);
+    // Lead times appear only once the team is chosen.
+    expect(_key('open-hours-24'), findsNothing);
+    await tap(tester, _key('who-team-${runners.id}'));
+    expect(_key('open-hours-never'), findsOneWidget);
+  });
+
   for (final lang in ['ru', 'kk']) {
+    testWidgets('team games fit a phone in $lang', (tester) async {
+      await pumpApp(tester, prefs: {...signedIn, 'lang': lang}, utcNow: sundayMorning);
+      tester.view.physicalSize = const Size(360, 1400);
+      await tester.pumpAndSettle();
+      final backend = containerOf(tester).read(sampleBackendProvider);
+      final team = await backend.createTeam(
+        const TeamDraft(name: 'Yunusobod Evening Padel Club Long', sportId: 'padel', cityId: 'tashkent'),
+      );
+      final booking = await bookPadel(tester);
+      await _refresh(tester);
+
+      await _push(tester, '/teams/${team.id}');
+      await tester.ensureVisible(_key('team-post-game'));
+      await tap(tester, _key('team-post-game'));
+      await tap(tester, _key('booking-${booking.id}'));
+      await tester.ensureVisible(_key('who-team-${team.id}'));
+      await tester.ensureVisible(_key('open-hours-24'));
+      // Clear of the bottom bar.
+      await tester.drag(
+        find.descendant(of: find.byType(CreateGameScreen), matching: find.byType(ListView)),
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, _key('open-hours-24'));
+      await tap(tester, find.byKey(const ValueKey('create-game-submit')));
+      expect(find.byType(GameScreen), findsOneWidget);
+      // The team pill and when it opens to everyone.
+      expect(find.byIcon(Icons.groups_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.lock_clock_outlined), findsOneWidget);
+
+      await _go(tester, '/teams/${team.id}');
+      expect(find.byType(GameCard), findsOneWidget);
+      expect(find.byIcon(Icons.lock_clock_outlined), findsOneWidget);
+      await _go(tester, '/games');
+      expect(find.byType(GameCard), findsWidgets);
+    });
+
     testWidgets('the team screens fit a phone in $lang', (tester) async {
       await pumpApp(tester, prefs: {...signedIn, 'lang': lang}, utcNow: sundayMorning);
       tester.view.physicalSize = const Size(360, 1400);

@@ -89,6 +89,7 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'team_removed' when team != null => l.notifTeamRemoved(team),
     'team_captain' when team != null => l.notifTeamCaptain(team),
     'team_deleted' when team != null => l.notifTeamDeleted(team),
+    'team_game_posted' when team != null => l.notifTeamGamePosted(team),
     _ => l.notifUnknown,
   };
 }

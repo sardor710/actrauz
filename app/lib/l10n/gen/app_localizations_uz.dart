@@ -2829,4 +2829,42 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get reviewNoTeams => 'Jamoalar yoʻq';
+
+  @override
+  String get whoCanJoin => 'Kim qoʻshila oladi';
+
+  @override
+  String teamGameChoice(String team) {
+    return 'Jamoa: $team';
+  }
+
+  @override
+  String get openToEveryoneLabel => 'Joy qolsa, hammaga ochish';
+
+  @override
+  String get openNever => 'Hech qachon';
+
+  @override
+  String openHoursBefore(int hours) {
+    return '$hours soat oldin';
+  }
+
+  @override
+  String get teamUpcomingGamesTitle => 'Yaqin oʻyinlar';
+
+  @override
+  String get teamPostGame => 'Oʻyin eʼlon qilish';
+
+  @override
+  String get teamNoGames => 'Jamoaning yaqin oʻyinlari yoʻq';
+
+  @override
+  String teamGameOpens(String when) {
+    return 'Hammaga ochiladi · $when';
+  }
+
+  @override
+  String notifTeamGamePosted(String team) {
+    return '«$team» jamoasi uchun yangi oʻyin';
+  }
 }

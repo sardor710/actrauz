@@ -1,5 +1,6 @@
 import 'community.dart';
 import 'competitive.dart';
+import 'teams.dart';
 
 export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
 export 'competitive.dart' show AfterGame, MatchResult, MatchWinner, RatingChange, ReportReason, ResultStatus, SportRating;
@@ -97,6 +98,8 @@ class Game {
     this.cancelled = false,
     this.result,
     this.afterGame,
+    this.team,
+    this.publicFrom,
   });
 
   final String id;
@@ -151,6 +154,15 @@ class Game {
   /// ended and they played in it; null otherwise.
   final AfterGame? afterGame;
 
+  /// The team the captain posted it for; null for an ordinary game, and once
+  /// the team is deleted. A team game reads as [GameVisibility.inviteOnly]
+  /// (as builds made before teams see it), so this is what marks it.
+  final TeamRef? team;
+
+  /// When a team game opens to everyone while spots remain, in the venue's
+  /// wall-clock time like [start]; null when it never does.
+  final DateTime? publicFrom;
+
   int get spotsLeft => spots - participantIds.length;
   bool get isFull => spotsLeft <= 0;
 
@@ -173,6 +185,10 @@ class Game {
     bool? cancelled,
     MatchResult? result,
     AfterGame? afterGame,
+    TeamRef? team,
+    bool clearTeam = false,
+    DateTime? publicFrom,
+    bool clearPublicFrom = false,
   }) => Game(
     id: id,
     sportId: sportId,
@@ -204,6 +220,8 @@ class Game {
     cancelled: cancelled ?? this.cancelled,
     result: result ?? this.result,
     afterGame: afterGame ?? this.afterGame,
+    team: clearTeam ? null : (team ?? this.team),
+    publicFrom: clearPublicFrom ? null : (publicFrom ?? this.publicFrom),
   );
 }
 
@@ -229,7 +247,12 @@ class GameDraft {
     this.meetingLng,
     this.start,
     this.end,
+    this.teamId,
+    this.openHoursBefore,
   });
+
+  /// Hours before the start a team game may open to everyone.
+  static const openHoursChoices = [12, 24, 48];
 
   final String sportId;
   final int spots;
@@ -252,6 +275,13 @@ class GameDraft {
   /// Venue or city wall-clock time; not used with [bookingId].
   final DateTime? start;
   final DateTime? end;
+
+  /// A team game: a team the host captains, in this sport and city. The
+  /// backend stores it as invite-only whatever [visibility] says.
+  final String? teamId;
+
+  /// One of [openHoursChoices], or null for never; only with [teamId].
+  final int? openHoursBefore;
 }
 
 /// Where a Game Request becomes a game: a booking of the poster's own, a
@@ -347,12 +377,15 @@ class JoinException implements Exception {
 
 /// One-tap join for players inside the level range, or the rating range in a
 /// rated sport. An invited player ([invited]) opens an invite-only game and
-/// skips the check; everyone else outside the range sends a join request
-/// instead.
-Game joinGame(Game game, Player player, {bool invited = false}) {
+/// skips the check; a team game open to the player ([teamOpen]: a member, or
+/// anyone once it opened) is joined like a public one, with the check;
+/// everyone else outside the range sends a join request instead.
+Game joinGame(Game game, Player player, {bool invited = false, bool teamOpen = false}) {
   // As in the database: without an open invite an invite-only game does not exist for the player, even for a
   // player already in it.
-  if (game.visibility == GameVisibility.inviteOnly && !invited) throw const JoinException(JoinError.notFound);
+  if (game.visibility == GameVisibility.inviteOnly && !invited && !teamOpen) {
+    throw const JoinException(JoinError.notFound);
+  }
   if (game.participantIds.contains(player.id)) throw const JoinException(JoinError.alreadyJoined);
   if (game.isFull) throw const JoinException(JoinError.full);
   if (!invited && !fitsRange(game, player)) throw const JoinException(JoinError.levelOutOfRange);

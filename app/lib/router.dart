@@ -175,7 +175,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   // Before ':id', which would take 'new' for a game id.
                   GoRoute(
                     path: 'new',
-                    builder: (context, state) => CreateGameScreen(bookingId: state.uri.queryParameters['booking']),
+                    builder: (context, state) => CreateGameScreen(
+                      bookingId: state.uri.queryParameters['booking'],
+                      teamId: state.uri.queryParameters['team'],
+                    ),
                   ),
                   // Past games, also before ':id'.
                   GoRoute(path: 'past', builder: (context, state) => const PastGamesScreen()),

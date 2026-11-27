@@ -11,6 +11,29 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 
+/// Who the game is for: its team (and when it opens to everyone, while that
+/// is still ahead of [now]), or "Invite only". A team game reads as
+/// invite-only to the backend's old builds, so the team comes first.
+List<Widget> accessPills(BuildContext context, Game game, DateTime now) {
+  final l = context.l;
+  final team = game.team;
+  final opens = game.publicFrom;
+  if (team != null) {
+    return [
+      Pill(text: team.name, icon: Icons.groups_outlined),
+      if (opens != null && opens.isAfter(now))
+        Pill(
+          text: l.teamGameOpens('${dayLabel(l, context.lang, opens, now)} ${hm(opens)}'),
+          icon: Icons.lock_clock_outlined,
+        ),
+    ];
+  }
+  return [
+    if (game.visibility == GameVisibility.inviteOnly)
+      Pill(text: l.visibilityInviteOnly, icon: Icons.lock_outline_rounded),
+  ];
+}
+
 /// One joinable game: time, who is going, title, venue and level.
 class GameCard extends ConsumerWidget {
   const GameCard({super.key, required this.game, this.compact = false});
@@ -135,8 +158,7 @@ class GameCard extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    if (game.visibility == GameVisibility.inviteOnly)
-                      Pill(text: l.visibilityInviteOnly, icon: Icons.lock_outline_rounded),
+                    ...accessPills(context, game, now),
                     if (game.myStatus == MyGameStatus.host)
                       Pill(text: l.host, color: AppColors.primarySoft, onColor: AppColors.primaryDark),
                     if (game.myStatus == MyGameStatus.invited)

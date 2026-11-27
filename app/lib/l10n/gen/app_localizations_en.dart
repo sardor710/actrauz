@@ -2831,4 +2831,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reviewNoTeams => 'No teams';
+
+  @override
+  String get whoCanJoin => 'Who can join';
+
+  @override
+  String teamGameChoice(String team) {
+    return 'Team: $team';
+  }
+
+  @override
+  String get openToEveryoneLabel => 'Open to everyone if spots remain';
+
+  @override
+  String get openNever => 'Never';
+
+  @override
+  String openHoursBefore(int hours) {
+    return '$hours h before';
+  }
+
+  @override
+  String get teamUpcomingGamesTitle => 'Upcoming games';
+
+  @override
+  String get teamPostGame => 'Post a game';
+
+  @override
+  String get teamNoGames => 'No upcoming team games';
+
+  @override
+  String teamGameOpens(String when) {
+    return 'Opens to everyone · $when';
+  }
+
+  @override
+  String notifTeamGamePosted(String team) {
+    return 'New game for the team $team';
+  }
 }

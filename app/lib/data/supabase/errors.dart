@@ -60,6 +60,10 @@ const kScoreErrors = <String, JoinError>{
   'already_exists': JoinError.scoreClosed,
 };
 
+/// What `create_game` means by `not_allowed`: a team game posted by someone
+/// who is not the team's captain.
+const kCreateGameErrors = <String, JoinError>{'not_allowed': JoinError.forbidden};
+
 /// What `report_player` means by `already_exists` (ruling R1): an open report
 /// about the same player and game.
 const kReportErrors = <String, JoinError>{'already_exists': JoinError.alreadyReported};

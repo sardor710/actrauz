@@ -16,6 +16,7 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
+import '../games/game_card.dart';
 
 /// Runs a team action on a screen and shows the translated reason when the
 /// backend refuses. Every view of teams reloads either way: a refusal
@@ -84,8 +85,8 @@ String _levelText(AppLocalizations l, {required int level, double? rating, bool 
   return provisional ? l.ratingWithProvisional(value) : value;
 }
 
-/// A team (design §7): who is in it and the join, leave and captain tools.
-/// Team games arrive with the team games task.
+/// A team (design §7): its upcoming games, who is in it, and the join, leave
+/// and captain tools.
 class TeamScreen extends ConsumerWidget {
   const TeamScreen({super.key, required this.teamId});
 
@@ -174,6 +175,7 @@ class TeamScreen extends ConsumerWidget {
                 children: [
                   _Header(team: team),
                   if (team.isCaptain && team.requests.isNotEmpty) _Requests(team: team),
+                  if (team.isMember || team.games.isNotEmpty) _Games(team: team),
                   SectionCard(
                     title: l.teamMembersTitle,
                     contentPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
@@ -273,6 +275,41 @@ class _Header extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The team's upcoming games the player may see, and the captain's way to
+/// post one: the usual create form, with the team chosen.
+class _Games extends StatelessWidget {
+  const _Games({required this.team});
+
+  final Team team;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    return SectionCard(
+      title: l.teamUpcomingGamesTitle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (team.games.isEmpty)
+            Text(l.teamNoGames, style: AppText.muted)
+          else
+            for (final game in team.games)
+              Padding(padding: const EdgeInsets.only(bottom: 12), child: GameCard(game: game)),
+          if (team.isCaptain) ...[
+            if (team.games.isEmpty) const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: const ValueKey('team-post-game'),
+              onPressed: () => context.go('/games/new?team=${team.id}'),
+              icon: const Icon(Icons.add_rounded),
+              label: Text(l.teamPostGame),
+            ),
+          ],
+        ],
       ),
     );
   }

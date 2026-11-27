@@ -1290,6 +1290,154 @@ void main() {
       );
     });
   });
+
+  group('team games', () {
+    Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
+    // Monday 23 Nov 2026, 07:00 in Tashkent: 21 hours after the clock.
+    final start = DateTime.utc(2026, 11, 23, 7);
+    TeamDraft runners(String name, {String cityId = 'tashkent'}) =>
+        TeamDraft(name: name, sportId: 'running', cityId: cityId);
+    GameDraft teamRun(String? teamId, {int? openHoursBefore, String sportId = 'running', int spots = 4}) => GameDraft(
+      sportId: sportId,
+      spots: spots,
+      meetingPoint: 'Bunyodkor park, main gate',
+      start: start,
+      end: start.add(const Duration(hours: 1)),
+      teamId: teamId,
+      openHoursBefore: openHoursBefore,
+    );
+    Future<List<String>> listed(SampleBackend b, String userId) async =>
+        [for (final g in await b.gamesAs(userId, 'tashkent')) g.id];
+
+    test('a team game is listed for its members only, and the members hear about it', () async {
+      final team = await backend.createTeamAs('p1', runners('Aziz Runners'));
+      await backend.joinTeam(team.id);
+      await backend.joinTeamAs('p2', team.id);
+      final game = await backend.createAs('p1', teamRun(team.id));
+
+      // Read as invite-only, as old builds do; the team is what marks it.
+      expect(game.visibility, GameVisibility.inviteOnly);
+      expect(game.team?.id, team.id);
+      expect(game.team?.name, 'Aziz Runners');
+      expect(game.publicFrom, isNull);
+
+      expect((await backend.games('tashkent')).map((g) => g.id), contains(game.id));
+      expect(await listed(backend, 'p2'), contains(game.id));
+      expect(await listed(backend, 'p3'), isNot(contains(game.id)));
+      await expectLater(backend.joinAs('p3', game.id), joinError(JoinError.notFound));
+      await expectLater(backend.requestToJoinAs('p3', game.id), joinError(JoinError.notFound));
+      expect((await backend.joinAs('p2', game.id)).participantIds, ['p1', 'p2']);
+      expect((await backend.join(game.id)).participantIds, ['p1', 'p2', kMeId]);
+
+      final posted = (await backend.inbox()).firstWhere((n) => n.kind == 'team_game_posted');
+      expect(posted.category, 'teams');
+      expect(posted.payload, {
+        'game_id': game.id,
+        'sport_id': 'running',
+        'starts_local': '2026-11-23T07:00:00',
+        'team_id': team.id,
+        'team_name': 'Aziz Runners',
+      });
+      expect(posted.route, '/games/${game.id}');
+    });
+
+    test('a team game opens to everyone at its lead time, while spots remain', () async {
+      var clock = utcNow;
+      final timed = SampleBackend(utcNow: () => clock);
+      final team = await timed.createTeam(runners('Night Runners'));
+      final game = await timed.create(teamRun(team.id, openHoursBefore: 12, spots: 3));
+      // 12 hours before 07:00 on Monday, in Tashkent wall-clock time.
+      expect(game.publicFrom, DateTime.utc(2026, 11, 22, 19));
+      expect(await listed(timed, 'p3'), isNot(contains(game.id)));
+      await expectLater(timed.joinAs('p3', game.id), joinError(JoinError.notFound));
+
+      // 20:00 in Tashkent.
+      clock = DateTime.utc(2026, 11, 22, 15);
+      expect(await listed(timed, 'p3'), contains(game.id));
+      expect((await timed.joinAs('p3', game.id)).participantIds, [kMeId, 'p3']);
+      // The rating and level rules still apply, and the JSON still says invite-only.
+      final last = await timed.joinAs('p4', game.id);
+      expect(last.visibility, GameVisibility.inviteOnly);
+      // Full: it leaves the open list.
+      expect(await listed(timed, 'p5'), isNot(contains(game.id)));
+      await expectLater(timed.joinAs('p5', game.id), joinError(JoinError.full));
+
+      // A lead time longer than the time left opens the game at once.
+      final soon = await timed.create(
+        GameDraft(
+          sportId: 'running',
+          spots: 4,
+          meetingPoint: 'Riverside',
+          start: DateTime.utc(2026, 11, 23, 9),
+          end: DateTime.utc(2026, 11, 23, 10),
+          teamId: team.id,
+          openHoursBefore: 48,
+        ),
+      );
+      expect(await listed(timed, 'p5'), contains(soon.id));
+    });
+
+    test('only the captain posts a team game, in the team sport and city', () async {
+      final team = await backend.createTeamAs('p1', runners('Aziz Runners'));
+      await backend.joinTeam(team.id);
+      await expectLater(backend.create(teamRun(team.id)), joinError(JoinError.forbidden));
+      await expectLater(backend.createAs('p1', teamRun('nope')), joinError(JoinError.notFound));
+      await expectLater(backend.createAs('p1', teamRun(team.id, sportId: 'gym')), joinError(JoinError.invalidArgument));
+      await expectLater(
+        backend.createAs('p1', teamRun(null, openHoursBefore: 12)),
+        joinError(JoinError.invalidArgument),
+      );
+      await expectLater(
+        backend.createAs('p1', teamRun(team.id, openHoursBefore: 6)),
+        joinError(JoinError.invalidArgument),
+      );
+      // A meeting point is in Tashkent; the team is in Almaty.
+      final almaty = await backend.createTeamAs('p1', runners('Alatau Runners', cityId: 'almaty'));
+      await expectLater(backend.createAs('p1', teamRun(almaty.id)), joinError(JoinError.invalidArgument));
+    });
+
+    test('the team page lists the games the viewer may see and counts them all', () async {
+      final theirs = await backend.createTeamAs('p1', runners('Aziz Runners'));
+      final game = await backend.createAs('p1', teamRun(theirs.id));
+      // Not a member: the count, but not the game.
+      var team = await backend.team(theirs.id);
+      expect(team.upcomingGames, 1);
+      expect(team.games, isEmpty);
+      expect((await backend.teams('tashkent')).firstWhere((t) => t.id == theirs.id).upcomingGames, 1);
+
+      await backend.joinTeam(theirs.id);
+      team = await backend.team(theirs.id);
+      expect(team.games.map((g) => g.id), [game.id]);
+      expect(team.games.single.team?.name, 'Aziz Runners');
+    });
+
+    test('a deleted team leaves an invite-only game that never opens', () async {
+      var clock = utcNow;
+      final timed = SampleBackend(utcNow: () => clock);
+      final team = await timed.createTeamAs('p1', runners('Aziz Runners'));
+      await timed.joinTeamAs('p2', team.id);
+      final game = await timed.createAs('p1', teamRun(team.id, openHoursBefore: 12));
+      await timed.joinAs('p2', game.id);
+      await timed.admin.deleteTeam(team.id);
+
+      clock = DateTime.utc(2026, 11, 22, 15);
+      final seen = (await timed.gamesAs('p2', 'tashkent')).firstWhere((g) => g.id == game.id);
+      expect(seen.team, isNull);
+      expect(seen.publicFrom, isNull);
+      expect(seen.visibility, GameVisibility.inviteOnly);
+      expect(await listed(timed, 'p3'), isNot(contains(game.id)));
+      await expectLater(timed.joinAs('p3', game.id), joinError(JoinError.notFound));
+    });
+
+    test('a member the host removed does not get back in through the team', () async {
+      final team = await backend.createTeam(runners('Night Runners'));
+      await backend.joinTeamAs('p2', team.id);
+      final game = await backend.create(teamRun(team.id));
+      await backend.joinAs('p2', game.id);
+      await backend.removeParticipant(game.id, 'p2');
+      await expectLater(backend.joinAs('p2', game.id), joinError(JoinError.notFound));
+    });
+  });
 }
 
 String _courtOf(String bookingId, SampleBackend backend) {

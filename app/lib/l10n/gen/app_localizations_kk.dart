@@ -2840,4 +2840,42 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get reviewNoTeams => 'Командалар жоқ';
+
+  @override
+  String get whoCanJoin => 'Кім қосыла алады';
+
+  @override
+  String teamGameChoice(String team) {
+    return 'Команда: $team';
+  }
+
+  @override
+  String get openToEveryoneLabel => 'Орын қалса, барлығына ашу';
+
+  @override
+  String get openNever => 'Ешқашан';
+
+  @override
+  String openHoursBefore(int hours) {
+    return '$hours сағ бұрын';
+  }
+
+  @override
+  String get teamUpcomingGamesTitle => 'Алдағы ойындар';
+
+  @override
+  String get teamPostGame => 'Ойын жариялау';
+
+  @override
+  String get teamNoGames => 'Команданың алдағы ойындары жоқ';
+
+  @override
+  String teamGameOpens(String when) {
+    return 'Барлығына ашылады · $when';
+  }
+
+  @override
+  String notifTeamGamePosted(String team) {
+    return '«$team» командасының жаңа ойыны';
+  }
 }

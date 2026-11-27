@@ -4985,6 +4985,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No teams'**
   String get reviewNoTeams;
+
+  /// No description provided for @whoCanJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can join'**
+  String get whoCanJoin;
+
+  /// No description provided for @teamGameChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Team: {team}'**
+  String teamGameChoice(String team);
+
+  /// No description provided for @openToEveryoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to everyone if spots remain'**
+  String get openToEveryoneLabel;
+
+  /// No description provided for @openNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get openNever;
+
+  /// No description provided for @openHoursBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h before'**
+  String openHoursBefore(int hours);
+
+  /// No description provided for @teamUpcomingGamesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming games'**
+  String get teamUpcomingGamesTitle;
+
+  /// No description provided for @teamPostGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Post a game'**
+  String get teamPostGame;
+
+  /// No description provided for @teamNoGames.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming team games'**
+  String get teamNoGames;
+
+  /// No description provided for @teamGameOpens.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens to everyone · {when}'**
+  String teamGameOpens(String when);
+
+  /// No description provided for @notifTeamGamePosted.
+  ///
+  /// In en, this message translates to:
+  /// **'New game for the team {team}'**
+  String notifTeamGamePosted(String team);
 }
 
 class _AppLocalizationsDelegate

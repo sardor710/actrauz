@@ -526,8 +526,26 @@ class SampleBackend
   bool _removed(String gameId, String userId) =>
       (_joinAsks[gameId] ?? const []).any((a) => a.userId == userId && a.status == _AskStatus.removed);
 
+  /// Game id → the team it was posted for, and when it opens to everyone
+  /// (venue wall-clock time). Kept apart from the game, as the database
+  /// joins the team on every read: a rename shows, a deleted team is gone.
+  final Map<String, String> _teamOf = {};
+  final Map<String, DateTime> _publicFrom = {};
+
+  /// The team part of who may see and join (`app.team_game_open`): a team
+  /// game is open to the team's members, and to everyone from its
+  /// [Game.publicFrom] on. False for an ordinary game and once the team is
+  /// deleted.
+  bool _teamOpen(String viewer, Game g) {
+    final teamId = _teamOf[g.id];
+    if (teamId == null || _teams.refOf(teamId) == null) return false;
+    final opens = _publicFrom[g.id];
+    return (opens != null && !opens.isAfter(_cityNow(g.cityId))) || _teams.isMember(teamId, viewer);
+  }
+
   bool _canSee(String viewer, Game g) =>
       g.visibility == GameVisibility.public ||
+      _teamOpen(viewer, g) ||
       g.hostId == viewer ||
       g.participantIds.contains(viewer) ||
       _inviteOf(g.id, viewer) != null ||
@@ -564,6 +582,8 @@ class SampleBackend
         : _pendingAsk(g.id, viewer) != null
         ? MyGameStatus.requested
         : null;
+    final teamId = _teamOf[g.id];
+    final team = teamId == null ? null : _teams.refOf(teamId);
     return g.copyWith(
       participants: [for (final id in g.participantIds) _member(id, g.sportId)],
       joinRequests: g.hostId == viewer
@@ -579,6 +599,10 @@ class SampleBackend
       clearMyRequestId: _pendingAsk(g.id, viewer) == null,
       result: _scores.resultOf(g.id),
       afterGame: _afterGameOf(g, viewer),
+      team: team,
+      clearTeam: team == null,
+      publicFrom: team == null ? null : _publicFrom[g.id],
+      clearPublicFrom: team == null || _publicFrom[g.id] == null,
     );
   }
 
@@ -598,7 +622,7 @@ class SampleBackend
     final g = _live(id);
     final invited = _isInvited(id, userId);
     if (_removed(id, userId)) throw const JoinException(JoinError.notFound);
-    final joined = _save(joinGame(g, _playerOf(userId), invited: invited));
+    final joined = _save(joinGame(g, _playerOf(userId), invited: invited, teamOpen: _teamOpen(userId, g)));
     _closePending(id, userId);
     _notify(g.hostId, 'game_joined', 'games', {..._gameNote(g), 'actor_name': _nameOf(userId)});
     _notifyIfFull(joined, userId);
@@ -656,7 +680,9 @@ class SampleBackend
         draft.minLevel < 1 ||
         draft.maxLevel > 5 ||
         draft.minLevel > draft.maxLevel ||
-        (draft.distanceKm != null && draft.distanceKm! <= 0)) {
+        (draft.distanceKm != null && draft.distanceKm! <= 0) ||
+        (draft.openHoursBefore != null &&
+            (draft.teamId == null || !GameDraft.openHoursChoices.contains(draft.openHoursBefore)))) {
       throw const JoinException(JoinError.invalidArgument);
     }
     final sport = _sports[draft.sportId];
@@ -724,6 +750,13 @@ class SampleBackend
       end = draft.end!;
     }
 
+    // A team game: the captain's, in the team's sport and city. It is stored
+    // invite-only, as builds made before teams read it.
+    final posting = draft.teamId == null ? null : _teams.postingFor(userId, draft.teamId!);
+    if (posting != null && (posting.team.sportId != sport.sport.id || posting.cityId != cityId)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+
     final game = Game(
       id: 'gm${_nextId++}',
       sportId: sport.sport.id,
@@ -731,7 +764,7 @@ class SampleBackend
       venueId: venueId,
       hostId: userId,
       kind: kind,
-      visibility: draft.visibility,
+      visibility: posting == null ? draft.visibility : GameVisibility.inviteOnly,
       start: start,
       end: end,
       spots: draft.spots,
@@ -749,7 +782,20 @@ class SampleBackend
       distanceKm: draft.distanceKm,
       pace: _blank(draft.pace),
     );
-    return _view(_save(game), userId);
+    _save(game);
+    if (posting != null) {
+      _teamOf[game.id] = posting.team.id;
+      final hours = draft.openHoursBefore;
+      if (hours != null) _publicFrom[game.id] = start.subtract(Duration(hours: hours));
+      for (final id in posting.others) {
+        _notify(id, 'team_game_posted', 'teams', {
+          ..._gameNote(game),
+          'team_id': posting.team.id,
+          'team_name': posting.team.name,
+        });
+      }
+    }
+    return _view(game, userId);
   }
 
   static String? _blank(String? text) {
@@ -1033,21 +1079,32 @@ class SampleBackend
   // ---- GameRepository ----
 
   @override
-  Future<List<Game>> games(String cityId) async {
+  Future<List<Game>> games(String cityId) => gamesAs(kMeId, cityId);
+
+  /// The Games tab of [viewer] (`app.list_games`): the city's public games
+  /// and team games open to them, with spots left, plus their own, the ones
+  /// they are invited to and their teams' games (any city, even full).
+  Future<List<Game>> gamesAs(String viewer, String cityId) async {
     _tick();
     bool listed(Game g) {
       if (g.cancelled || _started(g)) return false;
-      final mine = g.hostId == kMeId || g.participantIds.contains(kMeId) || _isInvited(g.id, kMeId);
-      // Invite-only games come in only as `mine`, never through the city.
+      final teamId = _teamOf[g.id];
+      final mine =
+          g.hostId == viewer ||
+          g.participantIds.contains(viewer) ||
+          _isInvited(g.id, viewer) ||
+          (teamId != null && _teams.isMember(teamId, viewer));
+      // Other invite-only games come in only as `mine`, never through the city.
       final inCity =
           g.cityId == cityId &&
-          g.visibility == GameVisibility.public &&
-          (!g.isFull || g.participantIds.contains(kMeId));
+          (g.visibility == GameVisibility.public || _teamOpen(viewer, g)) &&
+          (!g.isFull || g.participantIds.contains(viewer));
       return inCity || mine;
     }
 
     return [
-      for (final g in _games.values.where(listed).toList()..sort((a, b) => a.start.compareTo(b.start))) _view(g, kMeId),
+      for (final g in _games.values.where(listed).toList()..sort((a, b) => a.start.compareTo(b.start)))
+        _view(g, viewer),
     ];
   }
 
@@ -1381,7 +1438,20 @@ class SampleBackend
     activeSport: (id) => _sports[id]?.active ?? false,
     knownCity: (id) => kCities.any((c) => c.id == id),
     notify: _notify,
+    upcomingGames: (teamId) => _upcomingOf(teamId).length,
+    gamesFor: (teamId, viewer) => [
+      for (final g in _upcomingOf(teamId))
+        if (_canSee(viewer, g)) _view(g, viewer),
+    ],
   );
+
+  /// The team's games that have not started and are not cancelled, soonest
+  /// first.
+  List<Game> _upcomingOf(String teamId) =>
+      _games.values.where((g) => _teamOf[g.id] == teamId && !g.cancelled && !_started(g)).toList()..sort((a, b) {
+        final byStart = a.start.compareTo(b.start);
+        return byStart != 0 ? byStart : a.id.compareTo(b.id);
+      });
 
   /// The team calls for any player, so tests can have a sample player create
   /// a team, ask to join or invite the demo player. The demo player's own go

@@ -61,7 +61,7 @@ class SupabaseGameRepository implements GameRepository {
   }
 
   @override
-  Future<Game> create(GameDraft draft) => _callGame('create_game', {'p_game': gameDraftJson(draft)});
+  Future<Game> create(GameDraft draft) => _callGame('create_game', {'p_game': gameDraftJson(draft)}, kCreateGameErrors);
 
   @override
   Future<Game> requestToJoin(String gameId) => _callGame('request_to_join', {'p_game_id': gameId});

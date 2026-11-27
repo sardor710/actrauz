@@ -1934,5 +1934,74 @@ void main() {
       expect(joinExceptionFor(raised('team_limit'), kTeamEditErrors).error, JoinError.teamLimit);
       expect(joinExceptionFor(raised('already_exists')).error, JoinError.unavailable);
     });
+
+    test('a team game: its team and the local time it opens to everyone', () {
+      Map<String, dynamic> game([Map<String, dynamic> extra = const {}]) => {
+        'id': 'g',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'venue_id': 'venue-1',
+        'host_id': me,
+        'visibility': 'invite_only',
+        'starts_local': '2026-11-23T19:00:00',
+        'ends_local': '2026-11-23T20:30:00',
+        'spots': 4,
+        ...extra,
+      };
+      final teamGame = gameFromJson(
+        game({
+          'team': {'id': 'team-1', 'name': 'Night Owls'},
+          'public_from_local': '2026-11-22T19:00:00',
+        }),
+        myUserId: me,
+      );
+      expect(teamGame.visibility, GameVisibility.inviteOnly);
+      expect(teamGame.team?.id, 'team-1');
+      expect(teamGame.team?.name, 'Night Owls');
+      expect(teamGame.team?.sportId, 'padel', reason: "the team's sport is the game's");
+      expect(teamGame.publicFrom, DateTime.utc(2026, 11, 22, 19));
+
+      // A team game that never opens, an ordinary game, and a build before the keys.
+      final closed = gameFromJson(
+        game({
+          'team': {'id': 'team-1', 'name': 'Night Owls'},
+          'public_from_local': null,
+        }),
+        myUserId: me,
+      );
+      expect(closed.team?.id, 'team-1');
+      expect(closed.publicFrom, isNull);
+      final plain = gameFromJson(game({'team': null, 'public_from_local': null}), myUserId: me);
+      expect(plain.team, isNull);
+      expect(gameFromJson(game(), myUserId: me).team, isNull);
+    });
+
+    test('a team game draft sends the team and the lead time', () {
+      expect(
+        gameDraftJson(
+          const GameDraft(sportId: 'padel', spots: 4, bookingId: 'b-1', teamId: 'team-1', openHoursBefore: 24),
+        ),
+        {
+          'sport_id': 'padel',
+          'spots': 4,
+          'min_level': 1,
+          'max_level': 5,
+          'visibility': 'public',
+          'booking_id': 'b-1',
+          'team_id': 'team-1',
+          'open_hours_before': 24,
+        },
+      );
+      final never = gameDraftJson(const GameDraft(sportId: 'padel', spots: 4, bookingId: 'b-1', teamId: 'team-1'));
+      expect(never['team_id'], 'team-1');
+      expect(never.containsKey('open_hours_before'), isFalse);
+    });
+
+    test('create_game: not_allowed is a member posting for the team', () {
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'not_allowed'), kCreateGameErrors).error,
+        JoinError.forbidden,
+      );
+    });
   });
 }

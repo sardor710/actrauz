@@ -7,7 +7,9 @@ import '../../core/theme.dart';
 import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
+import '../../domain/teams.dart';
 import '../../state/providers.dart';
+import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/widgets.dart';
@@ -16,12 +18,17 @@ import 'host_tools.dart';
 
 /// Start a game. The sport comes first: a bookable sport sits on one of the
 /// player's own upcoming bookings, a place-only one on a venue or a meeting
-/// point. Opens the new game when it is created.
+/// point. A captain may post it for a team of theirs in that sport and city.
+/// Opens the new game when it is created.
 class CreateGameScreen extends ConsumerStatefulWidget {
-  const CreateGameScreen({super.key, this.bookingId});
+  const CreateGameScreen({super.key, this.bookingId, this.teamId});
 
   /// A booking to start from, when the player came from "My bookings".
   final String? bookingId;
+
+  /// A team to post for, when the captain came from the team page; it
+  /// chooses the sport too.
+  final String? teamId;
 
   @override
   ConsumerState<CreateGameScreen> createState() => _CreateGameScreenState();
@@ -46,6 +53,12 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
   /// The range of a game in a rated sport (padel, tennis).
   RangeValues _ratings = kAllRatings;
   GameVisibility _visibility = GameVisibility.public;
+
+  /// The team the game is for: one the player captains in the sport and city.
+  late String? _teamId = widget.teamId;
+
+  /// Hours before the start a team game opens to everyone; null for never.
+  int? _openHours;
   bool _busy = false;
   String? _error;
 
@@ -63,7 +76,12 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
     if (picked != null) setState(() => _startMinute = picked);
   }
 
-  Future<void> _create({required Sport sport, required String? bookingId, required DateTime today}) async {
+  Future<void> _create({
+    required Sport sport,
+    required String? bookingId,
+    required Team? team,
+    required DateTime today,
+  }) async {
     final l = context.l;
     if (!sport.bookable && !_form.currentState!.validate()) return;
     if (!sport.bookable && !_place.atMeetingPoint && _place.venueId == null) {
@@ -90,7 +108,10 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       maxLevel: rated ? levelOfRating(_ratings.end) : _levels.end.round(),
       minRating: rated ? _ratings.start : null,
       maxRating: rated ? _ratings.end : null,
-      visibility: _visibility,
+      // A team game is stored invite-only whatever is sent.
+      visibility: team == null ? _visibility : GameVisibility.inviteOnly,
+      teamId: team?.id,
+      openHoursBefore: team == null ? null : _openHours,
       note: blank(_note.text),
       pace: sport.bookable ? null : blank(_place.pace.text),
       distanceKm: sport.bookable ? null : distance,
@@ -108,6 +129,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
     try {
       final game = await ref.read(gameRepositoryProvider).create(draft);
       refreshGames(ref);
+      // The team's tiles count its upcoming games.
+      if (team != null) refreshTeams(ref);
       // A game lives in the Games tab: go, not push, so the stack is Games then the game.
       if (mounted) context.go('/games/${game.id}');
     } on JoinException catch (e) {
@@ -130,15 +153,25 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
     // The player's own upcoming confirmed bookings that have no game yet.
     final (:choices, loading: loadingVenues) = bookingChoices(ref);
 
-    // Coming from a booking chooses its sport too.
+    // Coming from a booking or a team chooses its sport too.
+    final teams = ref.watch(teamsProvider).valueOrNull ?? const <Team>[];
     final fromBooking = choices.where((c) => c.booking.id == widget.bookingId).firstOrNull;
-    final sportId = _sportId ?? fromBooking?.court.sportId;
+    final fromTeam = teams.where((t) => t.id == widget.teamId && t.isCaptain).firstOrNull;
+    final sportId = _sportId ?? fromBooking?.court.sportId ?? fromTeam?.sportId;
     final sport = sports.where((s) => s.id == sportId).firstOrNull;
     final forSport = [
       for (final c in choices)
         if (c.court.sportId == sportId) c,
     ];
     final chosen = forSport.where((c) => c.booking.id == _bookingId).firstOrNull;
+    // Teams the player captains in this sport, in the game's city: the
+    // booking's venue, or the current city until one is chosen.
+    final gameCityId = chosen?.venue.cityId ?? city.id;
+    final myTeams = [
+      for (final t in teams)
+        if (t.isCaptain && t.sportId == sportId && t.cityId == gameCityId) t,
+    ];
+    final team = myTeams.where((t) => t.id == _teamId).firstOrNull;
     final spots = _spots ?? (sport?.defaultPlayers ?? 4).clamp(SpotsStepper.min, SpotsStepper.max);
     final canCreate = sport != null && !_busy && (!sport.bookable || chosen != null);
 
@@ -165,6 +198,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                             label: s.name.resolve(context.lang),
                             selected: s.id == sportId,
                             onTap: () => setState(() {
+                              // Another sport has other teams.
+                              if (s.id != sportId) _teamId = null;
                               _sportId = s.id;
                               _error = null;
                             }),
@@ -210,17 +245,21 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                       child: Row(
                         children: [
                           SpotsStepper(value: spots, onChanged: (v) => setState(() => _spots = v)),
-                          const Spacer(),
+                          const SizedBox(width: 12),
+                          // Wraps on a narrow phone in Russian or Kazakh.
                           if (chosen != null)
-                            Text(
-                              l.perPlayer(
-                                money(
-                                  l,
-                                  (chosen.booking.totalPrice + spots - 1) ~/ spots,
-                                  cityById(chosen.venue.cityId).currency,
+                            Expanded(
+                              child: Text(
+                                l.perPlayer(
+                                  money(
+                                    l,
+                                    (chosen.booking.totalPrice + spots - 1) ~/ spots,
+                                    cityById(chosen.venue.cityId).currency,
+                                  ),
                                 ),
+                                textAlign: TextAlign.end,
+                                style: AppText.bodyStrong,
                               ),
-                              style: AppText.bodyStrong,
                             ),
                         ],
                       ),
@@ -229,21 +268,26 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                       LevelRangeCard(rated: true, values: _ratings, onChanged: (v) => setState(() => _ratings = v))
                     else
                       LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
-                    SectionCard(
-                      title: l.visibilityLabel,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<GameVisibility>(
-                          showSelectedIcon: false,
-                          segments: [
-                            ButtonSegment(value: GameVisibility.public, label: Text(l.visibilityPublic)),
-                            ButtonSegment(value: GameVisibility.inviteOnly, label: Text(l.visibilityInviteOnly)),
-                          ],
-                          selected: {_visibility},
-                          onSelectionChanged: (v) => setState(() => _visibility = v.first),
+                    if (myTeams.isEmpty)
+                      SectionCard(
+                        title: l.visibilityLabel,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<GameVisibility>(
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(value: GameVisibility.public, label: Text(l.visibilityPublic)),
+                              ButtonSegment(value: GameVisibility.inviteOnly, label: Text(l.visibilityInviteOnly)),
+                            ],
+                            selected: {_visibility},
+                            onSelectionChanged: (v) => setState(() => _visibility = v.first),
+                          ),
                         ),
-                      ),
-                    ),
+                      )
+                    else ...[
+                      _whoSection(myTeams, team),
+                      if (team != null) _opensSection(),
+                    ],
                     SectionCard(
                       title: l.noteLabel,
                       child: TextField(
@@ -284,7 +328,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                       child: FilledButton(
                         key: const ValueKey('create-game-submit'),
                         onPressed: canCreate
-                            ? () => _create(sport: sport, bookingId: chosen?.booking.id, today: today)
+                            ? () => _create(sport: sport, bookingId: chosen?.booking.id, team: team, today: today)
                             : null,
                         child: Text(l.createGame),
                       ),
@@ -294,6 +338,70 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  static const _public = '_public';
+  static const _inviteOnly = '_invite';
+
+  /// Everyone, invite only, or one of the teams the player captains.
+  Widget _whoSection(List<Team> teams, Team? team) {
+    final l = context.l;
+    final selected = team?.id ?? (_visibility == GameVisibility.public ? _public : _inviteOnly);
+    Widget choice(String key, String value, String label, IconData icon) => RadioListTile<String>(
+      key: ValueKey(key),
+      contentPadding: EdgeInsets.zero,
+      value: value,
+      groupValue: selected,
+      onChanged: (v) => setState(() {
+        if (v == _public || v == _inviteOnly) {
+          _teamId = null;
+          _visibility = v == _public ? GameVisibility.public : GameVisibility.inviteOnly;
+        } else {
+          _teamId = v;
+        }
+      }),
+      title: Text(label, style: AppText.bodyStrong),
+      secondary: Icon(icon, color: AppColors.muted),
+    );
+
+    return SectionCard(
+      title: l.whoCanJoin,
+      contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        children: [
+          choice('who-public', _public, l.visibilityPublic, Icons.public_rounded),
+          choice('who-invite', _inviteOnly, l.visibilityInviteOnly, Icons.lock_outline_rounded),
+          for (final t in teams) choice('who-team-${t.id}', t.id, l.teamGameChoice(t.name), Icons.groups_outlined),
+        ],
+      ),
+    );
+  }
+
+  /// When a team game opens to everyone while spots remain: never, or some
+  /// hours before the start.
+  Widget _opensSection() {
+    final l = context.l;
+    return SectionCard(
+      title: l.openToEveryoneLabel,
+      child: Wrap(
+        runSpacing: 8,
+        children: [
+          FilterChipButton(
+            key: const ValueKey('open-hours-never'),
+            label: l.openNever,
+            selected: _openHours == null,
+            onTap: () => setState(() => _openHours = null),
+          ),
+          for (final hours in GameDraft.openHoursChoices)
+            FilterChipButton(
+              key: ValueKey('open-hours-$hours'),
+              label: l.openHoursBefore(hours),
+              selected: _openHours == hours,
+              onTap: () => setState(() => _openHours = hours),
+            ),
         ],
       ),
     );

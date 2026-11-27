@@ -260,6 +260,10 @@ void main() {
       expect(texts.toSet(), hasLength(texts.length), reason: code);
       expect(texts.take(2), everyElement(contains('Aziz')), reason: code);
       expect(notificationText(l, code, notice('team_invite', const {'team_id': 't1'})), l.notifUnknown);
+      // A team game posted names the team and opens the game.
+      final posted = notice('team_game_posted', const {'game_id': 'g1', 'team_id': 't1', 'team_name': 'Night Owls'});
+      expect(notificationText(l, code, posted), allOf(contains('Night Owls'), isNot(isIn(texts))), reason: code);
+      expect(posted.route, '/games/g1');
     }
   });
 
