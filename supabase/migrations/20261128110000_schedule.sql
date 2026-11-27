@@ -225,6 +225,8 @@ begin
   select t.* into v_tournament
   from public.tournament_categories c join public.tournaments t on t.id = c.tournament_id
   where c.id = v_match.category_id;
+  -- A hidden tournament has no schedule.
+  if not v_tournament.active then raise exception 'not_found'; end if;
 
   if p_starts_at is null then
     perform app.release_match_block(v_match.id);
@@ -240,6 +242,7 @@ begin
   end if;
   if char_length(v_note) > 100 then raise exception 'invalid_argument'; end if;
   v_start := app.to_instant(p_starts_at, app.tournament_offset(v_tournament));
+  if v_start < p_now then raise exception 'in_past'; end if;
 
   if v_tournament.venue_id is null then
     if p_court_id is not null then raise exception 'invalid_argument'; end if;
@@ -318,6 +321,7 @@ begin
       app.to_instant(v_slot.starts_local, v_offset) + make_interval(mins => v_slot.slot_minutes), '[)');
     v_gap := make_interval(mins => v_slot.slot_minutes);
 
+    continue when lower(v_span) < p_now;
     continue when exists (
       select 1 from public.bookings b
       where b.court_id = v_slot.court_id and b.during && v_span
@@ -380,6 +384,8 @@ begin
   perform pg_advisory_xact_lock(hashtext('tournament:' || p_tournament_id::text));
   -- Read under the lock: an admin edit of the dates or venue waits on it too.
   select t.* into v_tournament from public.tournaments t where t.id = p_tournament_id;
+  -- A hidden tournament has no schedule.
+  if not v_tournament.active then raise exception 'not_found'; end if;
 
   if v_tournament.venue_id is null or p_day is null or p_from is null
      or p_day < v_tournament.starts_on or p_day > v_tournament.ends_on
@@ -716,12 +722,17 @@ begin
     where t.id = v_row.id
     returning * into v_row;
     v_after := to_jsonb(v_row);
-    -- Hidden: the venue gets back the slots of every match not yet played.
+    -- Hidden: the venue gets back the slots of every match not yet played,
+    -- and those matches are unscheduled (the place note stays).
     if v_before.active and not v_row.active then
       delete from public.bookings b
       using public.tournament_matches m, public.tournament_categories c
       where b.tournament_match_id = m.id and m.category_id = c.id and c.tournament_id = v_row.id
         and m.status <> 'done';
+      update public.tournament_matches m set court_id = null, starts_at = null
+      from public.tournament_categories c
+      where c.id = m.category_id and c.tournament_id = v_row.id
+        and m.status <> 'done' and (m.starts_at is not null or m.court_id is not null);
     end if;
   end if;
 

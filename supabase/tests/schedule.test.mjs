@@ -39,9 +39,9 @@ const one = async (sql, params) => (await pool.query(sql, params)).rows[0];
 const scalar = async (sql, params) => (await one(sql, params))?.r;
 const json = (v) => JSON.stringify(v);
 
-const schedule = (user, match, court, startsAt, note = null) =>
-  pool.query(`select app.schedule_match($1, $2, $3, $4::timestamp, $5, $6)`, [user, match, court, startsAt, note, now]);
-const fill = (user, t, onDay, courts, from, categories = null) =>
+const schedule = (user, match, court, startsAt, note = null, when = now) =>
+  pool.query(`select app.schedule_match($1, $2, $3, $4::timestamp, $5, $6)`, [user, match, court, startsAt, note, when]);
+const fill = (user, t, onDay, courts, from, categories = null, when = now) =>
   scalar(`select app.fill_day($1, $2, $3::date, $4::uuid[], $5::time, $6::uuid[], $7) as r`, [
     user,
     t,
@@ -49,7 +49,7 @@ const fill = (user, t, onDay, courts, from, categories = null) =>
     courts,
     from,
     categories,
-    now,
+    when,
   ]);
 const matchJson = (id) => scalar(`select app.match_json(m) as r from tournament_matches m where m.id = $1`, [id]);
 const blocksOf = async (match) =>
@@ -543,4 +543,62 @@ test('the public calls', async () => {
     asUser(pool, someone, (c) => c.query(`select public.schedule_match($1, $2, $3::timestamp)`, [m.id, courts[0], at(day, 9)])),
     'not_allowed',
   );
+});
+
+// --- hidden tournaments and past slots (review round 1) -----------------------------------
+
+test('hiding a tournament clears the times of its unplayed matches', async () => {
+  const { venueId, courts } = await venue();
+  const t = await tournament(venueId);
+  const { cat } = await published(t);
+  const [m1, m2] = await knockout(cat, 1);
+  await schedule(organizer, m1.id, courts[0], at(day, 10), 'Main hall');
+  await schedule(organizer, m2.id, courts[1], at(day, 10));
+  await pool.query(`update tournament_matches set status = 'done', outcome = 'walkover', winner = 'a' where id = $1`, [m2.id]);
+
+  await pool.query(`select app.admin_save_tournament($1, $2::jsonb, $3)`, [admin, json({ id: t, active: false }), now]);
+  const j1 = await matchJson(m1.id);
+  assert.equal(j1.starts_at, null);
+  assert.equal(j1.court_id, null);
+  assert.equal(j1.place_note, 'Main hall');
+  assert.equal((await blocksOf(m1.id)).length, 0);
+  // The played match keeps its time and block.
+  assert.equal((await matchJson(m2.id)).starts_at, at(day, 10));
+  assert.equal((await blocksOf(m2.id)).length, 1);
+
+  // Shown again: the match is simply unscheduled.
+  await pool.query(`select app.admin_save_tournament($1, $2::jsonb, $3)`, [admin, json({ id: t, active: true }), now]);
+  assert.equal((await matchJson(m1.id)).starts_at, null);
+});
+
+test('a hidden tournament cannot be scheduled', async () => {
+  const { venueId, courts } = await venue({ open: 9 * 60, close: 23 * 60 });
+  const t = await tournament(venueId);
+  const { cat } = await published(t);
+  const [m] = await knockout(cat, 1);
+  await pool.query(`update tournaments set active = false where id = $1`, [t]);
+  await expectError(schedule(organizer, m.id, courts[0], at(day, 10, 30)), 'not_found');
+  await expectError(schedule(organizer, m.id, null, null), 'not_found');
+  await expectError(fill(organizer, t, day, courts, '09:00'), 'not_found');
+  assert.equal((await blocksOf(m.id)).length, 0);
+});
+
+test('past slots', async () => {
+  const { venueId, courts } = await venue({ open: 9 * 60, close: 23 * 60 });
+  const t = await tournament(venueId);
+  const { cat } = await published(t);
+  const [m] = await knockout(cat, 1);
+  const eleven = tashkent(day, 11);
+
+  await expectError(schedule(organizer, m.id, courts[0], at(day, 9), null, eleven), 'in_past');
+  // A slot under way (started 10:30) has a start before now too; 12:00 is fine.
+  await expectError(schedule(organizer, m.id, courts[0], at(day, 10, 30), null, eleven), 'in_past');
+  await schedule(organizer, m.id, courts[0], at(day, 12), null, eleven);
+
+  const result = await fill(organizer, t, day, courts, '09:00', null, eleven);
+  assert.ok(result.scheduled > 0);
+  for (const x of await allMatches([cat])) {
+    if (x.j.starts_at) assert.ok(x.j.starts_at >= at(day, 11), x.j.starts_at);
+  }
+  assert.equal((await pool.query(`select count(*)::int as n from bookings where lower(during) < $1`, [eleven])).rows[0].n, 0);
 });
