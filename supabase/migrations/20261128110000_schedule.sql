@@ -375,10 +375,11 @@ declare
   v_unscheduled uuid[] := '{}';
   v_scheduled integer := 0;
 begin
-  select t.* into v_tournament from public.tournaments t where t.id = p_tournament_id;
-  if not found then raise exception 'not_found'; end if;
+  if not exists (select 1 from public.tournaments t where t.id = p_tournament_id) then raise exception 'not_found'; end if;
   perform app.require_organizer(p_user, p_tournament_id);
   perform pg_advisory_xact_lock(hashtext('tournament:' || p_tournament_id::text));
+  -- Read under the lock: an admin edit of the dates or venue waits on it too.
+  select t.* into v_tournament from public.tournaments t where t.id = p_tournament_id;
 
   if v_tournament.venue_id is null or p_day is null or p_from is null
      or p_day < v_tournament.starts_on or p_day > v_tournament.ends_on
