@@ -9,6 +9,7 @@ import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/rating_pill.dart';
 import 'game_pickers.dart';
 import 'host_tools.dart';
 
@@ -80,6 +81,8 @@ class _ConvertRequestSheetState extends ConsumerState<ConvertRequestSheet> {
       setState(() => _error = l.errInvalidArgument);
       return;
     }
+    // The poster hosts the new game: in padel or tennis they answer the questionnaire first.
+    if (!await ensureRated(context, ref, sport) || !mounted) return;
     String? blank(String text) => text.trim().isEmpty ? null : text.trim();
 
     final place = sport.bookable

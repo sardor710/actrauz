@@ -634,7 +634,7 @@
   "questionnaireTitle": "{sport}: boshlangʻich reyting",
   "questionnaireStep": "{total} tadan {n}-savol",
   "questionnaireResult": "Boshlangʻich reytingingiz: {rating}",
-  "questionnaireResultHint": "U reytingli dastlabki {games} ta oʻyiningizda taxminiy boʻlib qoladi va har bir tasdiqlangan natijadan soʻng oʻzgaradi.",
+  "questionnaireResultHint": "Reytingli birinchi {games} ta oʻyiningizda u dastlabki boʻlib qoladi va har bir tasdiqlangan natijadan soʻng oʻzgaradi.",
   "backLabel": "Orqaga",
   "doneLabel": "Tayyor",
   "adminRatingLocked": "Actra tomonidan belgilanadi. Oʻzgartirish uchun dasturchilarga murojaat qiling.",

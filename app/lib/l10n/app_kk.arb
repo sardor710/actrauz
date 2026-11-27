@@ -632,7 +632,7 @@
   "ratingRangeLabel": "Рейтинг аралығы",
   "ratingRangeValue": "Рейтинг {range}",
   "questionnaireTitle": "{sport}: бастапқы рейтинг",
-  "questionnaireStep": "{total} сұрақтың {n}-сі",
+  "questionnaireStep": "{n}-сұрақ, барлығы {total}",
   "questionnaireResult": "Бастапқы рейтингіңіз: {rating}",
   "questionnaireResultHint": "Ол алғашқы {games} рейтингтік ойында алдын ала болып қалады және әр расталған нәтижеден кейін өзгереді.",
   "backLabel": "Артқа",

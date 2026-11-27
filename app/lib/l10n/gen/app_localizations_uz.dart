@@ -2201,7 +2201,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String questionnaireResultHint(int games) {
-    return 'U reytingli dastlabki $games ta oʻyiningizda taxminiy boʻlib qoladi va har bir tasdiqlangan natijadan soʻng oʻzgaradi.';
+    return 'Reytingli birinchi $games ta oʻyiningizda u dastlabki boʻlib qoladi va har bir tasdiqlangan natijadan soʻng oʻzgaradi.';
   }
 
   @override

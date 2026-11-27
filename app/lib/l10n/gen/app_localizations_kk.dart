@@ -2203,7 +2203,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String questionnaireStep(int n, int total) {
-    return '$total сұрақтың $n-сі';
+    return '$n-сұрақ, барлығы $total';
   }
 
   @override
