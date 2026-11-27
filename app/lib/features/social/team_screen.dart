@@ -24,8 +24,8 @@ import '../games/game_card.dart';
 /// through; false at once while another team action runs (a double tap).
 Future<bool> runTeamAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
   if (_teamActionRunning) return false;
-  _teamActionRunning = true;
   final l = context.l;
+  _teamActionRunning = true;
   final String? error;
   try {
     error = await teamActionError(l, action);

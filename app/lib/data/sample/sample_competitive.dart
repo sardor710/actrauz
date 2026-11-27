@@ -255,12 +255,14 @@ class SampleScores {
     }
   }
 
-  /// A no-show majority in the game was lost: a confirmed result flagged
-  /// only by no-show majorities, none of which ([stillMarked]) stands any
-  /// more, is no longer flagged, unless an admin has decided it.
-  void noShowLost(String gameId, {required bool Function(String userId) stillMarked}) {
+  /// The no-show majority against [userId] in the game was lost: a confirmed
+  /// result with them in it, flagged only by no-show majorities none of
+  /// which ([stillMarked]) stands any more, is no longer flagged, unless an
+  /// admin has decided it.
+  void noShowLost(String gameId, String userId, {required bool Function(String userId) stillMarked}) {
     final result = _byGame[gameId];
     if (result == null ||
+        !result.includes(userId) ||
         result.status != ResultStatus.confirmed ||
         !result.flaggedNoShow ||
         result.adminResolved ||

@@ -572,6 +572,34 @@ void main() {
     expect(game.publicFrom, isNull);
   });
 
+  testWidgets("a team chosen for a game on another city's booking blocks Create until Everyone is picked", (
+    tester,
+  ) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    // My padel team plays in Almaty; my booking is in Tashkent.
+    final team = await backend.createTeam(const TeamDraft(name: 'Almaty Owls', sportId: 'padel', cityId: 'almaty'));
+    final booking = await bookPadel(tester);
+    await _refresh(tester);
+
+    await _go(tester, '/games/new?team=${team.id}');
+    await tap(tester, _key('booking-${booking.id}'));
+    await tester.ensureVisible(_key('who-team-${team.id}'));
+    final row = tester.widget<RadioListTile<String>>(_key('who-team-${team.id}'));
+    expect(row.checked, isTrue);
+    expect(row.onChanged, isNull);
+    expect(find.text('This team plays in Almaty'), findsOneWidget);
+    expect(tester.widget<FilledButton>(_key('create-game-submit')).onPressed, isNull);
+
+    await tap(tester, _key('who-public'));
+    expect(tester.widget<FilledButton>(_key('create-game-submit')).onPressed, isNotNull);
+    await tap(tester, _key('create-game-submit'));
+    expect(find.byType(GameScreen), findsOneWidget);
+    final game = (await backend.games('tashkent')).singleWhere((g) => g.bookingId == booking.id);
+    expect(game.team, isNull);
+    expect(game.visibility, GameVisibility.public);
+  });
+
   testWidgets('team choice is hidden without a team', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     final backend = containerOf(tester).read(sampleBackendProvider);

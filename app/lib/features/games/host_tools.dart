@@ -17,10 +17,10 @@ import '../common/widgets.dart';
 /// double tap).
 Future<bool> runGameAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
   if (_gameActionRunning) return false;
-  _gameActionRunning = true;
   final l = context.l;
   // Captured now: the widget may be gone when the action returns.
   final container = ProviderScope.containerOf(context, listen: false);
+  _gameActionRunning = true;
   try {
     await action();
     _refreshAfterGameAction(container);

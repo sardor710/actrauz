@@ -1237,10 +1237,10 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get notifJoinApproved =>
-      'Сіз ойындасыз! Ұйымдастырушы сұрауыңызды мақұлдады';
+      'Сіз ойындасыз! Ұйымдастырушы өтініміңізді мақұлдады';
 
   @override
-  String get notifJoinDeclined => 'Ұйымдастырушы сұрауыңызды қабылдамады';
+  String get notifJoinDeclined => 'Ұйымдастырушы өтініміңізді қабылдамады';
 
   @override
   String get notifGameFull => 'Ойыныңыз толды';
@@ -1401,10 +1401,10 @@ class AppLocalizationsKk extends AppLocalizations {
   String get askToJoin => 'Қосылуды сұрау';
 
   @override
-  String get requested => 'Сұрау жіберілді';
+  String get requested => 'Өтінім жіберілді';
 
   @override
-  String get withdrawRequest => 'Сұрауды қайтарып алу';
+  String get withdrawRequest => 'Өтінімді кері алу';
 
   @override
   String get invitedToGame => 'Сіз бұл ойынға шақырылдыңыз';
@@ -1422,7 +1422,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get approveLabel => 'Мақұлдау';
 
   @override
-  String get requestsTitle => 'Сұраулар';
+  String get requestsTitle => 'Өтінімдер';
 
   @override
   String get hostTools => 'Ұйымдастырушы құралдары';
@@ -2614,7 +2614,7 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get reviewVoidMsg =>
-      'Нәтиже біржола жойылады. Рейтинг өзгерістері қайтарылады, ойыншыларға хабарланады.';
+      'Нәтиже біржола болдырылмайды. Рейтинг өзгерістері қайтарылады, ойыншыларға хабарланады.';
 
   @override
   String get reviewKeepTitle => 'Бұл есепті қалдыру керек пе?';

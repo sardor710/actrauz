@@ -540,7 +540,10 @@ class SampleBackend
     final teamId = _teamOf[g.id];
     if (teamId == null || _teams.refOf(teamId) == null) return false;
     final opens = _publicFrom[g.id];
-    return (opens != null && !opens.isAfter(_cityNow(g.cityId))) || _teams.isMember(teamId, viewer);
+    // Not to a member the host removed from it, until it opens to everyone
+    // (`app.team_game_open`).
+    return (opens != null && !opens.isAfter(_cityNow(g.cityId))) ||
+        (_teams.isMember(teamId, viewer) && !_removed(g.id, viewer));
   }
 
   bool _canSee(String viewer, Game g) =>
@@ -1016,7 +1019,7 @@ class SampleBackend
         events.removeWhere((e) => e.kind == ReliabilityKind.noShow && e.ref == g.id);
         if (_creditsTaken.remove((g.id, targetId))) recordReliability(targetId, ReliabilityKind.gameCompleted, g.id);
       }
-      _scores.noShowLost(g.id, stillMarked: (id) => _noShowMajority(g, id));
+      _scores.noShowLost(g.id, targetId, stillMarked: (id) => _noShowMajority(g, id));
     }
   }
 
@@ -1097,17 +1100,16 @@ class SampleBackend
     bool listed(Game g) {
       if (g.cancelled || _started(g)) return false;
       final teamId = _teamOf[g.id];
-      // A team game is not listed to a member the host took out of it.
-      final removedFromTeamGame = teamId != null && _removed(g.id, viewer);
       final mine =
           g.hostId == viewer ||
           g.participantIds.contains(viewer) ||
           _isInvited(g.id, viewer) ||
-          (teamId != null && _teams.isMember(teamId, viewer) && !removedFromTeamGame);
+          // Not through the team for a member the host took out of the game.
+          (teamId != null && _teams.isMember(teamId, viewer) && !_removed(g.id, viewer));
       // Other invite-only games come in only as `mine`, never through the city.
       final inCity =
           g.cityId == cityId &&
-          (g.visibility == GameVisibility.public || (_teamOpen(viewer, g) && !removedFromTeamGame)) &&
+          (g.visibility == GameVisibility.public || _teamOpen(viewer, g)) &&
           (!g.isFull || g.participantIds.contains(viewer));
       return inCity || mine;
     }
