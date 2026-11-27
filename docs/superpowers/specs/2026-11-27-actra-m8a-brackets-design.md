@@ -1,7 +1,7 @@
 # Actra M8a — Tournament Brackets and Results: Design
 
 **Date:** 2026-11-27
-**Status:** draft for founder approval
+**Status:** draft for founder approval (read by an independent reviewer; its gaps are settled in §14a)
 **Spec:** [docs/actra-product-spec.md](../../actra-product-spec.md) §10.2 (brackets and results), §10.1 (registration), §11 (owner calendar)
 **Roadmap row:** M8 in [2026-11-22-actra-roadmap.md](../plans/2026-11-22-actra-roadmap.md), the "tournament brackets and results" half. Online payments are M8b, a separate design.
 
@@ -231,7 +231,7 @@ These close the gaps an independent reviewer found; where they touch an earlier 
 5. **Walkovers and retirements in group tie-breaks.** A walkover counts for points only; it is left out of set and game differences. A retirement counts the score as entered. **Call.**
 6. **Ranking group finishers for the knockout.** All group winners come first, ordered by points per match, then set difference per match, then game difference per match, then seed; then all runners-up the same way. Byes go to the best-ranked; two entries from the same group are kept in opposite halves where possible. **Call.**
 7. **Entries changing around the draft.** If a registration changes after a draft was made (new, cancelled, moved), the draft is marked out of date and publishing is refused (`draw_outdated`) until the organiser makes it again. At publish, open waitlist offers lapse and the waitlist closes, with a notice to those players. A redo keeps the category locked; it redraws from the entries still registered (withdrawn entries stay out). **Call.**
-8. **Organisers who play.** *(Awaiting the founder; see the question in the hand-over.)*
+8. **Organisers who play.** **Founder (2026-11-27):** an organiser who plays in a match can enter and correct that match's score like any other; no extra check. (Every entry is in the audit log, as for all organiser actions.)
 9. **Account deletion.** `app.delete_account` withdraws the player from published draws (§7.5) before its existing cancel-registrations step, which would otherwise be refused with `draw_published`.
 
 ## 15. Calls made during design (for the founder to check)
