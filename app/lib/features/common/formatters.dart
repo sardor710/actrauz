@@ -114,6 +114,10 @@ String joinErrorText(AppLocalizations l, Object error) {
     JoinError.teamLimit => l.errTeamLimit(Team.maxCaptained),
     JoinError.captainCannotLeave => l.errCaptainCannotLeave,
     JoinError.nameTaken => l.errTeamNameTaken,
+    JoinError.alreadyInTeam => l.errAlreadyInTeam,
+    JoinError.alreadyAskedTeam => l.errAlreadyAskedTeam,
+    JoinError.captainOnly => l.errCaptainOnly,
+    JoinError.windowClosed => l.errWindowClosed,
     JoinError.unavailable => l.errUnavailable,
   };
 }

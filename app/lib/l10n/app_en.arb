@@ -1704,5 +1704,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "errAlreadyInTeam": "You are already in this team",
+  "errAlreadyAskedTeam": "You have already asked to join this team",
+  "errCaptainOnly": "Only the captain can do this",
+  "errWindowClosed": "The time for this has passed"
 }

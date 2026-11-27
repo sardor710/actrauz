@@ -304,6 +304,18 @@ void main() {
     await settleSnackbars(tester);
   });
 
+  testWidgets('the score sheet leaves out a deleted player', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    containerOf(tester).read(sampleBackendProvider).markDeleted('p3');
+    await _openGame(tester, 'gf1');
+    await tap(tester, find.byKey(const ValueKey('score-enter')));
+
+    expect(find.byKey(const ValueKey('score-opponent-p3')), findsNothing);
+    expect(find.byKey(const ValueKey('score-partner-p3')), findsNothing);
+    expect(find.byKey(const ValueKey('score-opponent-p1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('score-opponent-p2')), findsOneWidget);
+  });
+
   testWidgets('a refused score shows in the sheet', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await _openGame(tester, 'gf1');

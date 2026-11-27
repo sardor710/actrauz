@@ -7,7 +7,12 @@ import 'package:actra/domain/games.dart';
 import 'package:actra/features/admin/admin_review_screen.dart';
 import 'package:actra/features/social/player_profile_screen.dart';
 import 'package:actra/data/sample/sample_repositories.dart' show SampleBackend;
+import 'package:actra/core/theme.dart';
+import 'package:actra/domain/booking_engine.dart';
 import 'package:actra/features/admin/admin_audit_screen.dart';
+import 'package:actra/features/admin/admin_common.dart' show adminWrite;
+import 'package:actra/features/common/formatters.dart' show joinErrorText;
+import 'package:actra/l10n/gen/app_localizations_en.dart';
 import 'package:actra/features/admin/admin_home_screen.dart';
 import 'package:actra/features/common/widgets.dart';
 import 'package:actra/l10n/gen/app_localizations.dart';
@@ -61,6 +66,48 @@ class _NotAdmin implements AdminRepository {
 }
 
 void main() {
+  testWidgets('a Review write refused as not allowed says admins only, not "your venue"', (tester) async {
+    SharedPreferences.setMockInitialValues(signedIn);
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: buildTheme(),
+          home: Scaffold(
+            body: Consumer(
+              builder: (context, ref, _) => TextButton(
+                onPressed: () => adminWrite(
+                  context,
+                  ref,
+                  () async => throw const BookingException(BookingError.notAllowed),
+                  adminOnly: true,
+                ),
+                child: const Text('write'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tap(tester, find.text('write'));
+    expect(find.text('Only Actra administrators can open this page'), findsOneWidget);
+    expect(find.text('You do not manage this venue'), findsNothing);
+    await settleSnackbars(tester);
+  });
+
+  test('team and after-game refusals have their own words', () {
+    final l = AppLocalizationsEn();
+    String text(JoinError e) => joinErrorText(l, JoinException(e));
+    expect(text(JoinError.alreadyInTeam), 'You are already in this team');
+    expect(text(JoinError.alreadyAskedTeam), 'You have already asked to join this team');
+    expect(text(JoinError.captainOnly), 'Only the captain can do this');
+    expect(text(JoinError.windowClosed), 'The time for this has passed');
+  });
+
   testWidgets('the profile shows Admin, which opens the four sections', (tester) async {
     await openAdmin(tester);
     for (final label in ['Venues', 'Sports', 'Banners', 'Audit log']) {

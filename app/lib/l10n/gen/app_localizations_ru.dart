@@ -2917,4 +2917,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String teamPlaysIn(String city) {
     return 'Эта команда играет в городе $city';
   }
+
+  @override
+  String get errAlreadyInTeam => 'Вы уже в этой команде';
+
+  @override
+  String get errAlreadyAskedTeam => 'Вы уже отправили заявку в эту команду';
+
+  @override
+  String get errCaptainOnly => 'Это может сделать только капитан';
+
+  @override
+  String get errWindowClosed => 'Время для этого уже прошло';
 }

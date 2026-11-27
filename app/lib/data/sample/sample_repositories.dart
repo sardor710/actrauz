@@ -947,7 +947,7 @@ class SampleBackend
   /// The game, when [userId] and [targetId] are different participants of it,
   /// it was not cancelled, it has ended and the target's account is live
   /// ([JoinError.notFound] otherwise), no later than [openFor] after its end
-  /// ([JoinError.scoreClosed] after), as `app.check_after_game`.
+  /// ([JoinError.windowClosed] after), as `app.check_after_game`.
   Game _afterGame(String userId, String gameId, String targetId, Duration openFor) {
     final g = _games[gameId];
     if (g == null ||
@@ -959,7 +959,7 @@ class SampleBackend
         !g.endedAt(_cityNow(g.cityId))) {
       throw const JoinException(JoinError.notFound);
     }
-    if (!_cityNow(g.cityId).isBefore(g.end.add(openFor))) throw const JoinException(JoinError.scoreClosed);
+    if (!_cityNow(g.cityId).isBefore(g.end.add(openFor))) throw const JoinException(JoinError.windowClosed);
     return g;
   }
 

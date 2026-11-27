@@ -120,7 +120,7 @@ class SampleTeams {
   // ---- Team games ----
 
   /// The team [userId] posts a game for, as `app.create_game` checks it:
-  /// [JoinError.notFound] for an unknown team, [JoinError.forbidden] unless
+  /// [JoinError.notFound] for an unknown team, [JoinError.captainOnly] unless
   /// they are its captain. Gives the members to tell, the poster excluded.
   ({TeamRef team, String cityId, List<String> others}) postingFor(String userId, String id) {
     final t = _captained(userId, id);
@@ -206,12 +206,12 @@ class SampleTeams {
   /// approval team: a pending request, and the captain hears.
   Team join(String userId, String id) {
     final team = _find(id);
-    if (team.members.containsKey(userId)) throw const JoinException(JoinError.alreadyJoined);
+    if (team.members.containsKey(userId)) throw const JoinException(JoinError.alreadyInTeam);
     if (team.joinPolicy == TeamJoinPolicy.open || team.invites[userId] == _InviteStatus.pending) {
       _addMember(team, userId);
       return _view(team, userId);
     }
-    if (_pendingAsk(team.id, userId) != null) throw const JoinException(JoinError.alreadyRequested);
+    if (_pendingAsk(team.id, userId) != null) throw const JoinException(JoinError.alreadyAskedTeam);
     _asks.add(_Ask(id: 'tr${_nextId++}', teamId: team.id, userId: userId, createdAt: utcNow()));
     notify(team.captainId, 'team_join_request', 'teams', _note(team, userId));
     return _view(team, userId);
@@ -322,7 +322,7 @@ class SampleTeams {
 
   _Team _captained(String userId, String id) {
     final team = _find(id);
-    if (team.captainId != userId) throw const JoinException(JoinError.forbidden);
+    if (team.captainId != userId) throw const JoinException(JoinError.captainOnly);
     return team;
   }
 

@@ -1029,7 +1029,7 @@ void main() {
       now = utcNow.add(const Duration(days: 6));
       expect((await timed.vote('gf1', 'p1', true)).afterGame!.myVotes, {'p1': true});
       now = utcNow.add(const Duration(days: 7));
-      expect(timed.vote('gf1', 'p1', false), joinError(JoinError.scoreClosed));
+      expect(timed.vote('gf1', 'p1', false), joinError(JoinError.windowClosed));
     });
 
     test('no-show reports close 48 hours after the end', () async {
@@ -1039,7 +1039,7 @@ void main() {
       now = utcNow.add(const Duration(hours: 33));
       expect((await timed.reportNoShow('gf1', 'p1', reported: true)).afterGame!.myNoShows, {'p1'});
       now = utcNow.add(const Duration(hours: 34));
-      expect(timed.reportNoShow('gf1', 'p1', reported: false), joinError(JoinError.scoreClosed));
+      expect(timed.reportNoShow('gf1', 'p1', reported: false), joinError(JoinError.windowClosed));
     });
 
     test('my own no-show reports show on the game, and can be undone', () async {
@@ -1380,7 +1380,7 @@ void main() {
     test('only the captain posts a team game, in the team sport and city', () async {
       final team = await backend.createTeamAs('p1', runners('Aziz Runners'));
       await backend.joinTeam(team.id);
-      await expectLater(backend.create(teamRun(team.id)), joinError(JoinError.forbidden));
+      await expectLater(backend.create(teamRun(team.id)), joinError(JoinError.captainOnly));
       await expectLater(backend.createAs('p1', teamRun('nope')), joinError(JoinError.notFound));
       await expectLater(backend.createAs('p1', teamRun(team.id, sportId: 'gym')), joinError(JoinError.invalidArgument));
       await expectLater(

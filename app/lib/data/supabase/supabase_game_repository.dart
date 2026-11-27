@@ -120,12 +120,13 @@ class SupabaseGameRepository implements GameRepository {
 
   @override
   Future<Game> vote(String gameId, String targetId, bool? up) =>
-      _callGame('vote_player', {'p_game_id': gameId, 'p_target': userIdOut(targetId, _me), 'p_up': up});
+      _callGame('vote_player', {'p_game_id': gameId, 'p_target': userIdOut(targetId, _me), 'p_up': up}, kAfterGameErrors);
 
   @override
   Future<Game> reportNoShow(String gameId, String targetId, {required bool reported}) => _callGame(
     'report_no_show',
     {'p_game_id': gameId, 'p_target': userIdOut(targetId, _me), 'p_reported': reported},
+    kAfterGameErrors,
   );
 
   @override

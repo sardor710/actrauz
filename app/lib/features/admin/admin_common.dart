@@ -83,11 +83,14 @@ class AdminListView extends StatelessWidget {
 /// Runs an admin write; on success refreshes every screen that shows catalog
 /// data and says "Saved". Returns whether it succeeded. A refusal with
 /// `hasBookings` offers [onDeactivate] instead of only showing the error.
+/// [adminOnly]: a write only Actra admins may make (Review), whose
+/// `notAllowed` means "not an admin", not "not your venue".
 Future<bool> adminWrite(
   BuildContext context,
   WidgetRef ref,
   Future<void> Function() action, {
   Future<void> Function()? onDeactivate,
+  bool adminOnly = false,
 }) async {
   final l = context.l;
   try {
@@ -111,7 +114,7 @@ Future<bool> adminWrite(
       if (deactivate == true && context.mounted) return adminWrite(context, ref, onDeactivate);
       return false;
     }
-    showMessage(context, bookingErrorText(l, e));
+    showMessage(context, adminOnly && e.error == BookingError.notAllowed ? l.adminOnly : bookingErrorText(l, e));
     return false;
   } catch (e) {
     if (context.mounted) showMessage(context, bookingErrorText(l, e));

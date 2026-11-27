@@ -62,7 +62,11 @@ const kScoreErrors = <String, JoinError>{
 
 /// What `create_game` means by `not_allowed`: a team game posted by someone
 /// who is not the team's captain.
-const kCreateGameErrors = <String, JoinError>{'not_allowed': JoinError.forbidden};
+const kCreateGameErrors = <String, JoinError>{'not_allowed': JoinError.captainOnly};
+
+/// What `vote_player` and `report_no_show` mean by `score_closed`: their
+/// own window (7 days, 48 hours) has passed.
+const kAfterGameErrors = <String, JoinError>{'score_closed': JoinError.windowClosed};
 
 /// What `report_player` means by `already_exists` (ruling R1): an open report
 /// about the same player and game.
@@ -73,7 +77,15 @@ const kReportErrors = <String, JoinError>{'already_exists': JoinError.alreadyRep
 const kTeamErrors = <String, JoinError>{
   'team_limit': JoinError.teamLimit,
   'captain_cannot_leave': JoinError.captainCannotLeave,
-  'not_allowed': JoinError.forbidden,
+  'not_allowed': JoinError.captainOnly,
+};
+
+/// [kTeamErrors] for `join_team`, where the player is the one already in the
+/// team or already waiting for an answer.
+const kJoinTeamErrors = <String, JoinError>{
+  ...kTeamErrors,
+  'already_joined': JoinError.alreadyInTeam,
+  'already_requested': JoinError.alreadyAskedTeam,
 };
 
 /// [kTeamErrors] for `create_team` and `update_team`, where `already_exists`

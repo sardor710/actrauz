@@ -362,6 +362,18 @@ enum JoinError {
   /// Another team in the same city and sport has this name.
   nameTaken,
 
+  /// Joining a team the player is already in.
+  alreadyInTeam,
+
+  /// Joining a team the player has already asked to join.
+  alreadyAskedTeam,
+
+  /// A team action only its captain may take.
+  captainOnly,
+
+  /// A thumbs vote or a no-show report after its window closed.
+  windowClosed,
+
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
 }

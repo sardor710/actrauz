@@ -2892,4 +2892,16 @@ class AppLocalizationsKk extends AppLocalizations {
   String teamPlaysIn(String city) {
     return 'Бұл команда $city қаласында ойнайды';
   }
+
+  @override
+  String get errAlreadyInTeam => 'Сіз осы командадасыз';
+
+  @override
+  String get errAlreadyAskedTeam => 'Сіз бұл командаға өтінім жіберіп қойдыңыз';
+
+  @override
+  String get errCaptainOnly => 'Мұны тек капитан жасай алады';
+
+  @override
+  String get errWindowClosed => 'Бұған берілген уақыт өтіп кетті';
 }

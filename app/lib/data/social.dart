@@ -26,7 +26,7 @@ abstract class SocialRepository {
   /// characters, a description over 500, or an unknown sport or city.
   Future<Team> createTeam(TeamDraft draft);
 
-  /// Captain only ([JoinError.forbidden]): changes the name, description and
+  /// Captain only ([JoinError.captainOnly]): changes the name, description and
   /// join policy; the sport and city stay. Pending requests stay when the
   /// team turns open.
   Future<Team> updateTeam(String id, TeamDraft draft);
@@ -35,8 +35,8 @@ abstract class SocialRepository {
   Future<void> deleteTeam(String id);
 
   /// An open team, or one that invited the player: a member at once. An
-  /// approval team: a pending request ([JoinError.alreadyRequested] when one
-  /// is waiting), and the captain hears. [JoinError.alreadyJoined] for a
+  /// approval team: a pending request ([JoinError.alreadyAskedTeam] when one
+  /// is waiting), and the captain hears. [JoinError.alreadyInTeam] for a
   /// member.
   Future<Team> joinTeam(String id);
 

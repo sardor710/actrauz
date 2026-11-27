@@ -93,7 +93,7 @@ abstract class GameRepository {
 
   /// Thumbs up (true) or down (false) for [targetId], another participant of
   /// the finished game; null takes the vote back. Changeable until 7 days
-  /// after the end ([JoinError.scoreClosed] after); [JoinError.notFound] when
+  /// after the end ([JoinError.windowClosed] after); [JoinError.notFound] when
   /// the game has not ended, was cancelled, or either of them is not in it.
   Future<Game> vote(String gameId, String targetId, bool? up);
 

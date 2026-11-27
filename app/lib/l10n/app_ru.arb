@@ -826,5 +826,9 @@
   "notifTeamGamePosted": "Новая игра команды «{team}»",
   "teamHandoverConfirm": "Передать капитанство {name} и выйти из команды?",
   "teamHandoverLeaveFailed": "Роль капитана передана, но выйти из команды не удалось. Нажмите «Выйти из команды», чтобы попробовать снова.",
-  "teamPlaysIn": "Эта команда играет в городе {city}"
+  "teamPlaysIn": "Эта команда играет в городе {city}",
+  "errAlreadyInTeam": "Вы уже в этой команде",
+  "errAlreadyAskedTeam": "Вы уже отправили заявку в эту команду",
+  "errCaptainOnly": "Это может сделать только капитан",
+  "errWindowClosed": "Время для этого уже прошло"
 }

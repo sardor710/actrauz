@@ -1924,9 +1924,14 @@ void main() {
       PostgrestException raised(String message) => PostgrestException(message: message);
       expect(joinExceptionFor(raised('team_limit'), kTeamErrors).error, JoinError.teamLimit);
       expect(joinExceptionFor(raised('captain_cannot_leave'), kTeamErrors).error, JoinError.captainCannotLeave);
-      expect(joinExceptionFor(raised('not_allowed'), kTeamErrors).error, JoinError.forbidden);
+      expect(joinExceptionFor(raised('not_allowed'), kTeamErrors).error, JoinError.captainOnly);
+      expect(joinExceptionFor(raised('not_allowed'), kTeamEditErrors).error, JoinError.captainOnly);
       expect(joinExceptionFor(raised('already_joined'), kTeamErrors).error, JoinError.alreadyJoined);
       expect(joinExceptionFor(raised('already_requested'), kTeamErrors).error, JoinError.alreadyRequested);
+      // join_team: about the team, not a game.
+      expect(joinExceptionFor(raised('already_joined'), kJoinTeamErrors).error, JoinError.alreadyInTeam);
+      expect(joinExceptionFor(raised('already_requested'), kJoinTeamErrors).error, JoinError.alreadyAskedTeam);
+      expect(joinExceptionFor(raised('not_found'), kJoinTeamErrors).error, JoinError.notFound);
       expect(joinExceptionFor(raised('not_found'), kTeamErrors).error, JoinError.notFound);
       expect(joinExceptionFor(raised('invalid_argument'), kTeamErrors).error, JoinError.invalidArgument);
       expect(joinExceptionFor(raised('already_exists'), kTeamErrors).error, JoinError.unavailable);
@@ -2000,7 +2005,18 @@ void main() {
     test('create_game: not_allowed is a member posting for the team', () {
       expect(
         joinExceptionFor(const PostgrestException(message: 'not_allowed'), kCreateGameErrors).error,
-        JoinError.forbidden,
+        JoinError.captainOnly,
+      );
+    });
+
+    test('vote_player and report_no_show: score_closed is their own window that has passed', () {
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'score_closed'), kAfterGameErrors).error,
+        JoinError.windowClosed,
+      );
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'not_found'), kAfterGameErrors).error,
+        JoinError.notFound,
       );
     });
   });

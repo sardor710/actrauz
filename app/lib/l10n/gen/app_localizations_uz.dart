@@ -2881,4 +2881,17 @@ class AppLocalizationsUz extends AppLocalizations {
   String teamPlaysIn(String city) {
     return 'Bu jamoa $city shahrida oʻynaydi';
   }
+
+  @override
+  String get errAlreadyInTeam => 'Siz allaqachon shu jamoadasiz';
+
+  @override
+  String get errAlreadyAskedTeam =>
+      'Siz bu jamoaga allaqachon soʻrov yuborgansiz';
+
+  @override
+  String get errCaptainOnly => 'Buni faqat sardor qila oladi';
+
+  @override
+  String get errWindowClosed => 'Buning vaqti oʻtib ketdi';
 }

@@ -80,7 +80,7 @@ void main() {
     expect(joined.memberCount, before.memberCount + 1);
     expect(joined.members.last.id, kMeId);
     expect(joined.requests, isEmpty, reason: 'only the captain sees requests');
-    expect(backend.joinTeam('tm1'), joinError(JoinError.alreadyJoined));
+    expect(backend.joinTeam('tm1'), joinError(JoinError.alreadyInTeam));
     expect((await backend.teams('almaty')).first.id, 'tm1', reason: 'my teams come first in any city');
 
     await backend.leaveTeam('tm1');
@@ -94,7 +94,7 @@ void main() {
     final asked = await backend.joinTeam('tm2');
     expect(asked.myStatus, MyTeamStatus.requested);
     expect(asked.myRequestId, isNotNull);
-    expect(backend.joinTeam('tm2'), joinError(JoinError.alreadyRequested));
+    expect(backend.joinTeam('tm2'), joinError(JoinError.alreadyAskedTeam));
     await backend.withdrawTeamRequest(asked.myRequestId!);
     expect((await backend.team('tm2')).myStatus, isNull);
     expect(backend.withdrawTeamRequest(asked.myRequestId!), joinError(JoinError.notFound));
@@ -121,7 +121,7 @@ void main() {
     // Someone else's team: not mine to decide.
     final other = await backend.joinTeamAs('p8', 'tm2');
     expect(other.myRequestId, isNotNull);
-    expect(backend.decideTeamRequest(other.myRequestId!, approve: true), joinError(JoinError.forbidden));
+    expect(backend.decideTeamRequest(other.myRequestId!, approve: true), joinError(JoinError.captainOnly));
   });
 
   test('pending requests stay when a team opens up; only name, description and policy change', () async {
@@ -145,7 +145,7 @@ void main() {
     expect((await backend.team(mine.id)).description, isNull, reason: 'no description clears it');
     expect(backend.updateTeam(mine.id, draft('early birds')), joinError(JoinError.nameTaken));
     expect(backend.updateTeam(mine.id, draft('ab')), joinError(JoinError.invalidArgument));
-    expect(backend.updateTeam('tm1', draft('Mine now')), joinError(JoinError.forbidden));
+    expect(backend.updateTeam('tm1', draft('Mine now')), joinError(JoinError.captainOnly));
     expect(backend.updateTeam('nope', draft('Mine now')), joinError(JoinError.notFound));
   });
 
@@ -177,7 +177,7 @@ void main() {
     expect(backend.inviteToTeam(mine.id, 'nobody'), joinError(JoinError.notFound));
     backend.markDeleted('p4');
     expect(backend.inviteToTeam(mine.id, 'p4'), joinError(JoinError.notFound));
-    expect(backend.inviteToTeam('tm1', 'p2'), joinError(JoinError.forbidden));
+    expect(backend.inviteToTeam('tm1', 'p2'), joinError(JoinError.captainOnly));
     await backend.inviteToTeam(mine.id, 'p3');
     expect((await backend.team(mine.id)).memberCount, 2, reason: 'an invite is not a membership');
   });
@@ -188,7 +188,7 @@ void main() {
     expect(backend.leaveTeam(mine.id), joinError(JoinError.captainCannotLeave));
     expect(backend.transferCaptain(mine.id, kMeId), joinError(JoinError.invalidArgument));
     expect(backend.transferCaptain(mine.id, 'p3'), joinError(JoinError.notFound));
-    expect(backend.transferCaptain('tm1', 'p5'), joinError(JoinError.forbidden));
+    expect(backend.transferCaptain('tm1', 'p5'), joinError(JoinError.captainOnly));
 
     final handed = await backend.transferCaptain(mine.id, 'p2');
     expect(handed.captainId, 'p2');
@@ -208,12 +208,12 @@ void main() {
     expect(removed.members.map((m) => m.id), [kMeId]);
     expect(backend.removeTeamMember(mine.id, 'p2'), joinError(JoinError.notFound));
     expect(backend.removeTeamMember(mine.id, kMeId), joinError(JoinError.invalidArgument));
-    expect(backend.removeTeamMember('tm1', 'p5'), joinError(JoinError.forbidden));
+    expect(backend.removeTeamMember('tm1', 'p5'), joinError(JoinError.captainOnly));
   });
 
   test('the captain deletes the team', () async {
     final mine = await backend.createTeam(draft('Night Owls'));
-    expect(backend.deleteTeam('tm1'), joinError(JoinError.forbidden));
+    expect(backend.deleteTeam('tm1'), joinError(JoinError.captainOnly));
     await backend.deleteTeam(mine.id);
     expect(backend.team(mine.id), joinError(JoinError.notFound));
     expect((await backend.teams('tashkent')).map((t) => t.id), isNot(contains(mine.id)));

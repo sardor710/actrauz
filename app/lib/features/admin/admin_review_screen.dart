@@ -439,7 +439,12 @@ class _TeamCard extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     if (!await confirmDelete(context, team.name) || !context.mounted) return;
-    final ok = await adminWrite(context, ref, () => ref.read(adminRepositoryProvider).deleteTeam(team.id));
+    final ok = await adminWrite(
+      context,
+      ref,
+      () => ref.read(adminRepositoryProvider).deleteTeam(team.id),
+      adminOnly: true,
+    );
     if (ok) {
       refreshTeams(ref);
     } else {
@@ -486,7 +491,7 @@ class _TeamCard extends ConsumerWidget {
 /// a refused call usually means someone else got there first. A decided score
 /// changes ratings and the game, so those screens reload too.
 Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
-  final ok = await adminWrite(context, ref, action);
+  final ok = await adminWrite(context, ref, action, adminOnly: true);
   if (ok) {
     refreshGames(ref);
     refreshSports(ref);

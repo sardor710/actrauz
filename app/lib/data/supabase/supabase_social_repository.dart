@@ -55,7 +55,7 @@ class SupabaseSocialRepository implements SocialRepository {
   Future<void> deleteTeam(String id) => _teamVoid('delete_team', {'p_team_id': id});
 
   @override
-  Future<Team> joinTeam(String id) => _teamCall('join_team', {'p_team_id': id});
+  Future<Team> joinTeam(String id) => _teamCall('join_team', {'p_team_id': id}, codes: kJoinTeamErrors);
 
   @override
   Future<void> leaveTeam(String id) => _teamVoid('leave_team', {'p_team_id': id});

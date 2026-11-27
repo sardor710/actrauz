@@ -5063,6 +5063,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This team plays in {city}'**
   String teamPlaysIn(String city);
+
+  /// No description provided for @errAlreadyInTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in this team'**
+  String get errAlreadyInTeam;
+
+  /// No description provided for @errAlreadyAskedTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already asked to join this team'**
+  String get errAlreadyAskedTeam;
+
+  /// No description provided for @errCaptainOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the captain can do this'**
+  String get errCaptainOnly;
+
+  /// No description provided for @errWindowClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'The time for this has passed'**
+  String get errWindowClosed;
 }
 
 class _AppLocalizationsDelegate

@@ -2883,4 +2883,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String teamPlaysIn(String city) {
     return 'This team plays in $city';
   }
+
+  @override
+  String get errAlreadyInTeam => 'You are already in this team';
+
+  @override
+  String get errAlreadyAskedTeam => 'You have already asked to join this team';
+
+  @override
+  String get errCaptainOnly => 'Only the captain can do this';
+
+  @override
+  String get errWindowClosed => 'The time for this has passed';
 }
