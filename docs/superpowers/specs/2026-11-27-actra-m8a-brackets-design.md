@@ -220,6 +220,20 @@ One migration, `20261128100000_brackets.sql`; it is additive apart from the `mat
 - The bracket drawing widget (custom, no new dependency unless a small, maintained package clearly fits).
 - How "fill the day" breaks ties between equally good slots.
 
+## 14a. Rules settled after the builder review
+
+These close the gaps an independent reviewer found; where they touch an earlier section, this section wins.
+
+1. **Admin edits after a draw exists.** Once any category of a tournament has a draw (draft or published), `admin_save_tournament` refuses a change of sport or venue (`draw_exists`), and refuses a date change that would leave a scheduled match outside the new dates. Hiding a tournament (`active = false`) releases every calendar block of its unplayed matches. `admin_save_category` refuses a change of kind and `admin_delete_category` refuses deletion while that category has a draw; `admin_move_registration` and `admin_add_registration` are refused after publish and mark a draft out of date (rule 7). **Call.**
+2. **Clashes are per player, across all categories of the tournament.** A manual schedule is refused with `player_busy` when any player of either entry is in another match in an overlapping slot. "Fill the day" covers the categories the organiser ticks (default: all) and interleaves them: group rounds of every category first, round by round, then knockout rounds in order. **Call.**
+3. **Withdrawals that the walkover rule does not cover.** Both sides of a knockout match withdrawn: the match is done with no winner, and the next match is a walkover for whoever reaches it. A withdrawn entry in a group: its played matches still count for its opponents, its unplayed ones are walkovers, and it is placed last in the group (it never advances). A withdrawn entry already placed in a later knockout match: that match becomes a walkover for whoever reaches the other side. **Call.**
+4. **Scores by sport.** Rated sports (padel, tennis) use M7 sets. Every other sport uses a single score per side (whole numbers 0–99, e.g. goals), stored as one "set" on the tournament match; a draw is allowed in group matches; in a knockout match a level score needs the organiser to pick the winner (penalties, a deciding game) and the match records it as "won on decider". No new sport column. **Call.**
+5. **Walkovers and retirements in group tie-breaks.** A walkover counts for points only; it is left out of set and game differences. A retirement counts the score as entered. **Call.**
+6. **Ranking group finishers for the knockout.** All group winners come first, ordered by points per match, then set difference per match, then game difference per match, then seed; then all runners-up the same way. Byes go to the best-ranked; two entries from the same group are kept in opposite halves where possible. **Call.**
+7. **Entries changing around the draft.** If a registration changes after a draft was made (new, cancelled, moved), the draft is marked out of date and publishing is refused (`draw_outdated`) until the organiser makes it again. At publish, open waitlist offers lapse and the waitlist closes, with a notice to those players. A redo keeps the category locked; it redraws from the entries still registered (withdrawn entries stay out). **Call.**
+8. **Organisers who play.** *(Awaiting the founder; see the question in the hand-over.)*
+9. **Account deletion.** `app.delete_account` withdraws the player from published draws (§7.5) before its existing cancel-registrations step, which would otherwise be refused with `draw_published`.
+
 ## 15. Calls made during design (for the founder to check)
 
 1. Organisers can run the event but not change tournament details, fees or payments (§5).
