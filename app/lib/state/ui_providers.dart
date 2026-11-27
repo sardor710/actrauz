@@ -28,11 +28,14 @@ final teamsProvider = FutureProvider<List<Team>>(
 );
 
 /// Refreshes everything that shows teams after a team call: the lists, the
-/// team pages, the profiles that list a player's teams, and the inbox.
+/// team pages, the profiles that list a player's teams, the games (a team's
+/// games are its members' to see), and the inbox.
 void refreshTeams(WidgetRef ref) {
   ref.invalidate(teamsProvider);
   ref.invalidate(teamProvider);
   ref.invalidate(playerProfileProvider);
+  ref.invalidate(gamesProvider);
+  ref.invalidate(gameProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }

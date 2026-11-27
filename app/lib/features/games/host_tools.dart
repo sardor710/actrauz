@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../domain/games.dart';
 import '../../state/providers.dart';
+import '../../state/ui_providers.dart';
 import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
@@ -17,6 +18,8 @@ Future<bool> runGameAction(BuildContext context, WidgetRef ref, Future<void> Fun
   try {
     await action();
     refreshGames(ref);
+    // The Social tab's team tiles count upcoming team games (a cancel changes it).
+    ref.invalidate(teamsProvider);
     return true;
   } on JoinException catch (e) {
     if (context.mounted) showMessage(context, joinErrorText(l, e));

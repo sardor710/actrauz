@@ -352,6 +352,57 @@ void main() {
     expect(find.descendant(of: find.byType(GameCard), matching: find.text('Night Owls')), findsOneWidget);
   });
 
+  testWidgets('joining a team brings its games into the Games tab', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    final team = await backend.createTeamAs(
+      'p1',
+      const TeamDraft(name: 'Aziz Runners', sportId: 'running', cityId: 'tashkent'),
+    );
+    await backend.createAs(
+      'p1',
+      GameDraft(
+        sportId: 'running',
+        spots: 4,
+        meetingPoint: 'Riverside',
+        start: DateTime.utc(2026, 11, 23, 7),
+        end: DateTime.utc(2026, 11, 23, 8),
+        teamId: team.id,
+      ),
+    );
+    await _refresh(tester);
+    await _go(tester, '/games');
+    expect(find.text('Riverside'), findsNothing);
+
+    await _push(tester, '/teams/${team.id}');
+    // Not a member: the count, but no game card.
+    expect(find.text('1 game soon'), findsOneWidget);
+    expect(find.byType(GameCard), findsNothing);
+    await tap(tester, _key('team-join'));
+    expect(find.byType(GameCard), findsOneWidget);
+
+    await _go(tester, '/games');
+    expect(find.text('Riverside'), findsOneWidget);
+    expect(find.descendant(of: find.byType(GameCard), matching: find.text('Aziz Runners')), findsOneWidget);
+  });
+
+  testWidgets('post a game from the team page while a create form is open in Games', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    final team = await backend.createTeam(
+      const TeamDraft(name: 'Night Runners', sportId: 'running', cityId: 'tashkent'),
+    );
+    await _refresh(tester);
+    await _go(tester, '/games/new');
+    expect(find.byType(CreateGameScreen), findsOneWidget);
+
+    await _push(tester, '/teams/${team.id}');
+    await tester.ensureVisible(_key('team-post-game'));
+    await tap(tester, _key('team-post-game'));
+    await tester.ensureVisible(_key('who-team-${team.id}'));
+    expect(tester.widget<RadioListTile<String>>(_key('who-team-${team.id}')).checked, isTrue);
+  });
+
   testWidgets('team choice is hidden without a team', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     final backend = containerOf(tester).read(sampleBackendProvider);

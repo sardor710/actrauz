@@ -100,6 +100,16 @@ void main() {
       final once = joinGame(inviteOnly(), player('ali'), invited: true);
       expect(errorOf(() => joinGame(once, player('ali'), invited: true)), JoinError.alreadyJoined);
     });
+
+    test('a team game open to the player is joined like a public one: the level still counts', () {
+      expect(errorOf(() => joinGame(inviteOnly(), player('ali', level: 2), teamOpen: true)), JoinError.levelOutOfRange);
+      expect(joinGame(inviteOnly(), player('ali', level: 4), teamOpen: true).participantIds, ['host', 'ali']);
+      // An invite still skips it.
+      expect(
+        joinGame(inviteOnly(), player('ali', level: 2), invited: true, teamOpen: true).participantIds,
+        ['host', 'ali'],
+      );
+    });
   });
 
   test('a game on a map point has no venue', () {
