@@ -20,6 +20,7 @@ import '../repositories.dart';
 import '../social.dart';
 import '../supabase/mappers.dart'
     show bannerDraftJson, categoryDraftJson, courtDraftJson, isoLocal, sportDraftJson, tournamentDraftJson, venueDraftJson;
+import 'sample_brackets.dart';
 import 'sample_competitive.dart';
 import 'sample_data.dart';
 import 'sample_teams.dart';
@@ -43,6 +44,7 @@ class SampleBackend
     _seedCommunity();
     // Dated from the clock at start-up, like the games.
     _rules;
+    _brackets;
     _teams;
   }
 
@@ -463,7 +465,7 @@ class SampleBackend
   /// them.
   Player _playerOf(String id) {
     if (id == kMeId) return _me;
-    final p = kSamplePlayers.firstWhere((p) => p.id == id, orElse: () => Player(id: id, name: id));
+    final p = kSamplePlayers.firstWhere((p) => p.id == id, orElse: () => Player(id: id, name: kSampleBracketPlayers[id] ?? id));
     final ratings = _ratings[id] ?? const {};
     return Player(
       id: p.id,
@@ -485,7 +487,10 @@ class SampleBackend
   /// sign-out: this backend goes with the name.)
   /// Their teams go as `app.delete_account` hands them over: see
   /// [SampleTeams.accountDeleted].
+  /// Their entries in locked tournament categories are withdrawn first, as
+  /// the organiser's withdraw does (unplayed matches become walkovers).
   void markDeleted(String userId) {
+    _brackets.accountDeleted(userId);
     _teams.accountDeleted(userId);
     _deleted.add(userId);
   }
@@ -1732,37 +1737,84 @@ class SampleBackend
 
   // ---- Organiser ----
 
-  /// The demo player's organiser operations (M8a). Not built yet: Task 5B.
-  final OrganizerRepository organizer = const _SampleOrganizerRepository();
+  /// The demo player's organiser operations (M8a): the demo player is an
+  /// admin, so they organise every tournament.
+  late final OrganizerRepository organizer = _SampleOrganizerRepository(_brackets);
+
+  /// Draws, schedules, scores and organisers (M8a), with the sample bracket
+  /// of tournament t1.
+  late final SampleBrackets _brackets = SampleBrackets(
+    tournaments: _rules,
+    engine: _engine,
+    utcNow: utcNow,
+    cityNow: _cityNow,
+    venueOf: (id) => _venues[id],
+    courtOf: (id) => _venues.values.expand((v) => v.courts).where((c) => c.id == id).firstOrNull,
+    courtActive: (id) {
+      final court = _venues.values.expand((v) => v.courts).where((c) => c.id == id).firstOrNull;
+      return court != null && !_inactiveCourts.contains(id) && !_inactiveVenues.contains(court.venueId);
+    },
+    isRated: (id) => _sports[id]?.sport.competitiveRating ?? false,
+    strengthOf: (userId, sportId) {
+      final player = _playerOf(userId);
+      return (_sports[sportId]?.sport.competitiveRating ?? false)
+          ? player.ratings[sportId]?.rating ?? RatingRules.min
+          : (player.levels[sportId] ?? 0).toDouble();
+    },
+    ratingOf: (userId, sportId) => userId == kMeId ? _mySports.ratings[sportId] : _ratings[userId]?[sportId],
+    setRating: (userId, sportId, rating) {
+      if (userId == kMeId) {
+        _mySports.ratings[sportId] = rating;
+        _mySports.levels[sportId] = levelOfRating(rating.rating);
+      } else {
+        (_ratings[userId] ??= {})[sportId] = rating;
+      }
+    },
+    isAdmin: (userId) => userId == kMeId,
+    userExists: _exists,
+    nameOf: _nameOf,
+    isDeleted: _deleted.contains,
+    notify: _notify,
+    log: _log,
+  )..seed();
+
+  /// The tournament page's brackets as another player sees them.
+  Future<TournamentBracket> bracketAs(String userId, String tournamentId) async =>
+      _brackets.bracket(userId, tournamentId);
 }
 
-/// Brackets in sample mode arrive with M8a Task 5B.
 class _SampleOrganizerRepository implements OrganizerRepository {
-  const _SampleOrganizerRepository();
+  _SampleOrganizerRepository(this._b);
 
-  static Never _todo() => throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
-
-  @override
-  Future<List<TournamentSummary>> organizedTournaments() => _todo();
+  final SampleBrackets _b;
 
   @override
-  Future<List<AdminRegistration>> entries(String tournamentId) => _todo();
+  Future<List<TournamentSummary>> organizedTournaments() async => _b.organizedTournaments(kMeId);
 
   @override
-  Future<CategoryDraw> makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance}) => _todo();
+  Future<List<AdminRegistration>> entries(String tournamentId) async => _b.entries(kMeId, tournamentId);
 
   @override
-  Future<CategoryDraw> swapEntries(String categoryId, String registrationA, String registrationB) => _todo();
+  Future<CategoryDraw> makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance}) async =>
+      _b.makeDraw(kMeId, categoryId, format, groupSize: groupSize, advance: advance);
 
   @override
-  Future<CategoryDraw> publish(String categoryId) => _todo();
+  Future<CategoryDraw> swapEntries(String categoryId, String registrationA, String registrationB) async =>
+      _b.swapEntries(kMeId, categoryId, registrationA, registrationB);
 
   @override
-  Future<CategoryDraw> redo(String categoryId) => _todo();
+  Future<CategoryDraw> publish(String categoryId) async => _b.publish(kMeId, categoryId);
 
   @override
-  Future<TournamentMatch> scheduleMatch(String matchId, {String? courtId, DateTime? startsAt, String? placeNote}) =>
-      _todo();
+  Future<CategoryDraw> redo(String categoryId) async => _b.redo(kMeId, categoryId);
+
+  @override
+  Future<TournamentMatch> scheduleMatch(
+    String matchId, {
+    String? courtId,
+    DateTime? startsAt,
+    String? placeNote,
+  }) async => _b.scheduleMatch(kMeId, matchId, courtId: courtId, startsAt: startsAt, placeNote: placeNote);
 
   @override
   Future<FillResult> fillDay(
@@ -1771,14 +1823,18 @@ class _SampleOrganizerRepository implements OrganizerRepository {
     List<String> courtIds,
     TimeOfDay from, {
     List<String>? categoryIds,
-  }) => _todo();
+  }) async => _b.fillDay(kMeId, tournamentId, day, courtIds, from, categoryIds: categoryIds);
 
   @override
-  Future<CategoryDraw> enterScore(String matchId, MatchOutcome outcome, {Side? winner, List<List<int>>? sets}) =>
-      _todo();
+  Future<CategoryDraw> enterScore(
+    String matchId,
+    MatchOutcome outcome, {
+    Side? winner,
+    List<List<int>>? sets,
+  }) async => _b.enterScore(kMeId, matchId, outcome, winner: winner, sets: sets);
 
   @override
-  Future<CategoryDraw> withdraw(String registrationId) => _todo();
+  Future<CategoryDraw> withdraw(String registrationId) async => _b.withdraw(kMeId, registrationId);
 }
 
 class _SampleOwnerRepository implements OwnerRepository {
@@ -1887,6 +1943,9 @@ class _SampleOwnerRepository implements OwnerRepository {
   @override
   Future<OwnerBooking> cancel(String bookingId) async {
     final booking = _ownedBooking(bookingId);
+    // A tournament match's block is the organiser's to move or clear
+    // (`tournament_block`, which the app reads as unavailable).
+    if (_backend._brackets.isMatchBlock(bookingId)) throw const BookingException(BookingError.unavailable);
     final cancelled = _engine.cancelByVenue(bookingId, now: _now(booking.venueId));
     _backend._venueCancelled(cancelled);
     return _logged('owner_cancel_booking', booking, cancelled);
@@ -2591,12 +2650,11 @@ class _SampleAdminRepository implements AdminRepository {
   }
 
   @override
-  Future<List<PlayerRef>> organizers(String tournamentId) =>
-      throw UnimplementedError('Organisers in sample mode (M8a Task 5B)');
+  Future<List<PlayerRef>> organizers(String tournamentId) async => _b._brackets.organizers(kMeId, tournamentId);
 
   @override
-  Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add}) =>
-      throw UnimplementedError('Organisers in sample mode (M8a Task 5B)');
+  Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add}) async =>
+      _b._brackets.setOrganizer(kMeId, tournamentId, userId, add: add);
 
   @override
   Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to}) async {
@@ -2699,11 +2757,10 @@ class _SampleTournamentRepository implements TournamentRepository {
   Future<PlayerRef?> findPlayerByPhone(String phone) async => _rules.findPlayerByPhone(kMeId, phone);
 
   @override
-  Future<TournamentBracket> bracket(String tournamentId) =>
-      throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
+  Future<TournamentBracket> bracket(String tournamentId) async => _b._brackets.bracket(kMeId, tournamentId);
 
   @override
-  Future<List<MyMatch>> myMatches() => throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
+  Future<List<MyMatch>> myMatches() async => _b._brackets.myMatches(kMeId);
 }
 
 enum _Invite { pending, accepted, declined }

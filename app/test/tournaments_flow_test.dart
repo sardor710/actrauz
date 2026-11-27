@@ -29,6 +29,13 @@ Finder category(String id) => find.byKey(ValueKey('category-$id'));
 
 Finder inCategory(String id, Finder finder) => find.descendant(of: category(id), matching: finder);
 
+/// Within the My tournaments card of the entry in [categoryName]: the demo
+/// player also has an entry in the sample bracket (t1's men's pairs, M8a).
+Finder inEntry(String categoryName, Finder finder) => find.descendant(
+  of: find.ancestor(of: find.text(categoryName), matching: find.byType(Card)),
+  matching: finder,
+);
+
 Future<void> openTournament(WidgetTester tester, String title) async {
   await tap(tester, find.text('Tournaments'));
   await tap(tester, find.text(title));
@@ -89,7 +96,9 @@ void main() {
     expect(inCategory('t1c2', find.text('Men')), findsOneWidget);
     expect(inCategory('t1c2', find.text('Pairs')), findsOneWidget);
     expect(inCategory('t1c2', find.text('Level 3–5')), findsOneWidget);
-    expect(inCategory('t1c2', find.text('Join waitlist')), findsOneWidget);
+    // Full, and the demo player is in it (the sample bracket, M8a).
+    expect(inCategory('t1c2', find.text('Registered')), findsOneWidget);
+    expect(inCategory('t1c2', find.text('Join waitlist')), findsNothing);
     expect(inCategory('t1c3', find.text('Level 2–4')), findsOneWidget);
     expect(inCategory('t1c3', find.textContaining('400 000 UZS')), findsOneWidget);
   });
@@ -168,16 +177,16 @@ void main() {
     await openMine(tester);
 
     expect(find.text('My tournaments'), findsWidgets);
-    expect(find.text('Tashkent Padel Cup'), findsOneWidget);
+    expect(inEntry('Open pairs', find.text('Tashkent Padel Cup')), findsOneWidget);
     expect(find.textContaining('Aziz invited you'), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, 'Decline'), findsOneWidget);
     // An unconfirmed partner cannot cancel, only answer.
-    expect(find.text('Cancel registration'), findsNothing);
+    expect(inEntry('Open pairs', find.text('Cancel registration')), findsNothing);
 
     await tap(tester, find.widgetWithText(FilledButton, 'Accept'));
-    expect(find.text('Registered'), findsOneWidget);
+    expect(inEntry('Open pairs', find.text('Registered')), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Accept'), findsNothing);
-    expect(find.widgetWithText(OutlinedButton, 'Cancel registration'), findsOneWidget);
+    expect(inEntry('Open pairs', find.widgetWithText(OutlinedButton, 'Cancel registration')), findsOneWidget);
     await settleSnackbars(tester);
   });
 
@@ -217,7 +226,7 @@ void main() {
     expect(inCategory('t2c1', find.widgetWithText(FilledButton, 'Claim')), findsNothing);
 
     await openMine(tester);
-    expect(find.text('Registered'), findsOneWidget);
+    expect(inEntry('Open', find.text('Registered')), findsOneWidget);
     await settleSnackbars(tester);
   });
 
@@ -232,7 +241,7 @@ void main() {
 
     expect(find.text('Spot offered'), findsOneWidget);
     await tap(tester, find.widgetWithText(FilledButton, 'Claim'));
-    expect(find.text('Registered'), findsOneWidget);
+    expect(inEntry('Open', find.text('Registered')), findsOneWidget);
     await settleSnackbars(tester);
   });
 
@@ -253,7 +262,7 @@ void main() {
     expect(find.text('Cancel registration'), findsNothing);
 
     await openMine(tester);
-    expect(find.text('Registered'), findsOneWidget);
+    expect(inEntry('Open pairs', find.text('Registered')), findsOneWidget);
     expect(find.text('Cancel registration'), findsNothing);
   });
 

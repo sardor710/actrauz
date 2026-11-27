@@ -58,6 +58,13 @@ void main() {
   Future<TournamentCategory> categoryOf(String id, {String tournament = 't1'}) async =>
       (await backend.tournament.get(tournament)).category(id);
 
+  /// Not the demo player's entry in the sample bracket (t1's men's pairs,
+  /// M8a), which these tests leave alone.
+  bool ownEntry(Registration r) => r.categoryId != 't1c2';
+
+  /// The demo player's entries made in these tests.
+  Future<List<Registration>> myOwn() async => (await backend.tournament.myRegistrations()).where(ownEntry).toList();
+
   Future<List<AppNotification>> inboxOf(String kind) async => [
     for (final n in await backend.inbox())
       if (n.kind == kind) n,
@@ -128,7 +135,7 @@ void main() {
       final c = await categoryOf(cat);
       expect((c.filled, c.full, c.myStatus), (2, true, RegistrationStatus.registered));
       final t = await backend.tournament.get('t1');
-      expect(t.myRegistrations.single.id, mine.id);
+      expect(t.myRegistrations.where(ownEntry).single.id, mine.id);
       expect(t.slotsFilled, 9 + 8 + 2 + 2);
     });
 
@@ -153,7 +160,7 @@ void main() {
       final mine = await backend.tournament.register(cat);
       await backend.admin.saveCategory(CategoryDraft.from(await categoryOf(cat))..fee = 250000);
       expect((await categoryOf(cat)).fee, 250000);
-      final entry = (await backend.tournament.myRegistrations()).single;
+      final entry = (await myOwn()).single;
       expect((entry.fee, entry.currency), (100000, Currency.uzs));
       expect(entry.id, mine.id);
     });
@@ -188,7 +195,7 @@ void main() {
       await expectLater(backend.registerAs('p1', cat), refuses(TournamentError.deadlinePassed));
       await expectLater(backend.tournament.cancel(mine.id), refuses(TournamentError.deadlinePassed));
       expect(
-        (await backend.tournament.myRegistrations()).map((r) => r.status),
+        (await myOwn()).map((r) => r.status),
         everyElement(RegistrationStatus.registered),
       );
     });
@@ -199,10 +206,10 @@ void main() {
       final waiting = await backend.tournament.joinWaitlist(cat);
       utcNow = DateTime.utc(2026, 12, 2, 13);
       await backend.admin.removeRegistration(first.id);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.waitlisted);
+      expect((await myOwn()).single.status, RegistrationStatus.waitlisted);
 
       expect(await backend.admin.offerNext(cat), 1);
-      final offered = (await backend.tournament.myRegistrations()).single;
+      final offered = (await myOwn()).single;
       expect(offered.id, waiting.id);
       expect(offered.status, RegistrationStatus.offered);
       // A full 24 hours, not cut at the deadline.
@@ -230,7 +237,7 @@ void main() {
       expect((await categoryOf(cat)).waitlistCount, 2);
 
       await backend.cancelRegistrationAs('p1', first.id);
-      final offered = (await backend.tournament.myRegistrations()).single;
+      final offered = (await myOwn()).single;
       expect(offered.status, RegistrationStatus.offered);
       expect(offered.offerExpiresAt, DateTime.utc(2026, 11, 23, 10));
       final note = (await inboxOf('tournament_spot_offered')).single;
@@ -257,7 +264,7 @@ void main() {
 
       utcNow = utcNow.add(const Duration(hours: 24));
       await expectLater(backend.tournament.claimOffer(mine.id), refuses(TournamentError.notFound));
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.lapsed);
+      expect((await myOwn()).single.status, RegistrationStatus.lapsed);
       expect((await backend.claimOfferAs('p5', next.id)).status, RegistrationStatus.registered);
       expect((await categoryOf(cat)).filled, 1);
     });
@@ -269,7 +276,7 @@ void main() {
       // 17:00 on 2 Dec: one hour to the deadline.
       utcNow = DateTime.utc(2026, 12, 2, 12);
       await backend.cancelRegistrationAs('p1', first.id);
-      final offered = (await backend.tournament.myRegistrations()).single;
+      final offered = (await myOwn()).single;
       expect(offered.id, mine.id);
       expect(offered.offerExpiresAt, DateTime.utc(2026, 12, 2, 18));
     });
@@ -280,7 +287,7 @@ void main() {
       final mine = await backend.tournament.joinWaitlist(cat);
       expect(mine.status, RegistrationStatus.waitlisted);
       await backend.admin.saveCategory(CategoryDraft.from(await categoryOf(cat))..cap = 2);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.offered);
+      expect((await myOwn()).single.status, RegistrationStatus.offered);
     });
   });
 
@@ -302,7 +309,7 @@ void main() {
       expect(accepted.role, RegistrationRole.partner);
       expect(accepted.partnerConfirmed, isTrue);
       expect((await categoryOf(cat)).filled, 1);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.registered);
+      expect((await myOwn()).single.status, RegistrationStatus.registered);
 
       // The category filled meanwhile: the second partner is told so.
       await expectLater(backend.respondPartnerAs('p7', rival.id, accept: true), refuses(TournamentError.full));
@@ -314,7 +321,7 @@ void main() {
       final invite = await backend.registerAs('p1', cat, partnerId: kMeId);
       final tournament = await backend.tournament.get('t1');
       expect(tournament.category(cat).myStatus, RegistrationStatus.pendingPartner);
-      expect(tournament.myRegistrations.single.role, RegistrationRole.partner);
+      expect(tournament.myRegistrations.where(ownEntry).single.role, RegistrationRole.partner);
       final note = (await inboxOf('tournament_partner_invite')).single;
       expect(note.category, 'invites');
       expect(note.payload['actor_name'], 'Aziz');
@@ -341,10 +348,10 @@ void main() {
       final cat = await makeCategory(cap: 2, kind: CategoryKind.pairs);
       final mine = await backend.tournament.register(cat, partnerId: 'p1');
       utcNow = utcNow.add(const Duration(hours: 47));
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.pendingPartner);
+      expect((await myOwn()).single.status, RegistrationStatus.pendingPartner);
       utcNow = utcNow.add(const Duration(hours: 1));
       await expectLater(backend.respondPartnerAs('p1', mine.id, accept: true), refuses(TournamentError.notFound));
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.expired);
+      expect((await myOwn()).single.status, RegistrationStatus.expired);
       expect(await inboxOf('tournament_partner_expired'), hasLength(1));
       // Expired entries block nobody.
       await expectLater(backend.tournament.register(cat, partnerId: 'p1'), completes);
@@ -385,11 +392,11 @@ void main() {
       );
 
       await backend.cancelRegistrationAs('p7', held.id);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.waitlisted);
+      expect((await myOwn()).single.status, RegistrationStatus.waitlisted);
 
       // The partner confirms: the free spot is offered at once.
       await backend.respondPartnerAs('p1', waiting.id, accept: true);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.offered);
+      expect((await myOwn()).single.status, RegistrationStatus.offered);
       expect((await backend.claimOfferAs('p1', waiting.id)).status, RegistrationStatus.registered);
     });
   });
@@ -405,7 +412,7 @@ void main() {
       expect(cancelled.status, RegistrationStatus.cancelled);
       expect(cancelled.role, RegistrationRole.partner);
       expect((await categoryOf(cat)).filled, 0);
-      expect((await backend.tournament.myRegistrations()).single.status, RegistrationStatus.cancelled);
+      expect((await myOwn()).single.status, RegistrationStatus.cancelled);
     });
 
     test('cancelling a pair tells the other player, confirmed or only invited', () async {
@@ -456,7 +463,7 @@ void main() {
       final first = await backend.tournament.register(single);
       utcNow = utcNow.add(const Duration(minutes: 1));
       final invite = await backend.registerAs('p1', pairs, partnerId: kMeId);
-      final entries = await backend.tournament.myRegistrations();
+      final entries = await myOwn();
       expect(entries.map((r) => r.id), [invite.id, first.id]);
       expect(entries.map((r) => r.role), [RegistrationRole.partner, RegistrationRole.registrant]);
       expect(entries.first.tournament?.id, 't1');
@@ -466,14 +473,14 @@ void main() {
     test('my registrations say whether registration is open, and leave out inactive tournaments', () async {
       final cat = await makeCategory(cap: 2);
       await backend.tournament.register(cat);
-      expect((await backend.tournament.myRegistrations()).single.tournament?.registrationOpen, isTrue);
+      expect((await myOwn()).single.tournament?.registrationOpen, isTrue);
 
       final draft = TournamentDraft.from(await backend.tournament.get('t1'))..registrationDeadline = DateTime.utc(2026, 11, 20);
       await backend.admin.saveTournament(draft);
-      expect((await backend.tournament.myRegistrations()).single.tournament?.registrationOpen, isFalse);
+      expect((await myOwn()).single.tournament?.registrationOpen, isFalse);
 
       await backend.admin.saveTournament(draft..active = false);
-      expect(await backend.tournament.myRegistrations(), isEmpty);
+      expect(await myOwn(), isEmpty);
     });
   });
 
@@ -489,7 +496,7 @@ void main() {
       await backend.tournament.joinWaitlist(offeredFor);
       await backend.registerAs('p1', full);
       await backend.cancelRegistrationAs('p1', holder.id);
-      expect((await backend.tournament.myRegistrations()).any((r) => r.status == RegistrationStatus.offered), isTrue);
+      expect((await myOwn()).any((r) => r.status == RegistrationStatus.offered), isTrue);
 
       // No-shows take the score below 50: blocked.
       for (final ref in ['b1', 'b2', 'b3']) {
@@ -503,7 +510,7 @@ void main() {
         backend.tournament.respondPartner(invite.id, accept: true),
         refuses(TournamentError.reliabilityTooLow),
       );
-      final offered = (await backend.tournament.myRegistrations()).firstWhere(
+      final offered = (await myOwn()).firstWhere(
         (r) => r.status == RegistrationStatus.offered,
       );
       await expectLater(backend.tournament.claimOffer(offered.id), refuses(TournamentError.reliabilityTooLow));
@@ -730,6 +737,8 @@ void main() {
 
       draft
         ..cityId = 'tashkent'
+        // Back at its venue: t1 has a draw, which keeps the venue (M8a).
+        ..venueId = 'v1'
         ..active = false;
       await backend.admin.saveTournament(draft);
       await expectLater(backend.tournament.get('t1'), refuses(TournamentError.notFound));

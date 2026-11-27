@@ -84,6 +84,10 @@ class SampleTournaments {
   /// Writes to a player's inbox (only the demo player has one).
   final void Function(String userId, String kind, String category, Map<String, Object?> payload) notify;
 
+  /// The draws (M8a): the entry lock and out-of-date drafts. None until the
+  /// backend sets it.
+  SampleDrawGuard draws = const _NoDraws();
+
   final Map<String, _Tournament> _tournaments = {};
   final Map<String, _Category> _categories = {};
   final List<_Entry> _entries = [];
@@ -141,6 +145,163 @@ class SampleTournaments {
 
   static Map<String, Object?> _loc(LocalizedText t) => {'uz': t.uz, 'ru': t.ru, 'kk': t.kk, 'en': t.en};
 
+  // ---- The draw's entry lock (M8a, app.registration_draw_guard) ----
+
+  /// What the database's entry-lock trigger does when a registration is
+  /// written ([from] null: a new entry). In a locked category (its draw was
+  /// published once) a new live entry, a change from registered or to a live
+  /// status, and moving a registered entry out or a live one in are refused
+  /// with `drawPublished`, unless [override] (the organiser's withdraw,
+  /// publishing). A draft whose registered entries change is out of date.
+  void _guard(
+    String toCategory,
+    RegistrationStatus to, {
+    String? fromCategory,
+    RegistrationStatus? from,
+    bool override = false,
+  }) {
+    const registered = RegistrationStatus.registered;
+    final touched = <String>{};
+    final bool refuse;
+    if (from == null) {
+      refuse = to.live && draws.locked(toCategory);
+      if (to == registered) touched.add(toCategory);
+    } else if (fromCategory != toCategory) {
+      refuse = (from == registered && draws.locked(fromCategory!)) || (to.live && draws.locked(toCategory));
+      if (from == registered) touched.add(fromCategory!);
+      if (to == registered) touched.add(toCategory);
+    } else if (from != to) {
+      refuse = (from == registered || to.live) && draws.locked(toCategory);
+      if (from == registered || to == registered) touched.add(toCategory);
+    } else {
+      return;
+    }
+    if (refuse && !override) _fail(TournamentError.drawPublished);
+    touched.forEach(draws.entriesChanged);
+  }
+
+  void _setStatus(_Entry e, RegistrationStatus to, {bool override = false}) {
+    _guard(e.categoryId, to, fromCategory: e.categoryId, from: e.status, override: override);
+    e.status = to;
+  }
+
+  // ---- For the draws (M8a) ----
+
+  SampleTournamentInfo? info(String tournamentId) {
+    final t = _tournaments[tournamentId];
+    if (t == null) return null;
+    return (
+      id: t.id,
+      cityId: t.cityId,
+      sportId: t.sportId,
+      venueId: t.venueId,
+      title: t.title,
+      start: t.start,
+      end: t.end,
+      active: t.active,
+    );
+  }
+
+  /// The tournament of a category, or null when there is no such category.
+  String? tournamentOf(String categoryId) => _categories[categoryId]?.tournamentId;
+
+  /// The tournament's categories in their order.
+  List<String> categoryIds(String tournamentId) => [for (final c in _categoriesOf(tournamentId)) c.id];
+
+  static SampleEntryInfo _info(_Entry e) => (
+    id: e.id,
+    categoryId: e.categoryId,
+    status: e.status,
+    userId: e.userId,
+    partnerId: e.partnerId,
+    partnerConfirmed: e.partnerConfirmed,
+  );
+
+  SampleEntryInfo? entry(String registrationId) {
+    final e = _entries.where((e) => e.id == registrationId).firstOrNull;
+    return e == null ? null : _info(e);
+  }
+
+  /// The category's registered entries, oldest first.
+  List<SampleEntryInfo> registered(String categoryId) => [
+    for (final e in _entries.where((e) => e.categoryId == categoryId && e.status == RegistrationStatus.registered).toList()
+      ..sort((a, b) => a.seq.compareTo(b.seq)))
+      _info(e),
+  ];
+
+  /// The registered entries the player is in, as registrant or confirmed
+  /// partner.
+  List<SampleEntryInfo> registeredEntriesOf(String userId) => [
+    for (final e in _entries)
+      if (e.status == RegistrationStatus.registered && _isMember(e, userId)) _info(e),
+  ];
+
+  /// The organiser's withdraw: the entry is removed (an admin override), past
+  /// the entry lock.
+  void withdraw(String registrationId) {
+    final e = _entryRow(registrationId);
+    _setStatus(e, RegistrationStatus.removed, override: true);
+    e.adminOverride = true;
+  }
+
+  /// At publish: open offers and the waitlist lapse, and their players hear.
+  void closeWaitlist(String categoryId) {
+    for (final e in _entries.where((e) => e.categoryId == categoryId).toList()) {
+      if (e.status != RegistrationStatus.offered && e.status != RegistrationStatus.waitlisted) continue;
+      _setStatus(e, RegistrationStatus.lapsed, override: true);
+      _notifyBoth(e, 'waitlist_closed');
+    }
+  }
+
+  /// What every draw notice carries (`app.tournament_note`).
+  Map<String, Object?> note(String tournamentId, String? categoryId) {
+    final t = _tournaments[tournamentId]!;
+    final c = categoryId == null ? null : _categories[categoryId];
+    return {
+      'tournament_id': t.id,
+      'category_id': categoryId,
+      'title': _loc(t.title),
+      'category_name': c == null ? null : _loc(c.name),
+    };
+  }
+
+  TournamentSummary summary(String tournamentId) {
+    final t = _tournaments[tournamentId]!;
+    return TournamentSummary(
+      id: t.id,
+      cityId: t.cityId,
+      sportId: t.sportId,
+      title: t.title,
+      start: t.start,
+      end: t.end,
+      venueId: t.venueId,
+      colorSeed: t.colorSeed,
+      coverUrl: t.coverUrl,
+      registrationOpen: t.active && _now(t).isBefore(t.deadline),
+    );
+  }
+
+  /// A registered entry as sample data starts with it: no checks, no
+  /// notices. It takes the place of one of the category's unnamed spots.
+  void seedEntry(String id, String categoryId, String userId, {String? partnerId, required int seq}) {
+    final c = _categories[categoryId]!;
+    _entries.add(
+      _Entry(
+        id: id,
+        seq: seq,
+        categoryId: categoryId,
+        userId: userId,
+        partnerId: partnerId,
+        partnerConfirmed: true,
+        status: RegistrationStatus.registered,
+        fee: c.fee,
+        // Registered weeks ago, before the draw was made.
+        createdAt: utcNow().subtract(const Duration(days: 21)),
+      ),
+    );
+    if (c.taken > 0) c.taken--;
+  }
+
   // ---- Expiry ----
 
   void _sweepAll() {
@@ -159,14 +320,14 @@ class SampleTournaments {
           !e.partnerConfirmed &&
           e.partnerExpiresAt != null &&
           !e.partnerExpiresAt!.isAfter(now)) {
-        e.status = RegistrationStatus.expired;
+        _setStatus(e, RegistrationStatus.expired);
         notify(e.userId, 'tournament_partner_expired', 'tournaments', _note(e));
       }
     }
     var lapsed = false;
     for (final e in _entries.where((e) => e.categoryId == c.id && e.status == RegistrationStatus.offered)) {
       if (e.offerExpiresAt != null && !e.offerExpiresAt!.isAfter(now)) {
-        e.status = RegistrationStatus.lapsed;
+        _setStatus(e, RegistrationStatus.lapsed);
         lapsed = true;
       }
     }
@@ -192,9 +353,8 @@ class SampleTournaments {
               .firstOrNull;
       if (next == null) break;
       final hold = now.add(const Duration(hours: _offerHours));
-      next
-        ..status = RegistrationStatus.offered
-        ..offerExpiresAt = now.isBefore(t.deadline) && t.deadline.isBefore(hold) ? t.deadline : hold;
+      _setStatus(next, RegistrationStatus.offered);
+      next.offerExpiresAt = now.isBefore(t.deadline) && t.deadline.isBefore(hold) ? t.deadline : hold;
       final note = {..._note(next), 'offer_expires_local': _local(next.offerExpiresAt!)};
       notify(next.userId, 'tournament_spot_offered', 'tournaments', note);
       if (next.partnerId != null) notify(next.partnerId!, 'tournament_spot_offered', 'tournaments', note);
@@ -419,6 +579,7 @@ class SampleTournaments {
   }) {
     final now = _now(t);
     final pair = c.kind == CategoryKind.pairs && !admin;
+    _guard(c.id, status);
     final n = _nextId++;
     final entry = _Entry(
       id: 'r$n',
@@ -485,7 +646,7 @@ class SampleTournaments {
 
     final actor = {'actor_name': nameOf(userId)};
     if (!accept) {
-      e.status = RegistrationStatus.declined;
+      _setStatus(e, RegistrationStatus.declined);
       notify(e.userId, 'tournament_partner_declined', 'tournaments', {..._note(e), ...actor});
       return _view(e, userId);
     }
@@ -503,9 +664,8 @@ class SampleTournaments {
 
     if (e.status == RegistrationStatus.pendingPartner) {
       if (_counted(c) >= c.cap) _fail(TournamentError.full);
-      e
-        ..status = RegistrationStatus.registered
-        ..partnerConfirmed = true;
+      _setStatus(e, RegistrationStatus.registered);
+      e.partnerConfirmed = true;
       notify(e.userId, 'tournament_partner_accepted', 'tournaments', {..._note(e), ...actor});
       notify(e.userId, 'tournament_registered', 'tournaments', _note(e));
       notify(userId, 'tournament_registered', 'tournaments', _note(e));
@@ -530,7 +690,7 @@ class SampleTournaments {
     if (!e.status.live) _fail(TournamentError.notFound);
 
     final held = e.status.counted;
-    e.status = RegistrationStatus.cancelled;
+    _setStatus(e, RegistrationStatus.cancelled);
     // On a pair the other player is told: the partner (confirmed or only
     // invited) when the registrant cancels, the registrant when the partner does.
     final other = e.userId == userId ? e.partnerId : e.userId;
@@ -569,7 +729,7 @@ class SampleTournaments {
     final t = _tournaments[_categories[e.categoryId]!.tournamentId]!;
     if (!t.active) _fail(TournamentError.notFound);
     if (isBlocked(userId)) _fail(TournamentError.reliabilityTooLow);
-    e.status = RegistrationStatus.registered;
+    _setStatus(e, RegistrationStatus.registered);
     _notifyBoth(e, 'tournament_registered');
     return _view(e, userId);
   }
@@ -688,6 +848,19 @@ class SampleTournaments {
       // Fees already taken are in the old city's currency.
       _fail(TournamentError.hasRegistrations);
     }
+    if (!creating) {
+      // A draw (draft or published) is made for this sport at this venue,
+      // and the dates keep every scheduled match.
+      final drawn = _categoriesOf(existing!.id).any((c) => draws.hasDraw(c.id));
+      if ((existing.sportId != d.sportId || existing.venueId != d.venueId) && drawn) {
+        _fail(TournamentError.drawExists);
+      }
+      if ((existing.start != start || existing.end != end || existing.cityId != d.cityId) &&
+          draws.scheduledOutside(existing.id, start, end)) {
+        _fail(TournamentError.matchesOutsideDates);
+      }
+    }
+    final hiding = existing != null && existing.active && !d.active;
 
     final id = existing?.id ?? 'tx${_nextId++}';
     final t =
@@ -714,6 +887,8 @@ class SampleTournaments {
       ..colorSeed = d.colorSeed ?? existing?.colorSeed ?? _colorSeed(id)
       ..active = d.active;
     _tournaments[id] = t;
+    // Hidden: the venue gets back the slots of every match not yet played.
+    if (hiding) draws.hidden(id);
 
     if (creating) {
       final drafts = d.categories.isEmpty
@@ -771,6 +946,7 @@ class SampleTournaments {
     final c = _categoryRow(d.id!);
     if (d.tournamentId != null && d.tournamentId != c.tournamentId) _fail(TournamentError.invalidArgument);
     if (d.cap < _counted(c)) _fail(TournamentError.invalidArgument);
+    if (d.kind != c.kind && draws.hasDraw(c.id)) _fail(TournamentError.drawExists);
     if (d.kind != c.kind && (c.taken > 0 || _liveIn(c.id).isNotEmpty)) _fail(TournamentError.hasRegistrations);
     final before = c.cap;
     c
@@ -789,6 +965,7 @@ class SampleTournaments {
 
   void deleteCategory(String categoryId) {
     final c = _categoryRow(categoryId);
+    if (draws.hasDraw(c.id)) _fail(TournamentError.drawExists);
     // History is never deleted: a category any registration was ever in stays.
     if (c.taken > 0 || _entries.any((e) => e.categoryId == c.id)) _fail(TournamentError.hasRegistrations);
     if (!_categories.values.any((o) => o.tournamentId == c.tournamentId && o.id != c.id)) {
@@ -844,7 +1021,7 @@ class SampleTournaments {
     final e = _entryRow(registrationId);
     if (!e.status.live) _fail(TournamentError.notFound);
     final held = e.status.counted;
-    e.status = RegistrationStatus.removed;
+    _setStatus(e, RegistrationStatus.removed);
     _notifyBoth(e, 'tournament_removed');
     if (held) _offerSpots(_categories[e.categoryId]!, admin: false);
     return _adminView(e);
@@ -866,6 +1043,7 @@ class SampleTournaments {
     if (partner != null && _isIn(target.id, partner, except: e.id)) _fail(TournamentError.partnerUnavailable);
     if (_counted(target) >= target.cap) _fail(TournamentError.full);
 
+    _guard(target.id, e.status, fromCategory: e.categoryId, from: e.status);
     e.categoryId = target.id;
     _notifyBoth(e, 'tournament_moved', {'from_category_name': _loc(source.name)});
     _offerSpots(source, admin: false);
@@ -984,7 +1162,7 @@ class _Category {
   int sortOrder;
 
   /// Spots held by players the sample data does not name.
-  final int taken;
+  int taken;
 }
 
 class _Entry {
@@ -1019,5 +1197,64 @@ class _Entry {
   DateTime? partnerExpiresAt;
   DateTime? offerExpiresAt;
   int? waitlistPosition;
-  final bool adminOverride;
+  bool adminOverride;
+}
+
+/// A tournament as the draws see it.
+typedef SampleTournamentInfo = ({
+  String id,
+  String cityId,
+  String sportId,
+  String? venueId,
+  LocalizedText title,
+  DateTime start,
+  DateTime end,
+  bool active,
+});
+
+/// A registration as the draws see it.
+typedef SampleEntryInfo = ({
+  String id,
+  String categoryId,
+  RegistrationStatus status,
+  String userId,
+  String? partnerId,
+  bool partnerConfirmed,
+});
+
+/// What the tournament rules ask of the draws (M8a).
+abstract interface class SampleDrawGuard {
+  /// The category's draw was published once: its entries are locked.
+  bool locked(String categoryId);
+
+  /// The category has a draw, draft or published.
+  bool hasDraw(String categoryId);
+
+  /// The category's registered entries changed: a draft is out of date.
+  void entriesChanged(String categoryId);
+
+  /// A scheduled match of the tournament falls outside [start]–[end].
+  bool scheduledOutside(String tournamentId, DateTime start, DateTime end);
+
+  /// The tournament was hidden: unplayed matches give their slots back.
+  void hidden(String tournamentId);
+}
+
+class _NoDraws implements SampleDrawGuard {
+  const _NoDraws();
+
+  @override
+  bool locked(String categoryId) => false;
+
+  @override
+  bool hasDraw(String categoryId) => false;
+
+  @override
+  void entriesChanged(String categoryId) {}
+
+  @override
+  bool scheduledOutside(String tournamentId, DateTime start, DateTime end) => false;
+
+  @override
+  void hidden(String tournamentId) {}
 }

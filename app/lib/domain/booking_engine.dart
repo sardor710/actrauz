@@ -455,6 +455,43 @@ class BookingEngine {
     return booking;
   }
 
+  /// Whether nothing active covers any of [start]–[end] on the court,
+  /// [except] one row (a match's own block, about to move).
+  bool isFree(String courtId, DateTime start, DateTime end, {required DateTime now, String? except}) => !_bookings.any(
+    (b) => b.id != except && b.courtId == courtId && _isActive(b, now) && b.start.isBefore(end) && start.isBefore(b.end),
+  );
+
+  /// A tournament match's calendar block (M8a): one slot, refused only when
+  /// the slot is taken (the organiser's checks come first).
+  Booking blockMatch({
+    required String venueId,
+    required String courtId,
+    required DateTime start,
+    required DateTime end,
+    required String reason,
+    required DateTime now,
+  }) {
+    if (!isFree(courtId, start, end, now: now)) throw const BookingException(BookingError.slotTaken);
+    final booking = Booking(
+      id: 'b${_nextId++}',
+      userId: '',
+      venueId: venueId,
+      courtId: courtId,
+      start: start,
+      end: end,
+      slotCount: 1,
+      totalPrice: 0,
+      status: BookingStatus.confirmed,
+      source: BookingSource.block,
+      blockReason: reason.length > maxBlockReasonLength ? reason.substring(0, maxBlockReasonLength) : reason,
+    );
+    _bookings.add(booking);
+    return booking;
+  }
+
+  /// Deletes a row outright (a released tournament block).
+  void remove(String bookingId) => _bookings.removeWhere((b) => b.id == bookingId);
+
   static String? _blankToNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
