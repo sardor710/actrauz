@@ -369,6 +369,8 @@ test('publish locks entries, closes the waitlist and tells every player', async 
   assert.equal(note.category, 'tournaments');
   assert.equal(note.payload.tournament_id, t);
   assert.equal(note.payload.category_id, cat);
+  assert.deepEqual(Object.keys(note.payload.title).sort(), ['en', 'kk', 'ru', 'uz']);
+  assert.deepEqual(Object.keys(note.payload.category_name).sort(), ['en', 'kk', 'ru', 'uz']);
   for (const p of ps) {
     const n = await notesOf(p, 'draw_published');
     assert.equal(n.length, 1, 'each player of each entry is told once');
@@ -451,6 +453,7 @@ test('organizers: admins add and remove them; organisers see their own tournamen
   const otherT = await addTournament(pool);
   const organizer = await player('Org');
   await addPhone(pool, users[0], '+998901111111');
+  await pool.query(`update tournaments set title_kk = 'Kubok KK' where id = $1`, [t]);
 
   await expectError(setOrganizer(organizer, t, organizer, true), 'not_allowed');
   await setOrganizer(admin, t, organizer, true);
@@ -458,6 +461,7 @@ test('organizers: admins add and remove them; organisers see their own tournamen
   assert.equal(added.length, 1);
   assert.equal(added[0].payload.tournament_id, t);
   assert.equal(added[0].category, 'tournaments');
+  assert.equal(added[0].payload.title.kk, 'Kubok KK');
 
   const mine = await scalar(`select app.my_organized_tournaments($1) as r`, [organizer]);
   assert.deepEqual(
@@ -465,6 +469,7 @@ test('organizers: admins add and remove them; organisers see their own tournamen
     [t],
   );
   assert.equal(mine[0].title_en, 'Cup');
+  assert.equal(mine[0].title_kk, 'Kubok KK');
   assert.ok(otherT);
 
   const entries = await scalar(`select app.organizer_entries($1, $2) as r`, [organizer, t]);

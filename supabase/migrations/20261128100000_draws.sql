@@ -166,8 +166,8 @@ as $$
   select jsonb_build_object(
     'tournament_id', t.id,
     'category_id', p_category_id,
-    'title', jsonb_build_object('uz', t.title_uz, 'ru', t.title_ru, 'en', t.title_en),
-    'category_name', (select jsonb_build_object('uz', c.name_uz, 'ru', c.name_ru, 'en', c.name_en)
+    'title', jsonb_build_object('uz', t.title_uz, 'ru', t.title_ru, 'kk', t.title_kk, 'en', t.title_en),
+    'category_name', (select jsonb_build_object('uz', c.name_uz, 'ru', c.name_ru, 'kk', c.name_kk, 'en', c.name_en)
                       from public.tournament_categories c where c.id = p_category_id))
   from public.tournaments t
   where t.id = p_tournament_id
@@ -225,6 +225,7 @@ as $$
       'title_uz', t.title_uz,
       'title_ru', t.title_ru,
       'title_en', t.title_en,
+      'title_kk', t.title_kk,
       'starts_on', t.starts_on,
       'ends_on', t.ends_on,
       'city_id', t.city_id,
