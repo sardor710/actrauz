@@ -236,3 +236,100 @@ test('the last spot of a pairs category: two partners accepting at once, exactly
     assert.equal(await counted(rounds[i].categoryId), 2);
   }
 });
+
+// Ratings (M7): a result changes ratings exactly once, and two results that
+// share a player never lose one of the two changes. Tennis is rated here;
+// padel stays a simple sport for the tests above.
+
+async function ratedPlayer(name, rating = '3.50') {
+  await pool.query(
+    `insert into sports (id, name_en, icon_key, default_players, competitive_rating)
+     values ('tennis', 'Tennis', 'tennis', 2, true) on conflict (id) do update set competitive_rating = true`,
+  );
+  const id = await createUser(pool, name);
+  await pool.query(
+    `insert into player_ratings (user_id, sport_id, rating, rated_games, source) values ($1, 'tennis', $2, 0, 'questionnaire')`,
+    [id, rating],
+  );
+  return id;
+}
+
+/** A doubles tennis game that ended an hour before `now`, its score entered by the first player. */
+async function enteredResult([a, b, c, d]) {
+  const { rows } = await pool.query(
+    `insert into games (sport_id, city_id, venue_id, host_id, during, utc_offset_minutes, spots)
+     values ('tennis', 'tashkent', $1, $2, tstzrange('2026-11-22 17:30+05', '2026-11-22 19:00+05'), 300, 4) returning id`,
+    [venueId, a],
+  );
+  const gameId = rows[0].id;
+  for (const u of [a, b, c, d]) await pool.query(`insert into game_participants (game_id, user_id) values ($1, $2)`, [gameId, u]);
+  const r = await pool.query(`select (app.enter_score($1, $2, $3::uuid[], $4::uuid[], '[[6,4],[6,4]]'::jsonb, $5)).id`, [
+    a,
+    gameId,
+    [a, b],
+    [c, d],
+    now,
+  ]);
+  return r.rows[0].id;
+}
+
+const plus24 = new Date(Date.parse(now) + 24 * 3600 * 1000).toISOString();
+const eventCount = async (resultId) =>
+  (await pool.query(`select count(*)::int as n from rating_events where result_id = $1`, [resultId])).rows[0].n;
+
+test('concurrent confirm and auto-confirm', async () => {
+  const rounds = [];
+  for (let i = 0; i < 5; i++) {
+    const players = [];
+    for (const n of ['A', 'B', 'C', 'D']) players.push(await ratedPlayer(`Race ${n} ${i}`));
+    rounds.push({ players, resultId: await enteredResult(players) });
+  }
+
+  // One auto-confirm run racing five opponents' confirmations: either may
+  // apply a result, never both.
+  const results = await Promise.all([
+    errorOf(pool.query(`select app.auto_confirm_scores($1)`, [plus24])),
+    ...rounds.map(({ players, resultId }) =>
+      errorOf(pool.query(`select app.confirm_score($1, $2, $3)`, [players[2], resultId, now])),
+    ),
+  ]);
+  assert.equal(results[0], null);
+  for (const r of results.slice(1)) assert.ok(r === null || r === 'not_found', r);
+
+  for (const { players, resultId } of rounds) {
+    assert.equal(await eventCount(resultId), 4);
+    const { rows } = await pool.query(`select status from match_results where id = $1`, [resultId]);
+    assert.equal(rows[0].status, 'confirmed');
+    const a = await pool.query(`select rating::text, rated_games from player_ratings where user_id = $1 and sport_id = 'tennis'`, [
+      players[0],
+    ]);
+    assert.deepEqual(a.rows[0], { rating: '3.63', rated_games: 1 });
+  }
+});
+
+test('two results sharing a player', async () => {
+  for (let i = 0; i < 5; i++) {
+    const a = await ratedPlayer(`Shared ${i}`, '3.00');
+    const others = [];
+    for (let j = 0; j < 6; j++) others.push(await ratedPlayer(`Other ${i}.${j}`, (3 + j * 0.25).toFixed(2)));
+    const first = await enteredResult([a, others[0], others[1], others[2]]);
+    const second = await enteredResult([a, others[3], others[4], others[5]]);
+
+    const results = await Promise.all([
+      errorOf(pool.query(`select app.confirm_score($1, $2, $3)`, [others[1], first, now])),
+      errorOf(pool.query(`select app.confirm_score($1, $2, $3)`, [others[4], second, now])),
+    ]);
+    assert.deepEqual(results, [null, null]);
+
+    const { rows } = await pool.query(
+      `select (select rating from player_ratings where user_id = $1 and sport_id = 'tennis')::text as rating,
+              (select rated_games from player_ratings where user_id = $1 and sport_id = 'tennis') as games,
+              (3.00 + (select sum(delta) from rating_events where user_id = $1))::text as expected,
+              (select count(*)::int from rating_events where user_id = $1) as events`,
+      [a],
+    );
+    assert.equal(rows[0].events, 2);
+    assert.equal(rows[0].games, 2);
+    assert.equal(rows[0].rating, rows[0].expected);
+  }
+});
