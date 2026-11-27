@@ -245,6 +245,37 @@ test('backfill', async () => {
   }
 });
 
+test('the migration rates padel and tennis', async () => {
+  // A live database whose padel row is not flagged yet: the migration's flag
+  // statement makes it rated before the backfill runs (design §5.1).
+  const source = await readFile(path.join(process.env.ACTRA_ROOT, 'migrations', '20261127100000_ratings.sql'), 'utf8');
+  const flag = source.match(/-- rated-sports:start\r?\n([\s\S]*?)-- rated-sports:end/)?.[1];
+  const block = source.match(/-- backfill:start\r?\n([\s\S]*?)-- backfill:end/)?.[1];
+  assert.ok(flag && flag.includes('competitive_rating'), 'the flag statement is marked in the migration');
+  assert.ok(source.indexOf('-- rated-sports:start') < source.indexOf('-- backfill:start'), 'the flag comes before the backfill');
+
+  const fresh = await freshDb('ratings_flag');
+  try {
+    const p = fresh.pool;
+    await addCities(p);
+    assert.equal((await p.query(`select competitive_rating from sports where id = 'padel'`)).rows[0].competitive_rating, false);
+    const u = await createUser(p, 'Level three');
+    await p.query(`insert into player_levels (user_id, sport_id, level) values ($1, 'padel', 3)`, [u]);
+
+    await p.query(flag);
+    await p.query(flag);
+    await p.query(block);
+
+    assert.equal((await p.query(`select competitive_rating from sports where id = 'padel'`)).rows[0].competitive_rating, true);
+    // Where tennis does not exist, nothing is created.
+    assert.equal((await p.query(`select count(*)::int as n from sports where id = 'tennis'`)).rows[0].n, 0);
+    const r = (await p.query(`select rating::text from player_ratings where user_id = $1 and sport_id = 'padel'`, [u])).rows[0];
+    assert.equal(r?.rating, '3.50');
+  } finally {
+    await fresh.end();
+  }
+});
+
 // --- rating ranges on games ---------------------------------------------------
 
 test('old build creates a padel game', async () => {

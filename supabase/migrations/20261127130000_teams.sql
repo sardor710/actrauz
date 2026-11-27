@@ -780,18 +780,26 @@ begin
   update public.abuse_reports a set details = null
   where a.reporter_id = p_user and a.details is not null;
 
-  -- Results not yet confirmed that the player is in become void. Each result
-  -- row is locked before it changes, and before the player's rating row
-  -- below (the order score confirmation uses); one confirmed in between is
-  -- left as it is.
+  -- Results not yet confirmed that the player is in become void, and the
+  -- reason the player gave on any result they disputed goes (whatever its
+  -- status). Each result row is locked before it changes, in id order, and
+  -- before the player's rating row below (the order score confirmation
+  -- uses); one confirmed in between is left as it is.
   for v_id in
     select r.id from public.match_results r
-    join public.match_result_players p on p.result_id = r.id
-    where p.user_id = p_user and r.status in ('pending', 'disputed')
+    where r.dispute_by = p_user
+       or (r.status in ('pending', 'disputed')
+           and exists (select 1 from public.match_result_players p where p.result_id = r.id and p.user_id = p_user))
     order by r.id
   loop
     select r.* into v_result from public.match_results r where r.id = v_id for update;
-    if v_result.status not in ('pending', 'disputed') then continue; end if;
+    if v_result.dispute_by = p_user and v_result.dispute_reason is not null then
+      update public.match_results r set dispute_reason = null where r.id = v_id returning * into v_result;
+    end if;
+    if v_result.status not in ('pending', 'disputed')
+       or not exists (select 1 from public.match_result_players p where p.result_id = v_id and p.user_id = p_user) then
+      continue;
+    end if;
     update public.match_results r set status = 'void' where r.id = v_id returning * into v_result;
     perform app.notify(p.user_id, 'score_resolved', 'ratings',
       app.result_note(v_result) || jsonb_build_object('action', 'void'), p_now)

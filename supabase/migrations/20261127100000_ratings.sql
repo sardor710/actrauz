@@ -9,6 +9,18 @@
 -- that defined it, named above it.
 
 -- ---------------------------------------------------------------------------
+-- The rated sports are padel and tennis (design §5.1). Flagged here, before
+-- the policies and the backfill below rely on the flag, so a live database
+-- whose rows are not flagged yet still gets ratings. No-op where a row does
+-- not exist or is flagged already; tests/ratings.test.mjs runs the statement
+-- between the markers.
+-- ---------------------------------------------------------------------------
+
+-- rated-sports:start
+update public.sports set competitive_rating = true where id in ('padel', 'tennis') and not competitive_rating;
+-- rated-sports:end
+
+-- ---------------------------------------------------------------------------
 -- Tables and columns
 -- ---------------------------------------------------------------------------
 

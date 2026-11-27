@@ -736,6 +736,51 @@ test('a result with a player deleted afterwards is never applied', async () => {
   assert.deepEqual((await notices('score_resolved', disputed.id)).map((n) => n.user_id), [d]);
 });
 
+test('a result that lost a player is voided, not applied', async () => {
+  // An account removed by hand takes its match_result_players row with it.
+  const [a, b] = await Promise.all(['Lost A', 'Lost B'].map((n) => rated(n, '3.50')));
+  const gameId = await finishedGame('padel', [a, b]);
+  const r = await enter(a, gameId, [a], [b], [[6, 4]]);
+  await pool.query(`delete from match_result_players where result_id = $1 and user_id = $2`, [r.id, b]);
+
+  await autoConfirm(plus(24));
+  assert.equal((await resultRow(r.id)).status, 'void');
+  assert.deepEqual(await ratingRow(a), { rating: '3.50', rated_games: 0, source: 'questionnaire' });
+  assert.equal((await events(r.id)).length, 0);
+  const voided = await notices('score_resolved', r.id);
+  assert.deepEqual(voided.map((n) => n.user_id), [a]);
+  assert.equal(voided[0].payload.action, 'void');
+
+  // The same through an admin confirming a disputed one, with an unrated
+  // player left: no rating row appears for them.
+  const admin = await addAdmin(pool, await player('Lost admin'));
+  const c = await player('Lost C unrated');
+  const d = await rated('Lost D', '3.50');
+  const other = await finishedGame('padel', [c, d]);
+  const disputed = await enter(c, other, [c], [d], [[6, 4]]);
+  await dispute(d, disputed.id, null);
+  await pool.query(`delete from match_result_players where result_id = $1 and user_id = $2`, [disputed.id, d]);
+  await resolve(admin, disputed.id, 'confirm');
+  assert.equal((await resultRow(disputed.id)).status, 'void');
+  assert.equal((await events(disputed.id)).length, 0);
+  assert.equal(await ratingRow(c), undefined);
+  assert.deepEqual(
+    (await pool.query(`select action from audit_log where entity_id = $1`, [disputed.id])).rows.map((x) => x.action),
+    ['score_void'],
+  );
+});
+
+test('a doubles result with uneven sides is voided', async () => {
+  const players = await four('3.50');
+  const { resultId } = await doubles(players, [[6, 4]]);
+  // Three players left: 2 against 1.
+  await pool.query(`delete from match_result_players where result_id = $1 and user_id = $2`, [resultId, players[3]]);
+  await autoConfirm(plus(24));
+  assert.equal((await resultRow(resultId)).status, 'void');
+  assert.equal((await events(resultId)).length, 0);
+  for (const u of players.slice(0, 3)) assert.equal(await ratingOf(u), '3.50');
+});
+
 // --- past games, leaving, the finished-game notice ---------------------------
 
 test('past games', async () => {
@@ -814,6 +859,16 @@ test('deleting an account with results', async () => {
   const [t, u, v] = await Promise.all(['Del T', 'Del U', 'Del V'].map((n) => rated(n, '3.00')));
   const disputed = await doubles([d, t, u, v], [[6, 1]]);
   await dispute(u, disputed.resultId, null);
+  // Results the player disputed with a reason: one still disputed, one an
+  // admin confirmed since.
+  const [k, l, m] = await Promise.all(['Del K', 'Del L', 'Del M'].map((n) => rated(n, '3.00')));
+  const mine = await doubles([k, l, d, m], [[6, 1]]);
+  await dispute(d, mine.resultId, 'they never played');
+  const admin = await addAdmin(pool, await player('Del admin'));
+  const [k2, l2, m2] = await Promise.all(['Del K2', 'Del L2', 'Del M2'].map((n) => rated(n, '3.00')));
+  const settled = await doubles([k2, l2, d, m2], [[6, 1]]);
+  await dispute(d, settled.resultId, 'wrong score');
+  await resolve(admin, settled.resultId, 'confirm');
   await pool.query('delete from notifications');
 
   await pool.query(`select app.delete_account($1, $2)`, [d, now]);
@@ -837,6 +892,11 @@ test('deleting an account with results', async () => {
   assert.equal(await ratingRow(d), undefined);
   assert.equal((await one(`select count(*)::int as n from rating_events where user_id = $1`, [d])).n, 0);
   for (const w of [p, q, s, t, u, v]) assert.equal(await ratingOf(w), '3.00');
+  // What they wrote in a dispute is gone, whatever became of the result.
+  assert.equal((await resultRow(mine.resultId)).status, 'void');
+  assert.equal((await resultRow(mine.resultId)).dispute_reason, null);
+  assert.equal((await resultRow(settled.resultId)).status, 'confirmed');
+  assert.equal((await resultRow(settled.resultId)).dispute_reason, null);
   // A second call does nothing.
   await pool.query(`select app.delete_account($1, $2)`, [d, now]);
 });

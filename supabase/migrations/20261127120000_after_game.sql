@@ -950,8 +950,8 @@ begin
   where r.id = p_result_id
   returning * into v_result;
 
-  -- A confirm that apply_result turned into a void (a deleted player in the
-  -- result) is audited as one; apply_result has already told the players.
+  -- A confirm that apply_result turned into a void (app.result_unplayable)
+  -- is audited as one; apply_result has already told the players.
   if p_action in ('confirm', 'correct') and v_result.status = 'void' then
     perform app.audit(p_user, 'score_void', 'match_result', p_result_id::text,
       to_jsonb(v_before), to_jsonb(v_result), p_now);

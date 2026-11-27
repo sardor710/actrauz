@@ -247,11 +247,27 @@ begin
   return v_result;
 end $$;
 
+-- True when a result cannot be applied: a deleted account among its players,
+-- or players that are no longer 1 against 1 or 2 against 2 (an account
+-- removed by hand takes its match_result_players row with it).
+create function app.result_unplayable(p_result_id uuid) returns boolean
+language sql
+set search_path = ''
+as $$
+  select exists (select 1 from public.match_result_players p
+                 join public.profiles pr on pr.id = p.user_id
+                 where p.result_id = p_result_id and pr.deleted_at is not null)
+      or (select count(*) filter (where p.side = 'a') <> count(*) filter (where p.side = 'b')
+                 or count(*) not in (2, 4)
+          from public.match_result_players p where p.result_id = p_result_id)
+$$;
+
 -- Moves the ratings of a pending or disputed result and confirms it; does
 -- nothing in any other state. A player without a rating first gets the
 -- average of those who have one (capped), or the default if nobody has.
--- A result with a deleted account among its players is never applied: it
--- becomes void (no events, no rating rows) and the remaining players hear.
+-- A result that cannot be applied (app.result_unplayable: a deleted account
+-- among its players, or a side left empty or uneven) becomes void instead
+-- (no events, no rating rows) and the remaining players hear.
 create function app.apply_result(p_result_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -277,9 +293,7 @@ declare
 begin
   select r.* into v_result from public.match_results r where r.id = p_result_id for update;
   if not found or v_result.status not in ('pending', 'disputed') then return; end if;
-  if exists (select 1 from public.match_result_players p
-             join public.profiles pr on pr.id = p.user_id
-             where p.result_id = p_result_id and pr.deleted_at is not null) then
+  if app.result_unplayable(p_result_id) then
     update public.match_results r set status = 'void' where r.id = p_result_id returning * into v_result;
     perform app.notify(p.user_id, 'score_resolved', 'ratings',
       app.result_note(v_result) || jsonb_build_object('action', 'void'), p_now)
@@ -316,6 +330,9 @@ begin
   from public.match_result_players p
   join public.player_ratings pr on pr.user_id = p.user_id and pr.sport_id = v_sport
   where p.result_id = p_result_id;
+  -- Never reached after the check above; a null here would turn into a
+  -- rating of 1.00 through greatest(), so refuse rather than write it.
+  if v_rating_a is null or v_rating_b is null then raise exception 'invalid_result'; end if;
 
   v_expected_a := 1 / (1 + power(10::numeric, v_rating_b - v_rating_a));
   v_actual_a := case v_result.winner when 'a' then 1 when 'b' then 0 else 0.5 end;
@@ -344,6 +361,7 @@ begin
     v_expected := case when v_player.side = 'a' then v_expected_a else 1 - v_expected_a end;
     v_new := least(app.rating_const('max'), greatest(app.rating_const('min'),
       v_player.rating + round(v_k * v_margin * (v_actual - v_expected), 2)));
+    if v_new is null then raise exception 'invalid_result'; end if;
 
     insert into public.rating_events (user_id, sport_id, result_id, old_rating, new_rating, delta, created_at)
     values (v_player.user_id, v_sport, p_result_id, v_player.rating, v_new, v_new - v_player.rating, p_now);
@@ -420,7 +438,8 @@ end $$;
 --      would compute it), so apply_result later inserts nothing;
 --   3. all their players' rating rows, in one statement ordered by user_id.
 -- app.apply_result then finds every lock already held. Steps 2 and 3 leave
--- out the results with a deleted account among their players, which
+-- out the results that cannot be applied (app.result_unplayable: a deleted
+-- account among their players, or a side left empty or uneven), which
 -- apply_result voids without touching any rating.
 create function app.auto_confirm_scores(p_now timestamptz) returns integer
 language plpgsql
@@ -439,9 +458,7 @@ begin
   if v_ids is null then return 0; end if;
   select coalesce(array_agg(i), '{}') into v_rated
   from unnest(v_ids) i
-  where not exists (select 1 from public.match_result_players p
-                    join public.profiles pr on pr.id = p.user_id
-                    where p.result_id = i and pr.deleted_at is not null);
+  where not app.result_unplayable(i);
 
   insert into public.player_ratings (user_id, sport_id, rating, rated_games, source, created_at, updated_at)
   select s.user_id, s.sport_id, s.rating, 0, 'first_result', p_now, p_now
@@ -534,8 +551,8 @@ begin
   where r.id = p_result_id
   returning * into v_result;
 
-  -- A confirm that apply_result turned into a void (a deleted player in the
-  -- result) is audited as one; apply_result has already told the players.
+  -- A confirm that apply_result turned into a void (app.result_unplayable)
+  -- is audited as one; apply_result has already told the players.
   if p_action in ('confirm', 'correct') and v_result.status = 'void' then
     perform app.audit(p_user, 'score_void', 'match_result', p_result_id::text,
       to_jsonb(v_before), to_jsonb(v_result), p_now);
