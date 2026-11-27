@@ -329,4 +329,16 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(tester.widget<Switch>(_switchOf('padel')).value, isTrue, reason: 'My sports reloaded');
   });
+
+  testWidgets('an answer tapped twice answers only its own question', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, withSports: false);
+    await _openMySports(tester);
+    await tap(tester, _switchOf('padel'));
+
+    await tester.tap(find.text(_padelAnswerTexts.first));
+    await tester.tap(find.text(_padelAnswerTexts.first));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Question 2 of 5'), findsOneWidget);
+  });
 }

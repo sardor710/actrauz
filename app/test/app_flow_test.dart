@@ -1,5 +1,6 @@
 import 'package:actra/app.dart';
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/competitive.dart';
 import 'package:actra/features/common/widgets.dart';
 import 'package:actra/state/providers.dart';
@@ -24,11 +25,13 @@ final _level3Everywhere = (
 );
 
 /// [withSports] false starts the demo player with no sports, as a new player.
+/// [backend] replaces the sample backend (a test double built on it).
 Future<void> pumpApp(
   WidgetTester tester, {
   Map<String, Object> prefs = const {},
   DateTime? utcNow,
   bool withSports = true,
+  SampleBackend Function(DateTime Function() clock)? backend,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sharedPrefs = await SharedPreferences.getInstance();
@@ -45,6 +48,7 @@ Future<void> pumpApp(
         sharedPrefsProvider.overrideWithValue(sharedPrefs),
         if (utcNow != null) clockProvider.overrideWithValue(() => utcNow),
         if (withSports) demoSportsProvider.overrideWithValue(_level3Everywhere),
+        if (backend != null) sampleBackendProvider.overrideWith((ref) => backend(ref.watch(clockProvider))),
       ],
       child: const ActraApp(),
     ),

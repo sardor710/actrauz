@@ -81,8 +81,17 @@ class _ConvertRequestSheetState extends ConsumerState<ConvertRequestSheet> {
       setState(() => _error = l.errInvalidArgument);
       return;
     }
+    // Busy before the questionnaire, so a second tap cannot convert twice.
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     // The poster hosts the new game: in padel or tennis they answer the questionnaire first.
-    if (!await ensureRated(context, ref, sport) || !mounted) return;
+    if (!await ensureRated(context, ref, sport)) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    if (!mounted) return;
     String? blank(String text) => text.trim().isEmpty ? null : text.trim();
 
     final place = sport.bookable
@@ -97,10 +106,6 @@ class _ConvertRequestSheetState extends ConsumerState<ConvertRequestSheet> {
             distanceKm: distance,
           );
 
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
     try {
       final game = await ref.read(gameRepositoryProvider).convertRequest(widget.request.id, place);
       refreshGames(ref);

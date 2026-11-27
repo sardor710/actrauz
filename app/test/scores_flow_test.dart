@@ -1,5 +1,6 @@
 import 'package:actra/core/theme.dart';
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/features/common/rating_pill.dart';
@@ -19,6 +20,17 @@ import 'app_flow_test.dart';
 import 'games_host_flow_test.dart' show containerOf, refresh;
 
 const _sixFourTwice = [(6, 4), (6, 4)];
+
+/// The sample backend, with a confirm that takes a moment, as over a network.
+class _SlowConfirm extends SampleBackend {
+  _SlowConfirm({required super.utcNow}) : super(meName: 'Test');
+
+  @override
+  Future<Game> confirmScore(String resultId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return super.confirmScore(resultId);
+  }
+}
 
 /// The demo player's padel rating under `pumpApp(withSports: true)`.
 const _myPadel = SportRating(rating: 3.5, ratedGames: 12);
@@ -185,6 +197,18 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const ValueKey('rating-change-me'))).data, _changeText(expected.b[0]));
     final result = (await containerOf(tester).read(sampleBackendProvider).game('gf2')).result!;
     expect(result.status, ResultStatus.confirmed);
+  });
+
+  testWidgets('a double tap on Confirm confirms once, without an error', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => _SlowConfirm(utcNow: clock));
+    await _openGame(tester, 'gf2');
+
+    await tester.tap(find.byKey(const ValueKey('score-confirm')));
+    await tester.tap(find.byKey(const ValueKey('score-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Score confirmed'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing, reason: 'the second tap did not confirm again');
   });
 
   testWidgets('opponent can dispute', (tester) async {

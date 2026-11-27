@@ -31,6 +31,17 @@ class _LeaveFails extends SampleBackend {
   Future<void> leaveTeam(String id) async => throw const JoinException(JoinError.unavailable);
 }
 
+/// The sample backend, with joining a team taking a moment, as over a network.
+class _SlowJoin extends SampleBackend {
+  _SlowJoin({required super.utcNow}) : super(meName: 'Test');
+
+  @override
+  Future<Team> joinTeam(String id) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return super.joinTeam(id);
+  }
+}
+
 /// As `pumpApp`, on a backend where leaving a team fails.
 Future<void> _pumpLeaveFails(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues(signedIn);
@@ -108,6 +119,19 @@ void main() {
 
     await tap(tester, find.byType(BackButton));
     expect(find.descendant(of: _key('my-teams'), matching: find.text('Night Owls')), findsOneWidget);
+  });
+
+  testWidgets('a double tap on Join joins once, without an error', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning, backend: (clock) => _SlowJoin(utcNow: clock));
+    await tap(tester, find.text('Social'));
+    await tap(tester, find.text('Yunusobod Padel'));
+
+    await tester.tap(_key('team-join'));
+    await tester.tap(_key('team-join'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('5 members'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing, reason: 'the second tap did not ask again');
   });
 
   testWidgets('join an open team', (tester) async {

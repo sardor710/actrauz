@@ -106,8 +106,17 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       setState(() => _error = l.errInvalidArgument);
       return;
     }
+    // Busy before the questionnaire, so a second tap cannot create twice.
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     // A padel or tennis host answers the questionnaire first.
-    if (!await ensureRated(context, ref, sport) || !mounted) return;
+    if (!await ensureRated(context, ref, sport)) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    if (!mounted) return;
 
     String? blank(String text) => text.trim().isEmpty ? null : text.trim();
     final start = today.add(Duration(days: _dayOffset, minutes: _startMinute));
@@ -134,10 +143,6 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
       end: sport.bookable ? null : start.add(Duration(minutes: _duration)),
     );
 
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
     try {
       final game = await ref.read(gameRepositoryProvider).create(draft);
       refreshGames(ref);

@@ -13,8 +13,11 @@ import '../common/widgets.dart';
 /// Runs a game action and shows the translated reason when the backend
 /// refuses. Refreshes everything that depends on games afterwards, also after a
 /// refusal (another player may have changed the game meanwhile). Returns
-/// whether it went through.
+/// whether it went through; false at once while another game action runs (a
+/// double tap).
 Future<bool> runGameAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
+  if (_gameActionRunning) return false;
+  _gameActionRunning = true;
   final l = context.l;
   // Captured now: the widget may be gone when the action returns.
   final container = ProviderScope.containerOf(context, listen: false);
@@ -25,9 +28,14 @@ Future<bool> runGameAction(BuildContext context, WidgetRef ref, Future<void> Fun
   } on JoinException catch (e) {
     _refreshAfterGameAction(container);
     if (context.mounted) showMessage(context, joinErrorText(l, e));
+  } finally {
+    _gameActionRunning = false;
   }
   return false;
 }
+
+/// Whether a [runGameAction] is under way.
+bool _gameActionRunning = false;
 
 void _refreshAfterGameAction(ProviderContainer c) {
   refreshGamesIn(c);

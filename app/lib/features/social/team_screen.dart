@@ -21,15 +21,25 @@ import '../games/game_card.dart';
 /// Runs a team action on a screen and shows the translated reason when the
 /// backend refuses. Every view of teams reloads either way: a refusal
 /// usually means the team changed meanwhile. Returns whether it went
-/// through.
+/// through; false at once while another team action runs (a double tap).
 Future<bool> runTeamAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
+  if (_teamActionRunning) return false;
+  _teamActionRunning = true;
   final l = context.l;
-  final error = await teamActionError(l, action);
+  final String? error;
+  try {
+    error = await teamActionError(l, action);
+  } finally {
+    _teamActionRunning = false;
+  }
   if (!context.mounted) return error == null;
   refreshTeams(ref);
   if (error != null) showMessage(context, error);
   return error == null;
 }
+
+/// Whether a [runTeamAction] is under way.
+bool _teamActionRunning = false;
 
 /// For a sheet or form, where a snackbar would be hidden: runs [action] and
 /// returns the refusal's text, or null when it went through.
