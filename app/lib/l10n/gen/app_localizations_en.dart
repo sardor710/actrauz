@@ -2869,4 +2869,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifTeamGamePosted(String team) {
     return 'New game for the team $team';
   }
+
+  @override
+  String teamHandoverConfirm(String name) {
+    return 'Make $name the captain and leave the team?';
+  }
+
+  @override
+  String get teamHandoverLeaveFailed =>
+      'You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.';
 }

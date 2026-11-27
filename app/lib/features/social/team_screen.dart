@@ -118,7 +118,13 @@ class TeamScreen extends ConsumerWidget {
         showDragHandle: true,
         builder: (_) => _HandoverSheet(team: team),
       );
-      if (choice == _HandoverSheet.delete && context.mounted) await _delete(context, ref, team);
+      if (!context.mounted) return;
+      if (choice == _HandoverSheet.delete) {
+        await _delete(context, ref, team);
+      } else if (choice == _HandoverSheet.handedOver) {
+        // The role moved but leaving did not: the page now shows a member's Leave.
+        showMessage(context, l.teamHandoverLeaveFailed);
+      }
       return;
     }
     final ok = await _confirm(context, l.teamLeaveConfirm(team.name), null, l.teamLeave);
@@ -299,7 +305,10 @@ class _Games extends StatelessWidget {
             Text(l.teamNoGames, style: AppText.muted)
           else
             for (final game in team.games)
-              Padding(padding: const EdgeInsets.only(bottom: 12), child: GameCard(game: game)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GameCard(game: game),
+              ),
           if (team.isCaptain) ...[
             if (team.games.isEmpty) const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -537,11 +546,13 @@ class _ActionBar extends ConsumerWidget {
 }
 
 /// The captain's way out: hand the role to a member and leave, or, when
-/// nobody else is in the team, delete it. Pops [delete] for the latter.
+/// nobody else is in the team, delete it. Pops [delete] for the latter, and
+/// [handedOver] when the role moved but leaving then failed.
 class _HandoverSheet extends ConsumerStatefulWidget {
   const _HandoverSheet({required this.team});
 
   static const delete = 'delete';
+  static const handedOver = 'handed_over';
 
   final Team team;
 
@@ -554,21 +565,26 @@ class _HandoverSheetState extends ConsumerState<_HandoverSheet> {
   bool _busy = false;
 
   Future<void> _handOver(TeamMember member) async {
+    final l = context.l;
+    // Cannot be undone: an approval team would not let the old captain back.
+    if (!await _confirm(context, l.teamHandoverConfirm(member.name), null, l.teamLeave)) return;
+    if (!mounted) return;
     final social = ref.read(socialRepositoryProvider);
     setState(() {
       _busy = true;
       _error = null;
     });
-    final error = await teamActionError(context.l, () async {
-      await social.transferCaptain(widget.team.id, member.id);
-      await social.leaveTeam(widget.team.id);
-    });
+    final error = await teamActionError(l, () => social.transferCaptain(widget.team.id, member.id));
     if (!mounted) return;
-    refreshTeams(ref);
     if (error == null) {
-      Navigator.of(context).pop();
+      // No longer captain: whatever leaving answers, this sheet is done.
+      final left = await teamActionError(l, () => social.leaveTeam(widget.team.id));
+      if (!mounted) return;
+      refreshTeams(ref);
+      Navigator.of(context).pop(left == null ? null : _HandoverSheet.handedOver);
       return;
     }
+    refreshTeams(ref);
     setState(() {
       _busy = false;
       _error = error;

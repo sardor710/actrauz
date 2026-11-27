@@ -5045,6 +5045,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New game for the team {team}'**
   String notifTeamGamePosted(String team);
+
+  /// No description provided for @teamHandoverConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Make {name} the captain and leave the team?'**
+  String teamHandoverConfirm(String name);
+
+  /// No description provided for @teamHandoverLeaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.'**
+  String get teamHandoverLeaveFailed;
 }
 
 class _AppLocalizationsDelegate

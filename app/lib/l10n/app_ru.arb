@@ -823,5 +823,7 @@
   "teamPostGame": "Создать игру",
   "teamNoGames": "Ближайших игр команды нет",
   "teamGameOpens": "Откроется для всех · {when}",
-  "notifTeamGamePosted": "Новая игра команды «{team}»"
+  "notifTeamGamePosted": "Новая игра команды «{team}»",
+  "teamHandoverConfirm": "Передать капитанство {name} и выйти из команды?",
+  "teamHandoverLeaveFailed": "Роль капитана передана, но выйти из команды не удалось. Нажмите «Выйти из команды», чтобы попробовать снова."
 }

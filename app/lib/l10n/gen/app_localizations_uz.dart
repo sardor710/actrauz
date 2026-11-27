@@ -2867,4 +2867,13 @@ class AppLocalizationsUz extends AppLocalizations {
   String notifTeamGamePosted(String team) {
     return '«$team» jamoasi uchun yangi oʻyin';
   }
+
+  @override
+  String teamHandoverConfirm(String name) {
+    return 'Sardorlikni ${name}ga topshirib, jamoadan chiqasizmi?';
+  }
+
+  @override
+  String get teamHandoverLeaveFailed =>
+      'Sardorlik topshirildi, lekin jamoadan chiqib boʻlmadi. Qayta urinish uchun «Jamoadan chiqish» tugmasini bosing.';
 }

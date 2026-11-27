@@ -1687,5 +1687,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "teamHandoverConfirm": "Make {name} the captain and leave the team?",
+  "@teamHandoverConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamHandoverLeaveFailed": "You handed the captain role over, but leaving the team failed. Use “Leave team” to try again."
 }

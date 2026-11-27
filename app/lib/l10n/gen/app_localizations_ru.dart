@@ -2903,4 +2903,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String notifTeamGamePosted(String team) {
     return 'Новая игра команды «$team»';
   }
+
+  @override
+  String teamHandoverConfirm(String name) {
+    return 'Передать капитанство $name и выйти из команды?';
+  }
+
+  @override
+  String get teamHandoverLeaveFailed =>
+      'Роль капитана передана, но выйти из команды не удалось. Нажмите «Выйти из команды», чтобы попробовать снова.';
 }

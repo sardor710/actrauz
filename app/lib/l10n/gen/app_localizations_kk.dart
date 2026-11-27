@@ -2878,4 +2878,13 @@ class AppLocalizationsKk extends AppLocalizations {
   String notifTeamGamePosted(String team) {
     return '«$team» командасының жаңа ойыны';
   }
+
+  @override
+  String teamHandoverConfirm(String name) {
+    return 'Капитандықты $name қатысушысына беріп, командадан шығасыз ба?';
+  }
+
+  @override
+  String get teamHandoverLeaveFailed =>
+      'Капитан рөлі берілді, бірақ командадан шығу сәтсіз аяқталды. Қайталау үшін «Командадан шығу» түймесін басыңыз.';
 }

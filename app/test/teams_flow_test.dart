@@ -1,4 +1,6 @@
+import 'package:actra/app.dart';
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/teams.dart';
 import 'package:actra/features/games/create_game_screen.dart';
@@ -11,12 +13,44 @@ import 'package:actra/state/admin_providers.dart';
 import 'package:actra/state/providers.dart';
 import 'package:actra/state/ui_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_flow_test.dart';
 import 'games_host_flow_test.dart' show bookPadel, containerOf;
 
 Finder _key(String value) => find.byKey(ValueKey(value));
+
+/// The sample backend, except that leaving a team is always refused.
+class _LeaveFails extends SampleBackend {
+  _LeaveFails({required super.utcNow, super.meName});
+
+  @override
+  Future<void> leaveTeam(String id) async => throw const JoinException(JoinError.unavailable);
+}
+
+/// As `pumpApp`, on a backend where leaving a team fails.
+Future<void> _pumpLeaveFails(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues(signedIn);
+  final prefs = await SharedPreferences.getInstance();
+  await initializeDateFormatting();
+  tester.view.physicalSize = const Size(900, 3400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        sharedPrefsProvider.overrideWithValue(prefs),
+        clockProvider.overrideWithValue(() => sundayMorning),
+        sampleBackendProvider.overrideWith((ref) => _LeaveFails(utcNow: ref.watch(clockProvider), meName: 'Test')),
+      ],
+      child: const ActraApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
 
 Future<void> _go(WidgetTester tester, String location) async {
   containerOf(tester).read(routerProvider).go(location);
@@ -181,6 +215,7 @@ void main() {
     await tap(tester, _key('team-leave'));
     expect(find.text('Hand the captain role to a member, then you leave the team.'), findsOneWidget);
     await tap(tester, _key('handover-p1'));
+    await tap(tester, _key('team-dialog-ok'));
 
     expect(_key('team-join'), findsOneWidget);
     expect(_key('team-edit'), findsNothing);
@@ -188,6 +223,61 @@ void main() {
     final after = await backend.team(team.id);
     expect(after.captainId, 'p1');
     expect(after.myStatus, isNull);
+  });
+
+  testWidgets('hand-over asks before it happens', (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    final team = await backend.createTeam(_owls);
+    await backend.joinTeamAs('p1', team.id);
+    await _refresh(tester);
+    await _push(tester, '/teams/${team.id}');
+
+    await tap(tester, _key('team-leave'));
+    await tap(tester, _key('handover-p1'));
+    expect(find.text('Make Aziz the captain and leave the team?'), findsOneWidget);
+
+    // Cancel: nothing changes, I am still the captain.
+    await tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.text('Cancel')));
+    expect(find.byType(AlertDialog), findsNothing);
+    expect((await backend.team(team.id)).isCaptain, isTrue);
+    expect(_key('handover-p1'), findsOneWidget);
+
+    // Confirm: Aziz is captain and I am out.
+    await tap(tester, _key('handover-p1'));
+    await tap(tester, _key('team-dialog-ok'));
+    expect(_key('handover-p1'), findsNothing);
+    final after = await backend.team(team.id);
+    expect(after.captainId, 'p1');
+    expect(after.myStatus, isNull);
+    expect(_key('team-join'), findsOneWidget);
+  });
+
+  testWidgets('hand-over that cannot finish leaving explains what happened', (tester) async {
+    await _pumpLeaveFails(tester);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    final team = await backend.createTeam(_owls);
+    await backend.joinTeamAs('p1', team.id);
+    await _refresh(tester);
+    await _push(tester, '/teams/${team.id}');
+
+    await tap(tester, _key('team-leave'));
+    await tap(tester, _key('handover-p1'));
+    await tap(tester, _key('team-dialog-ok'));
+
+    // The sheet is closed, the page says what happened and shows me as a member.
+    expect(find.text('Choose the new captain'), findsNothing);
+    expect(
+      find.text('You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.'),
+      findsOneWidget,
+    );
+    final after = await backend.team(team.id);
+    expect(after.captainId, 'p1');
+    expect(after.myStatus, MyTeamStatus.member);
+    expect(_key('team-edit'), findsNothing);
+    expect(_key('team-delete'), findsNothing);
+    expect(find.descendant(of: _key('team-leave'), matching: find.text('Leave team')), findsOneWidget);
+    await settleSnackbars(tester);
   });
 
   testWidgets('a captain alone can only delete the team', (tester) async {
