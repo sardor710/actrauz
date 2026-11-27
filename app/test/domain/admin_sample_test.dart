@@ -6,6 +6,7 @@ import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/admin.dart';
 import 'package:actra/domain/booking_engine.dart';
 import 'package:actra/domain/community.dart';
+import 'package:actra/domain/competitive.dart' show roundRating;
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/owner.dart';
@@ -479,6 +480,32 @@ void main() {
       expect((await backend.inbox()).where((n) => n.kind == 'score_resolved' && n.payload['action'] == 'void'), hasLength(1));
       expect(await errorOf(() => admin.resolveScore('r-gf2', 'void')), BookingError.notFound, reason: 'already void');
       expect(await padel('p1'), ratings['p1'], reason: 'not taken back twice');
+    });
+
+    test('void after a later result takes back only its own change', () async {
+      final start = (await padel('p1'))!;
+      final startGames = (await rated('p1'))!;
+      await backend.confirmScoreAs('p2', 'r-gf2');
+      final first = (await backend.game('gf2')).result!.changes['p1']!;
+      final afterFirst = await padel('p1');
+      expect(afterFirst, first.newRating);
+
+      // A later game moves p1 again, from the rating the first one left.
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(2, 6), (1, 6)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      final second = (await backend.game('gf1')).result!.changes['p1']!;
+      expect(second.oldRating, first.newRating);
+      expect(second.delta, isNot(0));
+      final now = (await padel('p1'))!;
+      expect(await rated('p1'), startGames + 2);
+
+      await admin.resolveScore('r-gf2', 'void');
+      final expected = roundRating(now - first.delta);
+      expect(await padel('p1'), expected);
+      expect(expected, isNot(start), reason: 'restoring the old rating would give this');
+      expect(await rated('p1'), startGames + 1, reason: 'one rated game taken back');
+      // The later result keeps its own change on record.
+      expect((await backend.game('gf1')).result!.changes['p1']!.delta, second.delta);
     });
 
     test('void works on a pending score, which moves no ratings', () async {
