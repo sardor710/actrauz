@@ -3870,6 +3870,30 @@ abstract class AppLocalizations {
   /// **'No rating yet'**
   String get noRatingYet;
 
+  /// No description provided for @leaderboards.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboards'**
+  String get leaderboards;
+
+  /// No description provided for @leaderboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard · {city}'**
+  String leaderboardTitle(String city);
+
+  /// No description provided for @leaderboardEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No confirmed results in {city} yet.'**
+  String leaderboardEmpty(String city);
+
+  /// No description provided for @leaderboardGames.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 game} other{{count} games}}'**
+  String leaderboardGames(int count);
+
   /// No description provided for @retakeQuestionnaire.
   ///
   /// In en, this message translates to:

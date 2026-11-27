@@ -100,6 +100,23 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                       ),
               ),
             ),
+            if (sports.where((s) => s.competitiveRating).toList() case final ratedSports when ratedSports.isNotEmpty)
+              SectionCard(
+                title: l.leaderboards,
+                contentPadding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  children: [
+                    for (final s in ratedSports)
+                      ListTile(
+                        key: ValueKey('leaderboard-link-${s.id}'),
+                        leading: SportBadge(sportId: s.id, size: 34),
+                        title: Text(s.name.resolve(context.lang), style: manrope(15.5, 700)),
+                        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+                        onTap: () => context.push('/leaderboard/${s.id}'),
+                      ),
+                  ],
+                ),
+              ),
             SectionCard(
               title: l.findPlayers,
               contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

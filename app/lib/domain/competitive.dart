@@ -249,3 +249,38 @@ int _divideRounded(int total, int count) => (2 * total + count) ~/ (2 * count);
 /// numeric does. Twelve significant digits first, so a product that is
 /// exactly x.5 in decimals but x.4999… in binary still rounds away from zero.
 int _roundHalfAway(double value) => double.parse(value.toStringAsPrecision(12)).round();
+
+// ---- Leaderboards (design §5.7) ----
+
+/// One player on a leaderboard.
+class LeaderboardRow {
+  const LeaderboardRow({
+    required this.position,
+    required this.id,
+    required this.name,
+    required this.rating,
+    required this.isMe,
+  });
+
+  /// 1 for the best rating.
+  final int position;
+
+  /// `kMeId` for the signed-in player.
+  final String id;
+  final String name;
+  final SportRating rating;
+  final bool isMe;
+}
+
+/// A sport's leaderboard in a city: the top [rows] (at most 100) and the
+/// signed-in player's own row, when they have confirmed results there and
+/// live in that city. [me] may also be one of [rows].
+class Leaderboard {
+  const Leaderboard({required this.rows, this.me});
+
+  /// The most rows a leaderboard lists.
+  static const maxRows = 100;
+
+  final List<LeaderboardRow> rows;
+  final LeaderboardRow? me;
+}

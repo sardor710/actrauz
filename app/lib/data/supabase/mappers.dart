@@ -480,6 +480,26 @@ List<MySport> mySportsFromJson(Object? json) => [
     ),
 ];
 
+LeaderboardRow _leaderboardRow(Row json, String? myUserId) {
+  final id = _userId(json['id'], myUserId);
+  return LeaderboardRow(
+    position: json['position'] as int,
+    id: id,
+    name: json['name'] as String? ?? '',
+    rating: sportRatingFromJson(json),
+    isMe: id == kMeId,
+  );
+}
+
+/// The JSON returned by `leaderboard`: `{ rows: [...], me: {...} | null }`.
+Leaderboard leaderboardFromJson(Object? json, {required String? myUserId}) {
+  final map = Map<String, dynamic>.from(json as Map);
+  return Leaderboard(
+    rows: [for (final row in _rows(map['rows'])) _leaderboardRow(row, myUserId)],
+    me: map['me'] == null ? null : _leaderboardRow(Map<String, dynamic>.from(map['me'] as Map), myUserId),
+  );
+}
+
 MyGameStatus? _myGameStatus(Object? value) => switch (value) {
   null => null,
   'host' => MyGameStatus.host,

@@ -1252,6 +1252,31 @@ class SampleBackend
     return _mySports.mySports();
   }
 
+  /// Sample players are not tied to a city, so they are on every city's board
+  /// once they have a rated game. The demo player is on it only with a rated
+  /// game of their own.
+  @override
+  Future<Leaderboard> leaderboard(String sportId, String cityId) async {
+    final listed = <(String, SportRating)>[
+      for (final id in [kMeId, for (final p in kSamplePlayers) p.id])
+        if (!_deleted.contains(id))
+          if (_playerOf(id).ratings[sportId] case final rating? when rating.ratedGames >= 1) (id, rating),
+    ]..sort((a, b) {
+        final byRating = b.$2.rating.compareTo(a.$2.rating);
+        if (byRating != 0) return byRating;
+        final byGames = b.$2.ratedGames.compareTo(a.$2.ratedGames);
+        return byGames != 0 ? byGames : a.$1.compareTo(b.$1);
+      });
+    final rows = [
+      for (final (i, (id, rating)) in listed.indexed)
+        LeaderboardRow(position: i + 1, id: id, name: _nameOf(id), rating: rating, isMe: id == kMeId),
+    ];
+    return Leaderboard(
+      rows: rows.take(Leaderboard.maxRows).toList(),
+      me: rows.where((r) => r.isMe).firstOrNull,
+    );
+  }
+
   // ---- NotificationRepository ----
 
   @override

@@ -949,6 +949,47 @@ void main() {
       expect((await backend.inbox()).where((n) => n.category == 'ratings'), isEmpty);
     });
   });
+
+  group('leaderboard', () {
+    test('lists rated players by rating, then rated games, then id; the demo player only with a rated game', () async {
+      final before = await backend.leaderboard('padel', 'tashkent');
+      expect(before.rows.map((r) => r.id), ['p7', 'p1', 'p5', 'p8', 'p2']);
+      expect(before.rows.map((r) => r.position), [1, 2, 3, 4, 5]);
+      expect(before.rows.first.name, 'Bekzod');
+      expect(before.rows.first.rating.rating, 4.5);
+      expect(before.rows.last.rating.ratedGames, 4);
+      expect(before.rows.any((r) => r.isMe), isFalse);
+      expect(before.me, isNull, reason: 'no confirmed result yet');
+      // Players without a padel rating, and sports without ratings, are not listed.
+      expect(before.rows.map((r) => r.id), isNot(contains('p3')));
+      expect((await backend.leaderboard('football', 'tashkent')).rows, isEmpty);
+      // Sample players are in every city.
+      expect((await backend.leaderboard('padel', 'almaty')).rows.map((r) => r.id), before.rows.map((r) => r.id));
+    });
+
+    test('a deleted player is never listed', () async {
+      backend.markDeleted('p7');
+      expect((await backend.leaderboard('padel', 'tashkent')).rows.map((r) => r.id), ['p1', 'p5', 'p8', 'p2']);
+    });
+
+    test('a confirmed result puts me on the board, in rows and as me', () async {
+      final result =
+          (await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: [(6, 4), (6, 4)])).result!;
+      await backend.confirmScoreAs('p2', result.id);
+
+      final after = await backend.leaderboard('padel', 'tashkent');
+      final mine = (await backend.mySports()).singleWhere((s) => s.sportId == 'padel').rating!;
+      expect(after.me, isNotNull);
+      expect(after.me!.isMe, isTrue);
+      expect(after.me!.id, kMeId);
+      expect(after.me!.rating.rating, mine.rating);
+      expect(after.me!.rating.ratedGames, 1);
+      expect(after.rows.where((r) => r.isMe), hasLength(1));
+      expect(after.rows[after.me!.position - 1].id, kMeId);
+      final ratings = after.rows.map((r) => r.rating.rating).toList();
+      expect(ratings, [...ratings]..sort((a, b) => b.compareTo(a)));
+    });
+  });
 }
 
 String _courtOf(String bookingId, SampleBackend backend) {

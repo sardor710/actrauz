@@ -224,6 +224,11 @@ final playersProvider = FutureProvider.family<List<PlayerProfile>, PlayerSearch>
       ),
 );
 
+/// A rated sport's leaderboard in a city.
+final leaderboardProvider = FutureProvider.family<Leaderboard, ({String sportId, String cityId})>(
+  (ref, key) => ref.watch(socialRepositoryProvider).leaderboard(key.sportId, key.cityId),
+);
+
 final playerProfileProvider = FutureProvider.family<PlayerProfile, String>(
   (ref, id) => ref.watch(socialRepositoryProvider).profile(id),
 );
@@ -280,6 +285,7 @@ void refreshGames(WidgetRef ref) {
   ref.invalidate(gamesProvider);
   ref.invalidate(gameProvider);
   ref.invalidate(pastGamesProvider);
+  ref.invalidate(leaderboardProvider);
   ref.invalidate(gameRequestsProvider);
   ref.invalidate(gameRequestProvider);
   ref.invalidate(inboxProvider);

@@ -229,7 +229,8 @@ void main() {
 
     // Padel, rating 2.5 and up: players without a padel rating count as 1.0.
     await tap(tester, find.byKey(const ValueKey('players-sport')));
-    await tap(tester, find.text('Padel'));
+    // The Leaderboards card also lists Padel: pick the one in the sport sheet.
+    await tap(tester, find.descendant(of: find.byType(BottomSheet), matching: find.text('Padel')));
     expect(find.byKey(const ValueKey('players-level')), findsNothing);
     expect(find.text('Timur'), findsOneWidget);
 

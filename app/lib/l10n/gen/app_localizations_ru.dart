@@ -2205,6 +2205,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noRatingYet => 'Рейтинга пока нет';
 
   @override
+  String get leaderboards => 'Рейтинговые таблицы';
+
+  @override
+  String leaderboardTitle(String city) {
+    return 'Таблица лидеров · $city';
+  }
+
+  @override
+  String leaderboardEmpty(String city) {
+    return 'В городе $city пока нет подтверждённых результатов.';
+  }
+
+  @override
+  String leaderboardGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count игры',
+      many: '$count игр',
+      few: '$count игры',
+      one: '$count игра',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get retakeQuestionnaire => 'Пройти заново';
 
   @override

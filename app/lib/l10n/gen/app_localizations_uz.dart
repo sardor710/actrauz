@@ -2174,6 +2174,29 @@ class AppLocalizationsUz extends AppLocalizations {
   String get noRatingYet => 'Hali reyting yoʻq';
 
   @override
+  String get leaderboards => 'Reyting jadvallari';
+
+  @override
+  String leaderboardTitle(String city) {
+    return 'Reyting jadvali · $city';
+  }
+
+  @override
+  String leaderboardEmpty(String city) {
+    return '$city shahrida tasdiqlangan natijalar hali yoʻq.';
+  }
+
+  @override
+  String leaderboardGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta oʻyin',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get retakeQuestionnaire => 'Qayta topshirish';
 
   @override

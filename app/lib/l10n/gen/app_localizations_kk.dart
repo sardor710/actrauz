@@ -2186,6 +2186,30 @@ class AppLocalizationsKk extends AppLocalizations {
   String get noRatingYet => 'Әзірге рейтинг жоқ';
 
   @override
+  String get leaderboards => 'Рейтинг кестелері';
+
+  @override
+  String leaderboardTitle(String city) {
+    return 'Рейтинг кестесі · $city';
+  }
+
+  @override
+  String leaderboardEmpty(String city) {
+    return '$city қаласында расталған нәтижелер әлі жоқ.';
+  }
+
+  @override
+  String leaderboardGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ойын',
+      one: '$count ойын',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get retakeQuestionnaire => 'Қайта өту';
 
   @override

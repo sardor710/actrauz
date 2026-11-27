@@ -230,7 +230,7 @@ class _MySportChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = sport.name.resolve(context.lang);
     final rating = mine.rating;
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.fromLTRB(8, 6, 14, 6),
       // White with a border: pale icons such as the volleyball stay visible.
       decoration: BoxDecoration(
@@ -254,6 +254,14 @@ class _MySportChip extends StatelessWidget {
             ),
         ],
       ),
+    );
+    // A rating opens the sport's leaderboard.
+    if (rating == null) return chip;
+    return InkWell(
+      key: ValueKey('my-rating-${sport.id}'),
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => context.push('/leaderboard/${sport.id}'),
+      child: chip,
     );
   }
 }

@@ -793,6 +793,38 @@ void main() {
       expect(mySportsFromJson(null), isEmpty);
     });
 
+    test('a leaderboard has rows and my own row, and I am kMeId', () {
+      Map<String, dynamic> row(int position, String id, String name, num rating, int games) => {
+        'position': position,
+        'id': id,
+        'name': name,
+        'rating': rating,
+        'provisional': games < 10,
+        'rated_games': games,
+      };
+      final board = leaderboardFromJson({
+        'rows': [row(1, 'other-user', 'Aziz', 4.52, 14), row(2, me, 'Sardor', 3.5, 4)],
+        'me': row(2, me, 'Sardor', 3.5, 4),
+      }, myUserId: me);
+      expect(board.rows.map((r) => (r.position, r.id, r.name, r.isMe)), [
+        (1, 'other-user', 'Aziz', false),
+        (2, kMeId, 'Sardor', true),
+      ]);
+      expect(board.rows.first.rating.rating, 4.52);
+      expect(board.rows.first.rating.ratedGames, 14);
+      expect(board.rows.first.rating.provisional, isFalse);
+      expect(board.rows.last.rating.provisional, isTrue);
+      expect(board.me!.id, kMeId);
+      expect(board.me!.position, 2);
+
+      final empty = leaderboardFromJson({'rows': [], 'me': null}, myUserId: me);
+      expect(empty.rows, isEmpty);
+      expect(empty.me, isNull);
+      // A caller hidden from search is not in rows but still has a row.
+      final hidden = leaderboardFromJson({'rows': [], 'me': row(1, me, 'Sardor', 3.5, 1)}, myUserId: me);
+      expect(hidden.me!.isMe, isTrue);
+    });
+
     test('a player profile has levels, reliability and games played, and I am kMeId', () {
       final profile = playerProfileFromJson({
         'id': me,

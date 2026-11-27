@@ -76,4 +76,10 @@ class SupabaseSocialRepository implements SocialRepository {
   @override
   Future<List<MySport>> removeSport(String sportId) =>
       guardJoin(() async => mySportsFromJson(await _client.rpc('remove_my_sport', params: {'p_sport_id': sportId})));
+
+  @override
+  Future<Leaderboard> leaderboard(String sportId, String cityId) async => leaderboardFromJson(
+    await _client.rpc('leaderboard', params: {'p_sport_id': sportId, 'p_city_id': cityId}),
+    myUserId: _me,
+  );
 }

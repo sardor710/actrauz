@@ -32,6 +32,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'features/social/player_profile_screen.dart';
+import 'features/social/leaderboard_screen.dart';
 import 'features/social/social_screen.dart';
 import 'features/tournaments/my_tournaments_screen.dart';
 import 'features/tournaments/tournament_screen.dart';
@@ -68,6 +69,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/players/:id',
         builder: (context, state) => PlayerProfileScreen(playerId: state.pathParameters['id']!),
+      ),
+      // A rated sport's leaderboard in the current city, from the Social tab
+      // and from the rating on the profile.
+      GoRoute(
+        path: '/leaderboard/:sportId',
+        builder: (context, state) => LeaderboardScreen(sportId: state.pathParameters['sportId']!),
       ),
       // Venue owners and admins only; the screens show nothing to anyone else.
       GoRoute(

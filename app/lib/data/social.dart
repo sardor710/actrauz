@@ -55,6 +55,13 @@ abstract class SocialRepository {
 
   /// Unticks a sport. A rating is kept and comes back with the sport.
   Future<List<MySport>> removeSport(String sportId);
+
+  /// Players of [cityId] with at least one confirmed result in the rated sport
+  /// [sportId], best rating first (then more rated games): the top
+  /// [Leaderboard.maxRows], and the signed-in player's own row when they are
+  /// in that city and have a result. Players who hid themselves and deleted
+  /// accounts are not listed.
+  Future<Leaderboard> leaderboard(String sportId, String cityId);
 }
 
 /// Fictional sample teams.
@@ -159,4 +166,7 @@ class SampleSocialRepository implements SocialRepository {
 
   @override
   Future<List<MySport>> removeSport(String sportId) async => const [];
+
+  @override
+  Future<Leaderboard> leaderboard(String sportId, String cityId) async => const Leaderboard(rows: []);
 }

@@ -1216,6 +1216,31 @@
     }
   },
   "noRatingYet": "No rating yet",
+  "leaderboards": "Leaderboards",
+  "leaderboardTitle": "Leaderboard · {city}",
+  "@leaderboardTitle": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "leaderboardEmpty": "No confirmed results in {city} yet.",
+  "@leaderboardEmpty": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "leaderboardGames": "{count, plural, =1{1 game} other{{count} games}}",
+  "@leaderboardGames": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "retakeQuestionnaire": "Retake",
   "ratingRangeLabel": "Rating range",
   "ratingRangeValue": "Rating {range}",

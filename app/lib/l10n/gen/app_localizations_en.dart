@@ -2177,6 +2177,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRatingYet => 'No rating yet';
 
   @override
+  String get leaderboards => 'Leaderboards';
+
+  @override
+  String leaderboardTitle(String city) {
+    return 'Leaderboard · $city';
+  }
+
+  @override
+  String leaderboardEmpty(String city) {
+    return 'No confirmed results in $city yet.';
+  }
+
+  @override
+  String leaderboardGames(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count games',
+      one: '1 game',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get retakeQuestionnaire => 'Retake';
 
   @override
