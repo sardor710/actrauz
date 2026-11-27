@@ -2499,4 +2499,69 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noPastGames => 'За последние 30 дней игр не было';
+
+  @override
+  String get afterGameRate => 'Оцените других игроков. Голоса анонимны';
+
+  @override
+  String get voteUp => 'Оценить положительно';
+
+  @override
+  String get voteDown => 'Оценить отрицательно';
+
+  @override
+  String get noShowAction => 'Не пришёл';
+
+  @override
+  String get reportAction => 'Пожаловаться';
+
+  @override
+  String reportTitle(String name) {
+    return 'Жалоба на игрока $name';
+  }
+
+  @override
+  String get reportHint =>
+      'Её рассмотрит администратор Actra. Игрок не узнает, кто на него пожаловался.';
+
+  @override
+  String get reportReasonLanguage => 'Оскорбления';
+
+  @override
+  String get reportReasonAggression => 'Агрессивное поведение';
+
+  @override
+  String get reportReasonFalseScore => 'Неверный счёт';
+
+  @override
+  String get reportReasonOther => 'Другое';
+
+  @override
+  String get reportDetails => 'Что случилось (необязательно)';
+
+  @override
+  String get reportSend => 'Отправить';
+
+  @override
+  String get reportSent => 'Жалоба отправлена';
+
+  @override
+  String get errAlreadyReported => 'Вы уже пожаловались на этого игрока';
+
+  @override
+  String get notifNoShowRecorded =>
+      'Большинство игроков отметили, что вы не пришли на игру. Ваша надёжность снизилась';
+
+  @override
+  String sportsmanshipSummary(int percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count голоса',
+      many: '$count голосов',
+      few: '$count голоса',
+      one: '$count голос',
+    );
+    return '$percent% · $_temp0';
+  }
 }

@@ -715,5 +715,22 @@
   "scoreMoreGames": "Больше геймов",
   "scoreFewerGames": "Меньше геймов",
   "pastGames": "Прошедшие игры",
-  "noPastGames": "За последние 30 дней игр не было"
+  "noPastGames": "За последние 30 дней игр не было",
+  "afterGameRate": "Оцените других игроков. Голоса анонимны",
+  "voteUp": "Оценить положительно",
+  "voteDown": "Оценить отрицательно",
+  "noShowAction": "Не пришёл",
+  "reportAction": "Пожаловаться",
+  "reportTitle": "Жалоба на игрока {name}",
+  "reportHint": "Её рассмотрит администратор Actra. Игрок не узнает, кто на него пожаловался.",
+  "reportReasonLanguage": "Оскорбления",
+  "reportReasonAggression": "Агрессивное поведение",
+  "reportReasonFalseScore": "Неверный счёт",
+  "reportReasonOther": "Другое",
+  "reportDetails": "Что случилось (необязательно)",
+  "reportSend": "Отправить",
+  "reportSent": "Жалоба отправлена",
+  "errAlreadyReported": "Вы уже пожаловались на этого игрока",
+  "notifNoShowRecorded": "Большинство игроков отметили, что вы не пришли на игру. Ваша надёжность снизилась",
+  "sportsmanshipSummary": "{percent}% · {count, plural, one{{count} голос} few{{count} голоса} many{{count} голосов} other{{count} голоса}}"
 }

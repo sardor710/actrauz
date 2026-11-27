@@ -95,6 +95,8 @@ class SampleBackend
       }
     },
     isDeleted: _deleted.contains,
+    noShowIn: (gameId, userId) =>
+        (_reliabilityEvents[userId] ?? const []).any((e) => e.kind == ReliabilityKind.noShow && e.ref == gameId),
     notify: _notify,
   );
 
@@ -568,6 +570,7 @@ class SampleBackend
       myRequestId: _pendingAsk(g.id, viewer)?.id,
       clearMyRequestId: _pendingAsk(g.id, viewer) == null,
       result: _scores.resultOf(g.id),
+      afterGame: _afterGameOf(g, viewer),
     );
   }
 
@@ -856,6 +859,168 @@ class SampleBackend
 
   @override
   Future<Game> disputeScore(String resultId, {String? reason}) => disputeScoreAs(kMeId, resultId, reason: reason);
+
+  // ---- After a game (design §6.1-§6.3): `app.vote_player`,
+  // `app.report_no_show`, `app.report_player` and `app.sportsmanship` in
+  // supabase/migrations/20261127120000_after_game.sql ----
+
+  /// Game id → voter → player voted for → thumbs up.
+  final Map<String, Map<String, Map<String, bool>>> _votes = {};
+
+  /// Game id → player marked as not there → the players who marked them.
+  final Map<String, Map<String, Set<String>>> _noShowReports = {};
+
+  /// (game id, player) whose `game_completed` credit a recorded no-show took,
+  /// to give back if the majority is lost. Sample games give no such credit
+  /// themselves, so only one that was there comes back.
+  final Set<(String, String)> _creditsTaken = {};
+
+  final List<_AbuseReport> _abuseReports = [];
+
+  /// The viewer's own votes and marks, for a participant of a game that has
+  /// ended and was not cancelled.
+  AfterGame? _afterGameOf(Game g, String viewer) {
+    if (g.cancelled || !g.participantIds.contains(viewer) || !g.endedAt(_cityNow(g.cityId))) return null;
+    return AfterGame(
+      myVotes: {...?_votes[g.id]?[viewer]},
+      myNoShows: {
+        for (final MapEntry(key: target, value: reporters) in (_noShowReports[g.id] ?? const {}).entries)
+          if (reporters.contains(viewer)) target,
+      },
+    );
+  }
+
+  /// The game, when [userId] and [targetId] are different participants of it,
+  /// it was not cancelled, it has ended and the target's account is live
+  /// ([JoinError.notFound] otherwise), no later than [openFor] after its end
+  /// ([JoinError.scoreClosed] after), as `app.check_after_game`.
+  Game _afterGame(String userId, String gameId, String targetId, Duration openFor) {
+    final g = _games[gameId];
+    if (g == null ||
+        g.cancelled ||
+        targetId == userId ||
+        _deleted.contains(targetId) ||
+        !g.participantIds.contains(userId) ||
+        !g.participantIds.contains(targetId) ||
+        !g.endedAt(_cityNow(g.cityId))) {
+      throw const JoinException(JoinError.notFound);
+    }
+    if (!_cityNow(g.cityId).isBefore(g.end.add(openFor))) throw const JoinException(JoinError.scoreClosed);
+    return g;
+  }
+
+  /// As [userId]; see [GameRepository.vote].
+  Future<Game> voteAs(String userId, String gameId, String targetId, bool? up) async {
+    final g = _afterGame(userId, gameId, targetId, kVoteOpenFor);
+    final mine = (_votes[gameId] ??= {})[userId] ??= {};
+    if (up == null) {
+      mine.remove(targetId);
+    } else {
+      mine[targetId] = up;
+    }
+    return _view(g, userId);
+  }
+
+  /// As [userId]; see [GameRepository.reportNoShow].
+  Future<Game> reportNoShowAs(String userId, String gameId, String targetId, {required bool reported}) async {
+    final g = _afterGame(userId, gameId, targetId, kNoShowOpenFor);
+    final reporters = (_noShowReports[gameId] ??= {})[targetId] ??= {};
+    if (reported) {
+      reporters.add(userId);
+    } else {
+      reporters.remove(userId);
+    }
+    _recountNoShow(g, targetId);
+    return _view(g, userId);
+  }
+
+  /// The majority rule for one marked player, as `app.recount_no_show`: more
+  /// than half of the other participants, and at least two, recorded once
+  /// per game as a no-show in place of the `game_completed` credit, with a
+  /// notice and the effect on the game's score; lost again, it is undone.
+  /// Nobody joins a sample game after its start ([_live]), so every
+  /// participant counts as there on time.
+  void _recountNoShow(Game g, String targetId) {
+    final reporters = _noShowReports[g.id]?[targetId]?.length ?? 0;
+    final others = g.participantIds.length - 1;
+    final events = _reliabilityEvents.putIfAbsent(targetId, () => []);
+    bool has(ReliabilityKind kind, String? ref) => events.any((e) => e.kind == kind && e.ref == ref);
+
+    if (reporters * 2 > others && reporters >= 2) {
+      if (has(ReliabilityKind.noShow, g.id)) return;
+      // A host the venue already marked no-show for the booking is not penalised twice.
+      final venueMarked = targetId == g.hostId && g.bookingId != null && has(ReliabilityKind.noShow, g.bookingId);
+      if (!venueMarked) {
+        recordReliability(targetId, ReliabilityKind.noShow, g.id);
+        if (has(ReliabilityKind.gameCompleted, g.id)) {
+          events.removeWhere((e) => e.kind == ReliabilityKind.gameCompleted && e.ref == g.id);
+          _creditsTaken.add((g.id, targetId));
+        }
+        _notify(targetId, 'no_show_recorded', 'games', _gameNote(g));
+      }
+      _scores.noShowRecorded(g.id, targetId);
+    } else if (has(ReliabilityKind.noShow, g.id)) {
+      events.removeWhere((e) => e.kind == ReliabilityKind.noShow && e.ref == g.id);
+      if (_creditsTaken.remove((g.id, targetId))) recordReliability(targetId, ReliabilityKind.gameCompleted, g.id);
+    }
+  }
+
+  /// As [userId]; see [SocialRepository.reportPlayer]. Nothing happens
+  /// automatically and the reported player hears nothing.
+  Future<void> reportPlayerAs(
+    String userId,
+    String targetId, {
+    String? gameId,
+    required ReportReason reason,
+    String? details,
+  }) async {
+    final text = details?.trim() ?? '';
+    // Characters, as the database counts them.
+    if (targetId == userId || text.runes.length > 500) throw const JoinException(JoinError.invalidArgument);
+    final g = gameId == null ? null : _games[gameId];
+    if (!_exists(targetId) ||
+        _deleted.contains(targetId) ||
+        (gameId != null && (g == null || !g.participantIds.contains(userId) || !g.participantIds.contains(targetId)))) {
+      throw const JoinException(JoinError.notFound);
+    }
+    if (_abuseReports.any((r) => r.open && r.reporterId == userId && r.targetId == targetId && r.gameId == gameId)) {
+      throw const JoinException(JoinError.alreadyReported);
+    }
+    _abuseReports.add(
+      _AbuseReport(
+        id: 'ar${_abuseReports.length + 1}',
+        reporterId: userId,
+        targetId: targetId,
+        gameId: gameId,
+        reason: reason,
+        details: text.isEmpty ? null : text,
+        createdAt: utcNow(),
+      ),
+    );
+  }
+
+  /// Thumbs received over all games; the share only from
+  /// [Sportsmanship.minVotes] votes.
+  Sportsmanship _sportsmanship(String userId) {
+    final votes = [
+      for (final byVoter in _votes.values)
+        for (final mine in byVoter.values)
+          if (mine[userId] case final up?) up,
+    ];
+    if (votes.length < Sportsmanship.minVotes) return Sportsmanship(votes: votes.length);
+    return Sportsmanship(votes: votes.length, percent: (100 * votes.where((up) => up).length / votes.length).round());
+  }
+
+  @override
+  Future<Game> vote(String gameId, String targetId, bool? up) => voteAs(kMeId, gameId, targetId, up);
+
+  @override
+  Future<Game> reportNoShow(String gameId, String targetId, {required bool reported}) =>
+      reportNoShowAs(kMeId, gameId, targetId, reported: reported);
+
+  @override
+  Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details}) =>
+      reportPlayerAs(kMeId, targetId, gameId: gameId, reason: reason, details: details);
 
   // ---- GameRepository ----
 
@@ -1235,6 +1400,7 @@ class SampleBackend
     await player(userId),
     reliability: _reliability(userId),
     gamesPlayed: (_reliabilityEvents[userId] ?? const []).where((e) => e.kind == ReliabilityKind.gameCompleted).length,
+    sportsmanship: _sportsmanship(userId),
   );
 
   @override
@@ -2236,4 +2402,27 @@ class _JoinAsk {
   final String userId;
   final DateTime createdAt;
   _AskStatus status = _AskStatus.pending;
+}
+
+/// A player's report about another (`abuse_reports`), open until an admin
+/// closes it.
+class _AbuseReport {
+  _AbuseReport({
+    required this.id,
+    required this.reporterId,
+    required this.targetId,
+    required this.gameId,
+    required this.reason,
+    required this.details,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String reporterId;
+  final String targetId;
+  final String? gameId;
+  final ReportReason reason;
+  final String? details;
+  final DateTime createdAt;
+  bool open = true;
 }

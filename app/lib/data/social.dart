@@ -62,6 +62,14 @@ abstract class SocialRepository {
   /// in that city and have a result. Players who hid themselves and deleted
   /// accounts are not listed.
   Future<Leaderboard> leaderboard(String sportId, String cityId);
+
+  /// Reports another player to Actra, optionally about a game both played
+  /// in; [details] at most 500 characters. The reported player is told
+  /// nothing. [JoinError.alreadyReported] while the player's earlier report
+  /// about the same player and game is open; [JoinError.invalidArgument] for
+  /// themselves or longer details; [JoinError.notFound] for a deleted player
+  /// or a game they did not both play in.
+  Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details});
 }
 
 /// Fictional sample teams.
@@ -107,8 +115,12 @@ List<PlayerProfile> searchPlayers(
 }
 
 /// As the backend shows a player: a rating only for a sport they have ticked.
-PlayerProfile profileOf(Player p, {Reliability reliability = Reliability.fresh, int gamesPlayed = 0}) =>
-    PlayerProfile(
+PlayerProfile profileOf(
+  Player p, {
+  Reliability reliability = Reliability.fresh,
+  int gamesPlayed = 0,
+  Sportsmanship sportsmanship = Sportsmanship.none,
+}) => PlayerProfile(
       id: p.id,
       name: p.name,
       levels: p.levels,
@@ -118,6 +130,7 @@ PlayerProfile profileOf(Player p, {Reliability reliability = Reliability.fresh, 
       },
       reliability: reliability,
       gamesPlayed: gamesPlayed,
+      sportsmanship: sportsmanship,
       deleted: p.deleted,
     );
 
@@ -169,4 +182,8 @@ class SampleSocialRepository implements SocialRepository {
 
   @override
   Future<Leaderboard> leaderboard(String sportId, String cityId) async => const Leaderboard(rows: []);
+
+  @override
+  Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details}) async =>
+      throw const JoinException(JoinError.unavailable);
 }

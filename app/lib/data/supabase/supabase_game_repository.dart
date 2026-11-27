@@ -119,6 +119,16 @@ class SupabaseGameRepository implements GameRepository {
       _callGame('dispute_score', {'p_result_id': resultId, 'p_reason': reason}, kScoreErrors);
 
   @override
+  Future<Game> vote(String gameId, String targetId, bool? up) =>
+      _callGame('vote_player', {'p_game_id': gameId, 'p_target': userIdOut(targetId, _me), 'p_up': up});
+
+  @override
+  Future<Game> reportNoShow(String gameId, String targetId, {required bool reported}) => _callGame(
+    'report_no_show',
+    {'p_game_id': gameId, 'p_target': userIdOut(targetId, _me), 'p_reported': reported},
+  );
+
+  @override
   Future<List<GameRequest>> requests(String cityId) async {
     final rows = await _client.rpc('list_game_requests', params: {'p_city_id': cityId});
     return [for (final row in rows as List) _gameRequest(row)];

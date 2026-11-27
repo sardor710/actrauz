@@ -61,6 +61,7 @@ String notificationText(AppLocalizations l, String lang, AppNotification n) {
     'score_entered' => l.notifScoreEntered,
     'score_disputed' => l.notifScoreDisputed,
     'score_resolved' => p['action'] == 'void' ? l.notifScoreVoided : l.notifScoreResolved,
+    'no_show_recorded' => l.notifNoShowRecorded,
     'rating_updated' when oldRating != null && newRating != null => l.notifRatingUpdated(
       formatRating(oldRating),
       formatRating(newRating),

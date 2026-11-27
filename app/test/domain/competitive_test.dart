@@ -1,5 +1,6 @@
 import 'package:actra/domain/community.dart';
 import 'package:actra/domain/competitive.dart';
+import 'package:actra/domain/games.dart';
 import 'package:actra/features/inbox/inbox_screen.dart';
 import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -169,5 +170,54 @@ void main() {
         expect(texts.last, allOf(contains('3.50'), contains('3.63')));
       });
     }
+  });
+
+  group('after the game', () {
+    // Played Saturday 18:00-19:30, venue time.
+    final end = DateTime(2026, 11, 21, 19, 30);
+    Game game({bool cancelled = false}) => Game(
+      id: 'g9',
+      sportId: 'football',
+      cityId: 'tashkent',
+      hostId: 'p1',
+      start: end.subtract(const Duration(minutes: 90)),
+      end: end,
+      spots: 4,
+      participantIds: const ['p1', 'me'],
+      cancelled: cancelled,
+    );
+
+    test('votes are open from the end for 7 days', () {
+      expect(canVote(game(), end.subtract(const Duration(minutes: 1))), isFalse);
+      expect(canVote(game(), end), isTrue);
+      expect(canVote(game(), end.add(const Duration(days: 7, minutes: -1))), isTrue);
+      expect(canVote(game(), end.add(const Duration(days: 7))), isFalse);
+      expect(canVote(game(cancelled: true), end.add(const Duration(hours: 1))), isFalse);
+    });
+
+    test('no-show reports are open from the end for 48 hours', () {
+      expect(canReportNoShow(game(), end.subtract(const Duration(minutes: 1))), isFalse);
+      expect(canReportNoShow(game(), end), isTrue);
+      expect(canReportNoShow(game(), end.add(const Duration(hours: 48, minutes: -1))), isTrue);
+      expect(canReportNoShow(game(), end.add(const Duration(hours: 48))), isFalse);
+      expect(canReportNoShow(game(cancelled: true), end.add(const Duration(hours: 1))), isFalse);
+    });
+
+    test('a recorded no-show opens the game and has its own sentence', () {
+      final note = AppNotification(
+        id: 'n1',
+        kind: 'no_show_recorded',
+        category: 'games',
+        payload: const {'game_id': 'g9', 'sport_id': 'football', 'starts_local': '2026-11-21T18:00:00'},
+        createdAt: DateTime.utc(2026, 11, 22),
+        read: false,
+      );
+      expect(note.route, '/games/g9');
+      for (final code in ['en', 'ru', 'uz', 'kk']) {
+        final l = lookupAppLocalizations(Locale(code));
+        expect(notificationText(l, code, note), l.notifNoShowRecorded);
+        expect(l.notifNoShowRecorded, isNot(l.notifUnknown));
+      }
+    });
   });
 }

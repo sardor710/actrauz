@@ -4397,6 +4397,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No games in the last 30 days'**
   String get noPastGames;
+
+  /// No description provided for @afterGameRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the other players. Votes are anonymous'**
+  String get afterGameRate;
+
+  /// No description provided for @voteUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbs up'**
+  String get voteUp;
+
+  /// No description provided for @voteDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbs down'**
+  String get voteDown;
+
+  /// No description provided for @noShowAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Didn\'t show up'**
+  String get noShowAction;
+
+  /// No description provided for @reportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get reportAction;
+
+  /// No description provided for @reportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report {name}'**
+  String reportTitle(String name);
+
+  /// No description provided for @reportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An Actra admin will review it. The player is not told who reported them.'**
+  String get reportHint;
+
+  /// No description provided for @reportReasonLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Abusive language'**
+  String get reportReasonLanguage;
+
+  /// No description provided for @reportReasonAggression.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggressive behaviour'**
+  String get reportReasonAggression;
+
+  /// No description provided for @reportReasonFalseScore.
+  ///
+  /// In en, this message translates to:
+  /// **'False score'**
+  String get reportReasonFalseScore;
+
+  /// No description provided for @reportReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get reportReasonOther;
+
+  /// No description provided for @reportDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened (optional)'**
+  String get reportDetails;
+
+  /// No description provided for @reportSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get reportSend;
+
+  /// No description provided for @reportSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Report sent'**
+  String get reportSent;
+
+  /// No description provided for @errAlreadyReported.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already reported this player'**
+  String get errAlreadyReported;
+
+  /// No description provided for @notifNoShowRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Most players marked you as not showing up for your game. Your reliability went down'**
+  String get notifNoShowRecorded;
+
+  /// No description provided for @sportsmanshipSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% · {count, plural, one{{count} vote} other{{count} votes}}'**
+  String sportsmanshipSummary(int percent, int count);
 }
 
 class _AppLocalizationsDelegate

@@ -109,6 +109,7 @@ String joinErrorText(AppLocalizations l, Object error) {
     JoinError.forbidden => l.errForbidden,
     JoinError.notCancellable => l.errNotCancellable,
     JoinError.scoreClosed => l.errScoreClosed,
+    JoinError.alreadyReported => l.errAlreadyReported,
     JoinError.unavailable => l.errUnavailable,
   };
 }

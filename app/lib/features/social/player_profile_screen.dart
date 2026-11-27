@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
 import '../../domain/community.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../state/providers.dart';
@@ -13,10 +14,12 @@ import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
 import '../games/host_tools.dart';
+import '../games/report_sheet.dart';
 
-/// A player's public profile: name, level per sport, reliability and games
-/// played. The host can invite them to one of their own open games. Opens for
-/// players who hid themselves from search too.
+/// A player's public profile: name, level per sport, reliability, games
+/// played and sportsmanship. The host can invite them to one of their own
+/// open games, and anyone can report them from the menu. Opens for players
+/// who hid themselves from search too.
 class PlayerProfileScreen extends ConsumerWidget {
   const PlayerProfileScreen({super.key, required this.playerId});
 
@@ -29,11 +32,28 @@ class PlayerProfileScreen extends ConsumerWidget {
     final l = context.l;
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     String sportName(String id) => sports.where((s) => s.id == id).firstOrNull?.name.resolve(context.lang) ?? id;
+    final loaded = ref.watch(playerProfileProvider(playerId)).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => _back(context)),
         title: Text(l.playerProfileTitle),
+        actions: [
+          // Not oneself, and not a deleted account.
+          if (loaded != null && loaded.id != kMeId && !loaded.deleted)
+            PopupMenuButton<String>(
+              key: const ValueKey('profile-menu'),
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (_) => showReportSheet(
+                context,
+                targetId: loaded.id,
+                name: playerName(l, loaded.name, deleted: loaded.deleted),
+              ),
+              itemBuilder: (context) => [
+                PopupMenuItem(key: const ValueKey('profile-report'), value: 'report', child: Text(l.reportAction)),
+              ],
+            ),
+        ],
       ),
       body: AsyncBody(
         value: ref.watch(playerProfileProvider(playerId)),
@@ -66,7 +86,15 @@ class PlayerProfileScreen extends ConsumerWidget {
                                 Text(hint, style: AppText.muted, textAlign: TextAlign.center),
                               ],
                               const SizedBox(height: 12),
-                              Pill(text: l.gamesPlayed(player.gamesPlayed), icon: Icons.sports_score_outlined),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  Pill(text: l.gamesPlayed(player.gamesPlayed), icon: Icons.sports_score_outlined),
+                                  if (player.sportsmanship.percent != null) SportsmanshipPill(player.sportsmanship),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -129,6 +157,25 @@ class PlayerProfileScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// The share of thumbs up and the number of votes (an icon, not an emoji),
+/// once there are enough votes to show (design §6.1); nothing before.
+class SportsmanshipPill extends StatelessWidget {
+  const SportsmanshipPill(this.sportsmanship, {super.key});
+
+  final Sportsmanship sportsmanship;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = sportsmanship.percent;
+    if (percent == null) return const SizedBox.shrink();
+    return Pill(
+      key: const ValueKey('sportsmanship'),
+      text: context.l.sportsmanshipSummary(percent, sportsmanship.votes),
+      icon: Icons.thumb_up_alt_outlined,
     );
   }
 }

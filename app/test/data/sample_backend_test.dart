@@ -990,6 +990,161 @@ void main() {
       expect(ratings, [...ratings]..sort((a, b) => b.compareTo(a)));
     });
   });
+
+  group('after the game', () {
+    Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
+
+    // gf1 (padel, hosted by me, with p1-p3) and gf3 (football, hosted by p1,
+    // with me, p2, p3) ended yesterday evening in Tashkent.
+    test('votes are stored, changeable and removable, and only mine are shown to me', () async {
+      var game = await backend.vote('gf1', 'p1', true);
+      expect(game.afterGame!.myVotes, {'p1': true});
+      game = await backend.vote('gf1', 'p1', false);
+      expect(game.afterGame!.myVotes, {'p1': false});
+      await backend.voteAs('p2', 'gf1', 'p1', true);
+      game = await backend.vote('gf1', 'p2', true);
+      expect(game.afterGame!.myVotes, {'p1': false, 'p2': true}, reason: 'p2 voting for p1 is not mine');
+      game = await backend.vote('gf1', 'p1', null);
+      expect(game.afterGame!.myVotes, {'p2': true});
+      expect((await backend.game('gf1')).afterGame!.myVotes, {'p2': true});
+    });
+
+    test('votes need another participant of a finished game, within 7 days', () async {
+      expect(backend.vote('gf1', kMeId, true), joinError(JoinError.notFound));
+      expect(backend.vote('gf1', 'p4', true), joinError(JoinError.notFound));
+      expect(backend.vote('nope', 'p1', true), joinError(JoinError.notFound));
+      // Two players of a game that has not started.
+      final upcoming = (await backend.games('tashkent')).firstWhere((g) => g.participantIds.length > 1);
+      final [first, second, ...] = upcoming.participantIds;
+      expect(backend.voteAs(first, upcoming.id, second, true), joinError(JoinError.notFound));
+      expect(backend.reportNoShowAs(first, upcoming.id, second, reported: true), joinError(JoinError.notFound));
+      expect(upcoming.afterGame, isNull, reason: 'no after-game part before the end');
+      backend.markDeleted('p3');
+      expect(backend.vote('gf1', 'p3', true), joinError(JoinError.notFound));
+      expect(backend.reportNoShow('gf1', 'p3', reported: true), joinError(JoinError.notFound));
+
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      now = utcNow.add(const Duration(days: 6));
+      expect((await timed.vote('gf1', 'p1', true)).afterGame!.myVotes, {'p1': true});
+      now = utcNow.add(const Duration(days: 7));
+      expect(timed.vote('gf1', 'p1', false), joinError(JoinError.scoreClosed));
+    });
+
+    test('no-show reports close 48 hours after the end', () async {
+      // gf1 ended Saturday 19:30, 14.5 hours before now.
+      var now = utcNow;
+      final timed = SampleBackend(utcNow: () => now);
+      now = utcNow.add(const Duration(hours: 33));
+      expect((await timed.reportNoShow('gf1', 'p1', reported: true)).afterGame!.myNoShows, {'p1'});
+      now = utcNow.add(const Duration(hours: 34));
+      expect(timed.reportNoShow('gf1', 'p1', reported: false), joinError(JoinError.scoreClosed));
+    });
+
+    test('my own no-show reports show on the game, and can be undone', () async {
+      var game = await backend.reportNoShow('gf3', 'p2', reported: true);
+      expect(game.afterGame!.myNoShows, {'p2'});
+      game = await backend.reportNoShow('gf3', 'p2', reported: false);
+      expect(game.afterGame!.myNoShows, isEmpty);
+    });
+
+    test('a no-show majority lowers reliability once and notifies; withdrawing undoes it', () async {
+      Future<int> score() async => (await backend.settings()).reliability.score;
+      Future<int> notices() async => (await backend.inbox()).where((n) => n.kind == 'no_show_recorded').length;
+      final before = await score();
+
+      // gf3: three others, so a majority is two of them.
+      await backend.reportNoShowAs('p1', 'gf3', kMeId, reported: true);
+      expect(await score(), before, reason: 'one report of three is no majority');
+      expect(await notices(), 0);
+
+      await backend.reportNoShowAs('p2', 'gf3', kMeId, reported: true);
+      expect(await score(), before + ReliabilityKind.noShow.delta);
+      expect(await notices(), 1);
+      final notice = (await backend.inbox()).firstWhere((n) => n.kind == 'no_show_recorded');
+      expect(notice.category, 'games');
+      expect(notice.payload['game_id'], 'gf3');
+      expect(notice.payload['sport_id'], 'football');
+      expect(notice.route, '/games/gf3');
+
+      await backend.reportNoShowAs('p3', 'gf3', kMeId, reported: true);
+      expect(await score(), before + ReliabilityKind.noShow.delta, reason: 'once per game');
+      expect(await notices(), 1);
+
+      await backend.reportNoShowAs('p3', 'gf3', kMeId, reported: false);
+      expect(await score(), before + ReliabilityKind.noShow.delta, reason: 'two of three is still a majority');
+      await backend.reportNoShowAs('p2', 'gf3', kMeId, reported: false);
+      expect(await score(), before, reason: 'below the majority again');
+    });
+
+    test('a no-show majority freezes a pending score and blocks a new one', () async {
+      // gf2's pending score has me in it.
+      await backend.reportNoShowAs('p1', 'gf2', kMeId, reported: true);
+      await backend.reportNoShowAs('p3', 'gf2', kMeId, reported: true);
+      final result = (await backend.game('gf2')).result!;
+      expect(result.status, ResultStatus.disputed);
+      expect(result.disputeReason, 'no_show');
+      expect((await backend.inbox()).where((n) => n.kind == 'score_disputed'), hasLength(1));
+
+      // gf1 has no score yet: p3, recorded as not there, cannot be in one.
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      expect(
+        backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]),
+        joinError(JoinError.invalidArgument),
+      );
+      expect((await backend.enterScore('gf1', sideA: [kMeId], sideB: ['p2'], sets: const [(6, 4)])).result, isNotNull);
+    });
+
+    test('a no-show majority flags a confirmed score', () async {
+      await backend.enterScore('gf1', sideA: [kMeId, 'p1'], sideB: ['p2', 'p3'], sets: const [(6, 4)]);
+      await backend.confirmScoreAs('p2', 'r-gf1');
+      await backend.reportNoShowAs('p1', 'gf1', 'p3', reported: true);
+      await backend.reportNoShowAs('p2', 'gf1', 'p3', reported: true);
+      final result = (await backend.game('gf1')).result!;
+      expect(result.status, ResultStatus.confirmed);
+      expect(result.flaggedNoShow, isTrue);
+    });
+
+    test('reporting a player: once per player and game while open', () async {
+      await backend.reportPlayer('p1', gameId: 'gf1', reason: ReportReason.falseScore, details: 'Not 6-0');
+      expect(
+        backend.reportPlayer('p1', gameId: 'gf1', reason: ReportReason.other),
+        joinError(JoinError.alreadyReported),
+      );
+      // Another game, or none, is another report.
+      await backend.reportPlayer('p1', gameId: 'gf3', reason: ReportReason.language);
+      await backend.reportPlayer('p1', reason: ReportReason.aggression);
+      expect(backend.reportPlayer('p1', reason: ReportReason.other), joinError(JoinError.alreadyReported));
+
+      expect(backend.reportPlayer(kMeId, reason: ReportReason.other), joinError(JoinError.invalidArgument));
+      expect(
+        backend.reportPlayer('p2', reason: ReportReason.other, details: 'x' * 501),
+        joinError(JoinError.invalidArgument),
+      );
+      await backend.reportPlayer('p2', reason: ReportReason.other, details: '  ${'x' * 500}  ');
+      expect(backend.reportPlayer('p4', gameId: 'gf1', reason: ReportReason.other), joinError(JoinError.notFound));
+      expect(backend.reportPlayer('nobody', reason: ReportReason.other), joinError(JoinError.notFound));
+      backend.markDeleted('p5');
+      expect(backend.reportPlayer('p5', reason: ReportReason.other), joinError(JoinError.notFound));
+    });
+
+    test('sportsmanship shows from five votes', () async {
+      expect((await backend.profile('p1')).sportsmanship.votes, 0);
+      await backend.vote('gf1', 'p1', true);
+      await backend.voteAs('p2', 'gf1', 'p1', true);
+      await backend.voteAs('p3', 'gf1', 'p1', false);
+      await backend.voteAs('p2', 'gf3', 'p1', true);
+      var votes = (await backend.profile('p1')).sportsmanship;
+      expect(votes.votes, 4);
+      expect(votes.percent, isNull);
+
+      await backend.voteAs('p3', 'gf3', 'p1', true);
+      votes = (await backend.profile('p1')).sportsmanship;
+      expect(votes.votes, 5);
+      expect(votes.percent, 80);
+    });
+  });
 }
 
 String _courtOf(String bookingId, SampleBackend backend) {

@@ -115,6 +115,7 @@ class SampleScores {
     required this.ratingOf,
     required this.setRating,
     required this.isDeleted,
+    required this.noShowIn,
     required this.notify,
   });
 
@@ -136,6 +137,9 @@ class SampleScores {
   /// Writes a player's rating (and the level derived from it).
   final void Function(String userId, String sportId, SportRating rating) setRating;
   final bool Function(String userId) isDeleted;
+
+  /// Whether a no-show majority was recorded against the player in the game.
+  final bool Function(String gameId, String userId) noShowIn;
   final void Function(String userId, String kind, String category, Map<String, Object?> payload) notify;
 
   final Map<String, _SampleResult> _byGame = {};
@@ -172,7 +176,9 @@ class SampleScores {
         players.toSet().length != players.length ||
         !players.contains(userId) ||
         !players.every(game.participantIds.contains) ||
-        players.any(isDeleted)) {
+        players.any(isDeleted) ||
+        // Nor does a player recorded as not having shown up.
+        players.any((id) => noShowIn(game.id, id))) {
       throw const JoinException(JoinError.invalidArgument);
     }
     bool games(int n) => n >= 0 && n <= 30;
@@ -236,6 +242,25 @@ class SampleScores {
       if (id != userId) notify(id, 'score_disputed', 'ratings', result.note);
     }
     return result.gameId;
+  }
+
+  /// A no-show majority was recorded against [userId] in the game: a pending
+  /// result with them in it is frozen as disputed for an admin (reason
+  /// `no_show`; its players hear), a confirmed one is flagged. Nothing is
+  /// voided (design §6.2), as `app.recount_no_show`.
+  void noShowRecorded(String gameId, String userId) {
+    final result = _byGame[gameId];
+    if (result == null || !result.includes(userId)) return;
+    if (result.status == ResultStatus.pending) {
+      result
+        ..status = ResultStatus.disputed
+        ..disputeReason = 'no_show';
+      for (final id in result.players) {
+        notify(id, 'score_disputed', 'ratings', result.note);
+      }
+    } else if (result.status == ResultStatus.confirmed) {
+      result.flaggedNoShow = true;
+    }
   }
 
   /// Confirms every pending result whose 24 hours are over; returns how many.
@@ -303,6 +328,7 @@ class _SampleResult {
   List<(int, int)> sets = const [];
   final List<String> confirmedBy = [];
   String? disputeReason;
+  bool flaggedNoShow = false;
   DateTime deadline = DateTime.utc(2000);
   final Map<String, RatingChange> changes = {};
 
@@ -319,6 +345,7 @@ class _SampleResult {
     sideB: List.unmodifiable(sideB),
     confirmedBy: List.unmodifiable(confirmedBy),
     disputeReason: disputeReason,
+    flaggedNoShow: flaggedNoShow,
     changes: Map.unmodifiable(changes),
   );
 }

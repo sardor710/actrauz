@@ -1372,5 +1372,39 @@
   "scoreMoreGames": "More games",
   "scoreFewerGames": "Fewer games",
   "pastGames": "Past games",
-  "noPastGames": "No games in the last 30 days"
+  "noPastGames": "No games in the last 30 days",
+  "afterGameRate": "Rate the other players. Votes are anonymous",
+  "voteUp": "Thumbs up",
+  "voteDown": "Thumbs down",
+  "noShowAction": "Didn't show up",
+  "reportAction": "Report",
+  "reportTitle": "Report {name}",
+  "@reportTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reportHint": "An Actra admin will review it. The player is not told who reported them.",
+  "reportReasonLanguage": "Abusive language",
+  "reportReasonAggression": "Aggressive behaviour",
+  "reportReasonFalseScore": "False score",
+  "reportReasonOther": "Other",
+  "reportDetails": "What happened (optional)",
+  "reportSend": "Send",
+  "reportSent": "Report sent",
+  "errAlreadyReported": "You have already reported this player",
+  "notifNoShowRecorded": "Most players marked you as not showing up for your game. Your reliability went down",
+  "sportsmanshipSummary": "{percent}% · {count, plural, one{{count} vote} other{{count} votes}}",
+  "@sportsmanshipSummary": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

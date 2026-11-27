@@ -2469,4 +2469,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPastGames => 'No games in the last 30 days';
+
+  @override
+  String get afterGameRate => 'Rate the other players. Votes are anonymous';
+
+  @override
+  String get voteUp => 'Thumbs up';
+
+  @override
+  String get voteDown => 'Thumbs down';
+
+  @override
+  String get noShowAction => 'Didn\'t show up';
+
+  @override
+  String get reportAction => 'Report';
+
+  @override
+  String reportTitle(String name) {
+    return 'Report $name';
+  }
+
+  @override
+  String get reportHint =>
+      'An Actra admin will review it. The player is not told who reported them.';
+
+  @override
+  String get reportReasonLanguage => 'Abusive language';
+
+  @override
+  String get reportReasonAggression => 'Aggressive behaviour';
+
+  @override
+  String get reportReasonFalseScore => 'False score';
+
+  @override
+  String get reportReasonOther => 'Other';
+
+  @override
+  String get reportDetails => 'What happened (optional)';
+
+  @override
+  String get reportSend => 'Send';
+
+  @override
+  String get reportSent => 'Report sent';
+
+  @override
+  String get errAlreadyReported => 'You have already reported this player';
+
+  @override
+  String get notifNoShowRecorded =>
+      'Most players marked you as not showing up for your game. Your reliability went down';
+
+  @override
+  String sportsmanshipSummary(int percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count votes',
+      one: '$count vote',
+    );
+    return '$percent% · $_temp0';
+  }
 }

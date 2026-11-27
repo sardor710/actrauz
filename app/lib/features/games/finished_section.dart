@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/markets.dart';
 import '../../core/theme.dart';
 import '../../data/sample/sample_data.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -12,6 +13,7 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/widgets.dart';
 import 'host_tools.dart';
+import 'report_sheet.dart';
 import 'score_sheet.dart';
 
 /// Only the host may enter a score until this long after the end (as the
@@ -22,8 +24,9 @@ const _hostOnlyFor = Duration(hours: 24);
 const _scoreOpenFor = Duration(days: 7);
 
 /// "Game finished" on the game page (design §5.8): for the players of a game
-/// that has ended and was not cancelled. It holds the score block in a rated
-/// sport; the votes and reports of Part 7b go below it.
+/// that has ended, was not cancelled and had someone else in it. The score
+/// block in a rated sport, then the other players with thumbs up or down,
+/// "Didn't show up" and "Report" (design §6.1-§6.3).
 class FinishedSection extends ConsumerWidget {
   const FinishedSection({super.key, required this.game});
 
@@ -32,7 +35,9 @@ class FinishedSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = game.myStatus;
-    if (game.cancelled || (status != MyGameStatus.host && status != MyGameStatus.participant)) {
+    if (game.cancelled ||
+        game.participantIds.length < 2 ||
+        (status != MyGameStatus.host && status != MyGameStatus.participant)) {
       return const SizedBox.shrink();
     }
     // Venue wall-clock time, as the game's start and end.
@@ -40,19 +45,173 @@ class FinishedSection extends ConsumerWidget {
     if (!game.endedAt(now)) return const SizedBox.shrink();
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     final rated = sports.where((s) => s.id == game.sportId).firstOrNull?.competitiveRating ?? false;
-    // Nothing to show in a simple sport yet.
-    if (!rated) return const SizedBox.shrink();
+    final others = _othersOf(game);
+    if (!rated && others.isEmpty) return const SizedBox.shrink();
 
     return SectionCard(
       key: const ValueKey('finished-section'),
       title: context.l.gameFinished,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [_ScoreBlock(game: game, now: now)],
+        children: [
+          if (rated) _ScoreBlock(game: game, now: now),
+          if (rated && others.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+          ],
+          if (others.isNotEmpty) _OtherPlayers(game: game, others: others, now: now),
+        ],
       ),
     );
   }
 }
+
+/// The other players of [game], leaving out deleted accounts: they can no
+/// longer be rated or reported.
+List<GameMember> _othersOf(Game game) => [
+  for (final m in game.participants)
+    if (m.id != kMeId && !m.deleted) m,
+];
+
+/// Every other live player of the game with the player's thumbs for them
+/// (until 7 days after the end) and a menu with "Didn't show up" (until 48
+/// hours after) and "Report". The server holds the windows too.
+class _OtherPlayers extends ConsumerWidget {
+  const _OtherPlayers({required this.game, required this.others, required this.now});
+
+  final Game game;
+  final List<GameMember> others;
+
+  /// Venue wall-clock time.
+  final DateTime now;
+
+  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
+    // A vote moves the player's sportsmanship on their profile.
+    if (await runGameAction(context, ref, action) && context.mounted) ref.invalidate(playerProfileProvider);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final mine = game.afterGame ?? const AfterGame();
+    final votesOpen = canVote(game, now);
+    final noShowOpen = canReportNoShow(game, now);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l.afterGameRate, style: AppText.muted),
+        for (final m in others)
+          _OtherPlayerRow(
+            key: ValueKey('after-game-${m.id}'),
+            id: m.id,
+            name: memberName(l, game, m.id),
+            vote: mine.myVotes[m.id],
+            markedNoShow: mine.myNoShows.contains(m.id),
+            onVote: votesOpen
+                ? (up) => _run(
+                    context,
+                    ref,
+                    () => ref.read(gameRepositoryProvider).vote(game.id, m.id, mine.myVotes[m.id] == up ? null : up),
+                  )
+                : null,
+            onNoShow: noShowOpen
+                ? () => _run(
+                    context,
+                    ref,
+                    () => ref
+                        .read(gameRepositoryProvider)
+                        .reportNoShow(game.id, m.id, reported: !mine.myNoShows.contains(m.id)),
+                  )
+                : null,
+            onReport: () => showReportSheet(context, targetId: m.id, name: memberName(l, game, m.id), gameId: game.id),
+          ),
+      ],
+    );
+  }
+}
+
+class _OtherPlayerRow extends StatelessWidget {
+  const _OtherPlayerRow({
+    super.key,
+    required this.id,
+    required this.name,
+    required this.vote,
+    required this.markedNoShow,
+    required this.onVote,
+    required this.onNoShow,
+    required this.onReport,
+  });
+
+  final String id;
+  final String name;
+
+  /// The player's thumbs for them: true up, false down, null none.
+  final bool? vote;
+  final bool markedNoShow;
+
+  /// Tapping the thumb already given takes it back. Null once votes closed.
+  final void Function(bool up)? onVote;
+
+  /// Null once "Didn't show up" is closed.
+  final VoidCallback? onNoShow;
+  final VoidCallback onReport;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final onVote = this.onVote;
+    final onNoShow = this.onNoShow;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          InitialAvatar(name: name, size: 34),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(name, style: AppText.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          IconButton(
+            key: ValueKey('vote-up-$id'),
+            tooltip: l.voteUp,
+            isSelected: vote == true,
+            icon: const Icon(Icons.thumb_up_alt_outlined),
+            selectedIcon: const Icon(Icons.thumb_up_alt, color: AppColors.primaryDark),
+            onPressed: onVote == null ? null : () => onVote(true),
+          ),
+          IconButton(
+            key: ValueKey('vote-down-$id'),
+            tooltip: l.voteDown,
+            isSelected: vote == false,
+            icon: const Icon(Icons.thumb_down_alt_outlined),
+            selectedIcon: const Icon(Icons.thumb_down_alt, color: AppColors.error),
+            onPressed: onVote == null ? null : () => onVote(false),
+          ),
+          PopupMenuButton<String>(
+            key: ValueKey('player-menu-$id'),
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (action) => action == _noShow ? onNoShow?.call() : onReport(),
+            itemBuilder: (context) => [
+              if (onNoShow != null)
+                CheckedPopupMenuItem(
+                  key: const ValueKey('menu-no-show'),
+                  value: _noShow,
+                  checked: markedNoShow,
+                  child: Text(l.noShowAction),
+                ),
+              PopupMenuItem(key: const ValueKey('menu-report'), value: _report, child: Text(l.reportAction)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The menu entries of a player row.
+const _noShow = 'no_show';
+const _report = 'report';
 
 /// Enter the score, or the score with what the player can do about it.
 class _ScoreBlock extends ConsumerWidget {

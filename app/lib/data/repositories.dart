@@ -91,6 +91,18 @@ abstract class GameRepository {
   /// Any player in a pending result freezes it for an admin.
   Future<Game> disputeScore(String resultId, {String? reason});
 
+  /// Thumbs up (true) or down (false) for [targetId], another participant of
+  /// the finished game; null takes the vote back. Changeable until 7 days
+  /// after the end ([JoinError.scoreClosed] after); [JoinError.notFound] when
+  /// the game has not ended, was cancelled, or either of them is not in it.
+  Future<Game> vote(String gameId, String targetId, bool? up);
+
+  /// Marks [targetId], another participant of the finished game, as not
+  /// having shown up ([reported]) or takes it back, until 48 hours after the
+  /// end. When most of the other players agree, the server records the
+  /// no-show. Errors as [vote].
+  Future<Game> reportNoShow(String gameId, String targetId, {required bool reported});
+
   /// Open Game Requests in the city, plus the player's own anywhere.
   Future<List<GameRequest>> requests(String cityId);
   Future<GameRequest> request(String id);

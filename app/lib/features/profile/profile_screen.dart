@@ -17,6 +17,7 @@ import '../common/formatters.dart';
 import '../common/rating_pill.dart';
 import '../common/reliability_badge.dart';
 import '../common/widgets.dart';
+import '../social/player_profile_screen.dart' show SportsmanshipPill;
 import 'delete_account.dart';
 
 /// The player's card, their sports, and the settings menu.
@@ -32,6 +33,7 @@ class ProfileScreen extends ConsumerWidget {
     final name = session.userName ?? '';
     final sports = ref.watch(sportsProvider).valueOrNull ?? const <Sport>[];
     final reliability = ref.watch(communitySettingsProvider).valueOrNull?.reliability;
+    final sportsmanship = ref.watch(playerProfileProvider(kMeId)).valueOrNull?.sportsmanship;
 
     final bookings = ref.watch(myBookingsProvider).valueOrNull ?? const <Booking>[];
     final games = ref.watch(gamesProvider).valueOrNull ?? const <Game>[];
@@ -91,6 +93,10 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Text(hint, style: AppText.muted),
                     ],
+                  ],
+                  if (sportsmanship != null && sportsmanship.percent != null) ...[
+                    const SizedBox(height: 10),
+                    SportsmanshipPill(sportsmanship),
                   ],
                 ],
               ),

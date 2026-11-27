@@ -715,5 +715,22 @@
   "scoreMoreGames": "Көбірек гейм",
   "scoreFewerGames": "Азырақ гейм",
   "pastGames": "Өткен ойындар",
-  "noPastGames": "Соңғы 30 күнде ойындар болған жоқ"
+  "noPastGames": "Соңғы 30 күнде ойындар болған жоқ",
+  "afterGameRate": "Басқа ойыншыларды бағалаңыз. Дауыстар жасырын",
+  "voteUp": "Оң баға",
+  "voteDown": "Теріс баға",
+  "noShowAction": "Келмеді",
+  "reportAction": "Шағымдану",
+  "reportTitle": "{name} туралы шағым",
+  "reportHint": "Оны Actra әкімшісі қарайды. Ойыншыға кім шағымданғаны айтылмайды.",
+  "reportReasonLanguage": "Балағат сөздер",
+  "reportReasonAggression": "Агрессивті мінез-құлық",
+  "reportReasonFalseScore": "Қате есеп",
+  "reportReasonOther": "Басқа",
+  "reportDetails": "Не болды (міндетті емес)",
+  "reportSend": "Жіберу",
+  "reportSent": "Шағым жіберілді",
+  "errAlreadyReported": "Сіз бұл ойыншыға шағымданып қойғансыз",
+  "notifNoShowRecorded": "Ойыншылардың көпшілігі сізді ойынға келмеді деп белгіледі. Сенімділігіңіз төмендеді",
+  "sportsmanshipSummary": "{percent}% · {count, plural, one{{count} дауыс} other{{count} дауыс}}"
 }

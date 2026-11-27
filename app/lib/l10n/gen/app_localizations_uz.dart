@@ -2466,4 +2466,67 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get noPastGames => 'Soʻnggi 30 kunda oʻyinlar boʻlmagan';
+
+  @override
+  String get afterGameRate => 'Boshqa oʻyinchilarni baholang. Ovozlar anonim';
+
+  @override
+  String get voteUp => 'Ijobiy baho';
+
+  @override
+  String get voteDown => 'Salbiy baho';
+
+  @override
+  String get noShowAction => 'Kelmadi';
+
+  @override
+  String get reportAction => 'Shikoyat qilish';
+
+  @override
+  String reportTitle(String name) {
+    return '$name ustidan shikoyat';
+  }
+
+  @override
+  String get reportHint =>
+      'Uni Actra administratori koʻrib chiqadi. Oʻyinchiga kim shikoyat qilgani aytilmaydi.';
+
+  @override
+  String get reportReasonLanguage => 'Haqoratli soʻzlar';
+
+  @override
+  String get reportReasonAggression => 'Tajovuzkor xatti-harakat';
+
+  @override
+  String get reportReasonFalseScore => 'Notoʻgʻri hisob';
+
+  @override
+  String get reportReasonOther => 'Boshqa';
+
+  @override
+  String get reportDetails => 'Nima boʻldi (ixtiyoriy)';
+
+  @override
+  String get reportSend => 'Yuborish';
+
+  @override
+  String get reportSent => 'Shikoyat yuborildi';
+
+  @override
+  String get errAlreadyReported =>
+      'Siz bu oʻyinchi ustidan allaqachon shikoyat qilgansiz';
+
+  @override
+  String get notifNoShowRecorded =>
+      'Koʻpchilik oʻyinchilar sizni oʻyinga kelmadi deb belgiladi. Ishonchliligingiz pasaydi';
+
+  @override
+  String sportsmanshipSummary(int percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta ovoz',
+    );
+    return '$percent% · $_temp0';
+  }
 }

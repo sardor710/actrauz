@@ -2,7 +2,7 @@ import 'community.dart';
 import 'competitive.dart';
 
 export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
-export 'competitive.dart' show MatchResult, MatchWinner, RatingChange, ResultStatus, SportRating;
+export 'competitive.dart' show AfterGame, MatchResult, MatchWinner, RatingChange, ReportReason, ResultStatus, SportRating;
 
 class Player {
   const Player({
@@ -96,6 +96,7 @@ class Game {
     this.joinRequests = const [],
     this.cancelled = false,
     this.result,
+    this.afterGame,
   });
 
   final String id;
@@ -146,6 +147,10 @@ class Game {
   /// The score, once someone has entered one (rated sports only).
   final MatchResult? result;
 
+  /// The signed-in player's own votes and no-show marks, once the game has
+  /// ended and they played in it; null otherwise.
+  final AfterGame? afterGame;
+
   int get spotsLeft => spots - participantIds.length;
   bool get isFull => spotsLeft <= 0;
 
@@ -167,6 +172,7 @@ class Game {
     List<JoinRequest>? joinRequests,
     bool? cancelled,
     MatchResult? result,
+    AfterGame? afterGame,
   }) => Game(
     id: id,
     sportId: sportId,
@@ -197,6 +203,7 @@ class Game {
     joinRequests: joinRequests ?? this.joinRequests,
     cancelled: cancelled ?? this.cancelled,
     result: result ?? this.result,
+    afterGame: afterGame ?? this.afterGame,
   );
 }
 
@@ -311,6 +318,9 @@ enum JoinError {
   /// The game can no longer take a score: not a rated sport, not finished
   /// yet, more than 7 days past, or its result was voided.
   scoreClosed,
+
+  /// The player already has an open report about this player (and game).
+  alreadyReported,
 
   /// The backend could not be reached or answered with something unexpected.
   unavailable,

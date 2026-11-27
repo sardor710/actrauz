@@ -715,5 +715,22 @@
   "scoreMoreGames": "Koʻproq geym",
   "scoreFewerGames": "Kamroq geym",
   "pastGames": "Oʻtgan oʻyinlar",
-  "noPastGames": "Soʻnggi 30 kunda oʻyinlar boʻlmagan"
+  "noPastGames": "Soʻnggi 30 kunda oʻyinlar boʻlmagan",
+  "afterGameRate": "Boshqa oʻyinchilarni baholang. Ovozlar anonim",
+  "voteUp": "Ijobiy baho",
+  "voteDown": "Salbiy baho",
+  "noShowAction": "Kelmadi",
+  "reportAction": "Shikoyat qilish",
+  "reportTitle": "{name} ustidan shikoyat",
+  "reportHint": "Uni Actra administratori koʻrib chiqadi. Oʻyinchiga kim shikoyat qilgani aytilmaydi.",
+  "reportReasonLanguage": "Haqoratli soʻzlar",
+  "reportReasonAggression": "Tajovuzkor xatti-harakat",
+  "reportReasonFalseScore": "Notoʻgʻri hisob",
+  "reportReasonOther": "Boshqa",
+  "reportDetails": "Nima boʻldi (ixtiyoriy)",
+  "reportSend": "Yuborish",
+  "reportSent": "Shikoyat yuborildi",
+  "errAlreadyReported": "Siz bu oʻyinchi ustidan allaqachon shikoyat qilgansiz",
+  "notifNoShowRecorded": "Koʻpchilik oʻyinchilar sizni oʻyinga kelmadi deb belgiladi. Ishonchliligingiz pasaydi",
+  "sportsmanshipSummary": "{percent}% · {count, plural, other{{count} ta ovoz}}"
 }

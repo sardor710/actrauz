@@ -1660,4 +1660,83 @@ void main() {
       expect(await guardTournament(() async => 7), 7);
     });
   });
+
+  group('after the game', () {
+    Map<String, dynamic> finished([Map<String, dynamic> extra = const {}]) => {
+      'id': 'game-7',
+      'sport_id': 'football',
+      'city_id': 'tashkent',
+      'host_id': other,
+      'status': 'open',
+      'starts_local': '2026-11-20T18:00:00',
+      'ends_local': '2026-11-20T19:00:00',
+      'spots': 10,
+      'participant_ids': [other, me, '33333333-3333-3333-3333-333333333333'],
+      ...extra,
+    };
+
+    test('after_game holds my own votes and no-show reports', () {
+      final game = gameFromJson(
+        finished({
+          'after_game': {
+            'votes': {other: true, '33333333-3333-3333-3333-333333333333': false},
+            'no_shows': ['33333333-3333-3333-3333-333333333333'],
+          },
+        }),
+        myUserId: me,
+      );
+      expect(game.afterGame!.myVotes, {other: true, '33333333-3333-3333-3333-333333333333': false});
+      expect(game.afterGame!.myNoShows, {'33333333-3333-3333-3333-333333333333'});
+
+      final empty = gameFromJson(finished({'after_game': {'votes': {}, 'no_shows': []}}), myUserId: me);
+      expect(empty.afterGame!.myVotes, isEmpty);
+      expect(empty.afterGame!.myNoShows, isEmpty);
+      // Not a participant, or not ended: no key at all.
+      expect(gameFromJson(finished(), myUserId: me).afterGame, isNull);
+    });
+
+    test('sportsmanship: the share of thumbs up, hidden under five votes', () {
+      final shown = playerProfileFromJson({
+        'id': other,
+        'name': 'Aziz',
+        'sportsmanship': {'votes': 5, 'percent': 80},
+      }, myUserId: me);
+      expect(shown.sportsmanship.votes, 5);
+      expect(shown.sportsmanship.percent, 80);
+
+      final hidden = playerProfileFromJson({
+        'id': other,
+        'name': 'Aziz',
+        'sportsmanship': {'votes': 4, 'percent': null},
+      }, myUserId: me);
+      expect(hidden.sportsmanship.votes, 4);
+      expect(hidden.sportsmanship.percent, isNull);
+
+      // An older server sends no key.
+      final old = playerProfileFromJson({'id': other, 'name': 'Aziz'}, myUserId: me);
+      expect(old.sportsmanship.votes, 0);
+      expect(old.sportsmanship.percent, isNull);
+    });
+
+    test('report reasons as the server spells them', () {
+      expect({for (final r in ReportReason.values) r: reportReasonJson(r)}, {
+        ReportReason.language: 'language',
+        ReportReason.aggression: 'aggression',
+        ReportReason.falseScore: 'false_score',
+        ReportReason.other: 'other',
+      });
+    });
+
+    test('a second open report is already reported, only for report_player (ruling R1)', () {
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'already_exists'), kReportErrors).error,
+        JoinError.alreadyReported,
+      );
+      expect(joinExceptionFor(const PostgrestException(message: 'already_exists')).error, JoinError.unavailable);
+      expect(
+        joinExceptionFor(const PostgrestException(message: 'already_exists'), kScoreErrors).error,
+        JoinError.scoreClosed,
+      );
+    });
+  });
 }

@@ -329,13 +329,16 @@ void main() {
     }
   });
 
-  testWidgets('a football game has no score block', (tester) async {
+  testWidgets('a football game has the finished section without a score block', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await _openGame(tester, 'gf3');
 
-    expect(find.text('GAME FINISHED'), findsNothing);
-    expect(find.byKey(const ValueKey('finished-section')), findsNothing);
+    // The votes and reports of every sport (design §5.8), but no score.
+    expect(find.text('GAME FINISHED'), findsOneWidget);
+    expect(find.byKey(const ValueKey('finished-section')), findsOneWidget);
     expect(find.byKey(const ValueKey('score-enter')), findsNothing);
+    expect(find.byKey(const ValueKey('score-board')), findsNothing);
+    expect(find.text('The host enters the score. After 24 hours any player can'), findsNothing);
   });
 
   for (final lang in ['ru', 'kk']) {

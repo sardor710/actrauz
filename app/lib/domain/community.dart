@@ -125,6 +125,7 @@ class PlayerProfile {
     this.ratings = const {},
     this.reliability = Reliability.fresh,
     this.gamesPlayed = 0,
+    this.sportsmanship = Sportsmanship.none,
     this.deleted = false,
   });
 
@@ -145,6 +146,9 @@ class PlayerProfile {
 
   /// Completed games the player took part in.
   final int gamesPlayed;
+
+  /// Thumbs up and down from other players (design §6.1).
+  final Sportsmanship sportsmanship;
 
   int levelFor(String sportId) => levels[sportId] ?? 1;
 }
@@ -350,7 +354,8 @@ class AppNotification {
           'score_entered' ||
           'score_disputed' ||
           'score_resolved' ||
-          'rating_updated':
+          'rating_updated' ||
+          'no_show_recorded':
         final gameId = text('game_id');
         return gameId == null ? null : '/games/$gameId';
       case 'tournament_registered' ||

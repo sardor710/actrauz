@@ -82,4 +82,19 @@ class SupabaseSocialRepository implements SocialRepository {
     await _client.rpc('leaderboard', params: {'p_sport_id': sportId, 'p_city_id': cityId}),
     myUserId: _me,
   );
+
+  /// `already_exists` is an open report already there (ruling R1).
+  @override
+  Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details}) =>
+      guardJoin(() async {
+        await _client.rpc(
+          'report_player',
+          params: {
+            'p_target': userIdOut(targetId, _me),
+            'p_game_id': gameId,
+            'p_reason': reportReasonJson(reason),
+            'p_details': details,
+          },
+        );
+      }, codes: kReportErrors);
 }

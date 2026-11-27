@@ -60,6 +60,10 @@ const kScoreErrors = <String, JoinError>{
   'already_exists': JoinError.scoreClosed,
 };
 
+/// What `report_player` means by `already_exists` (ruling R1): an open report
+/// about the same player and game.
+const kReportErrors = <String, JoinError>{'already_exists': JoinError.alreadyReported};
+
 const _tournamentErrors = <String, TournamentError>{
   'full': TournamentError.full,
   'deadline_passed': TournamentError.deadlinePassed,

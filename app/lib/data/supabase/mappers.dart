@@ -556,7 +556,34 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
   result: json['result'] == null
       ? null
       : matchResultFromJson(Map<String, dynamic>.from(json['result'] as Map), myUserId: myUserId),
+  afterGame: json['after_game'] == null
+      ? null
+      : afterGameFromJson(Map<String, dynamic>.from(json['after_game'] as Map), myUserId: myUserId),
 );
+
+/// `after_game` of the game JSON, for a participant of a finished game:
+/// `{votes: {user_id: bool}, no_shows: [user_id]}`, the player's own only.
+AfterGame afterGameFromJson(Row json, {required String? myUserId}) => AfterGame(
+  myVotes: {
+    for (final e in (json['votes'] as Map? ?? const {}).entries) _userId(e.key, myUserId): e.value as bool,
+  },
+  myNoShows: {for (final id in (json['no_shows'] as List? ?? const [])) _userId(id, myUserId)},
+);
+
+/// `sportsmanship` of the player JSON: `{votes, percent}`, `percent` null
+/// under five votes.
+Sportsmanship sportsmanshipFromJson(Object? json) {
+  if (json is! Map) return Sportsmanship.none;
+  return Sportsmanship(votes: (json['votes'] as num?)?.toInt() ?? 0, percent: (json['percent'] as num?)?.round());
+}
+
+/// A [ReportReason] as `report_player` takes it.
+String reportReasonJson(ReportReason reason) => switch (reason) {
+  ReportReason.language => 'language',
+  ReportReason.aggression => 'aggression',
+  ReportReason.falseScore => 'false_score',
+  ReportReason.other => 'other',
+};
 
 /// `result` of the game JSON (`app.result_json`): `{id, status, sets [[a, b], …],
 /// winner, entered_by, side_a, side_b, confirmed_by, dispute_reason,
@@ -648,6 +675,7 @@ PlayerProfile playerProfileFromJson(Row json, {required String? myUserId}) => Pl
   ratings: _ratingsOf(json['ratings']),
   reliability: _reliabilityOf(json['reliability']),
   gamesPlayed: json['games_played'] as int? ?? 0,
+  sportsmanship: sportsmanshipFromJson(json['sportsmanship']),
   deleted: json['deleted'] == true,
 );
 

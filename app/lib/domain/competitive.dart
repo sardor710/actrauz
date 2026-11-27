@@ -5,6 +5,8 @@
 
 import 'dart:math' as math;
 
+import 'games.dart';
+
 /// Every tuning number of the rating system, the same values as the
 /// database's `app.rating_const` (supabase/migrations/20261127100000_ratings.sql).
 class RatingRules {
@@ -284,3 +286,52 @@ class Leaderboard {
   final List<LeaderboardRow> rows;
   final LeaderboardRow? me;
 }
+
+// ---- After a game (design §6.1-§6.3) ----
+
+/// Thumbs can be given, and changed, until this long after a game ends.
+const kVoteOpenFor = Duration(days: 7);
+
+/// "Didn't show up" can be marked, and undone, until this long after the end.
+const kNoShowOpenFor = Duration(hours: 48);
+
+/// Whether thumbs up or down can be given in [game] at [now], the venue's
+/// wall-clock time. Only decides what the app shows: the server enforces it.
+bool canVote(Game game, DateTime now) => _openAfterEnd(game, now, kVoteOpenFor);
+
+/// Whether another player can be marked as not having shown up in [game] at
+/// [now], the venue's wall-clock time.
+bool canReportNoShow(Game game, DateTime now) => _openAfterEnd(game, now, kNoShowOpenFor);
+
+bool _openAfterEnd(Game game, DateTime now, Duration openFor) =>
+    !game.cancelled && game.endedAt(now) && now.isBefore(game.end.add(openFor));
+
+/// What the signed-in player has said about the others of a finished game.
+class AfterGame {
+  const AfterGame({this.myVotes = const {}, this.myNoShows = const {}});
+
+  /// Player id → true for a thumbs up, false for a thumbs down.
+  final Map<String, bool> myVotes;
+
+  /// The players marked as not having shown up.
+  final Set<String> myNoShows;
+}
+
+/// The thumbs a player has received over all games.
+class Sportsmanship {
+  const Sportsmanship({this.votes = 0, this.percent});
+
+  /// Nothing yet.
+  static const none = Sportsmanship();
+
+  /// Players see the share only from this many votes (design §6.1).
+  static const minVotes = 5;
+
+  final int votes;
+
+  /// Share of thumbs up, 0-100; null under [minVotes].
+  final int? percent;
+}
+
+/// Why a player is reported (design §6.3).
+enum ReportReason { language, aggression, falseScore, other }

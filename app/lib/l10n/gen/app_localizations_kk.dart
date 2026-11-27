@@ -2477,4 +2477,67 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get noPastGames => 'Соңғы 30 күнде ойындар болған жоқ';
+
+  @override
+  String get afterGameRate => 'Басқа ойыншыларды бағалаңыз. Дауыстар жасырын';
+
+  @override
+  String get voteUp => 'Оң баға';
+
+  @override
+  String get voteDown => 'Теріс баға';
+
+  @override
+  String get noShowAction => 'Келмеді';
+
+  @override
+  String get reportAction => 'Шағымдану';
+
+  @override
+  String reportTitle(String name) {
+    return '$name туралы шағым';
+  }
+
+  @override
+  String get reportHint =>
+      'Оны Actra әкімшісі қарайды. Ойыншыға кім шағымданғаны айтылмайды.';
+
+  @override
+  String get reportReasonLanguage => 'Балағат сөздер';
+
+  @override
+  String get reportReasonAggression => 'Агрессивті мінез-құлық';
+
+  @override
+  String get reportReasonFalseScore => 'Қате есеп';
+
+  @override
+  String get reportReasonOther => 'Басқа';
+
+  @override
+  String get reportDetails => 'Не болды (міндетті емес)';
+
+  @override
+  String get reportSend => 'Жіберу';
+
+  @override
+  String get reportSent => 'Шағым жіберілді';
+
+  @override
+  String get errAlreadyReported => 'Сіз бұл ойыншыға шағымданып қойғансыз';
+
+  @override
+  String get notifNoShowRecorded =>
+      'Ойыншылардың көпшілігі сізді ойынға келмеді деп белгіледі. Сенімділігіңіз төмендеді';
+
+  @override
+  String sportsmanshipSummary(int percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дауыс',
+      one: '$count дауыс',
+    );
+    return '$percent% · $_temp0';
+  }
 }
