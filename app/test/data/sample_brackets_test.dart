@@ -544,6 +544,237 @@ void main() {
       expect({playerOf(d, finalMatch.sideA), playerOf(d, finalMatch.sideB)}, {'p7', 'p1'});
       expect(d.groups.every((g) => g.standings.first.points == 4 && g.standings.first.advancing), isTrue);
     });
+
+    test('a walkover before the start gives the slot back; from the start on the slot stays', () async {
+      final (_, a, _) = await makeTournament();
+      final d = await published(a);
+      final qf1 = ko(d, 1, 1).id, qf2 = ko(d, 1, 2).id;
+      await org.scheduleMatch(qf1, courtId: 'v1c1', startsAt: DateTime.utc(2026, 11, 25, 10));
+      await org.scheduleMatch(qf2, courtId: 'v1c2', startsAt: DateTime.utc(2026, 11, 25, 10));
+      var after = await org.enterScore(qf1, MatchOutcome.walkover, winner: Side.a);
+      expect((ko(after, 1, 1).courtId, ko(after, 1, 1).startsAt), (null, null));
+      final slots = await backend.availability('v1', 'v1c1', day);
+      expect(slots.firstWhere((s) => s.time.start == DateTime.utc(2026, 11, 25, 10)).state, SlotState.free);
+
+      utcNow = DateTime.utc(2026, 11, 25, 5, 30); // 10:30 on the day
+      after = await org.enterScore(qf2, MatchOutcome.walkover, winner: Side.a);
+      expect((ko(after, 1, 2).courtId, ko(after, 1, 2).startsAt), ('v1c2', DateTime.utc(2026, 11, 25, 10)));
+    });
+
+    test('a withdrawal in a locked draft (after a redo) only marks it out of date', () async {
+      final (t, a, _) = await makeTournament();
+      final regs = await enter(a, eight);
+      await org.makeDraw(a, DrawFormat.knockout);
+      await org.publish(a);
+      await org.redo(a);
+      final d = await org.withdraw(regs['p6']!);
+      expect((d.published, d.outdated, d.entries.length), (false, true, 8));
+      final row = (await backend.admin.registrations(t)).firstWhere((r) => r.registration.id == regs['p6']);
+      expect((row.registration.status, row.adminOverride), (RegistrationStatus.removed, true));
+      await expectLater(org.publish(a), refuses(TournamentError.drawOutdated));
+      expect((await org.makeDraw(a, DrawFormat.knockout)).entries, hasLength(7));
+    });
+
+    test('padel: no decider, and a retirement moves no rating', () async {
+      final (_, a, _) = await makeTournament();
+      final d = await published(a, players: ['p1', kMeId]);
+      final f = ko(d, 1, 1).id;
+      await expectLater(
+        org.enterScore(
+          f,
+          MatchOutcome.decider,
+          winner: Side.a,
+          sets: [
+            [3, 3],
+          ],
+        ),
+        refuses(TournamentError.invalidArgument),
+      );
+      await org.enterScore(
+        f,
+        MatchOutcome.retired,
+        winner: Side.a,
+        sets: [
+          [2, 1],
+        ],
+      );
+      expect((await backend.inbox()).where((n) => n.kind == 'rating_updated'), isEmpty);
+      expect((await backend.mySports()).firstWhere((s) => s.sportId == 'padel').rating!.rating, 3.5);
+    });
+
+    test('a sport without sets: one score each, deciders in the knockout, draws in groups, no ratings', () async {
+      final (_, a, b) = await makeTournament(venueId: 'v2', sportId: 'football');
+      // Football levels: p3 4, p1 3, p6 2, the demo player none (0).
+      await enter(a, ['p3', 'p1', 'p6', kMeId]);
+      await org.makeDraw(a, DrawFormat.knockout);
+      var d = await org.publish(a);
+      expect(sides(d, ko(d, 1, 1)), ['p3', kMeId]);
+      expect(sides(d, ko(d, 1, 2)), ['p1', 'p6']);
+      final sf1 = ko(d, 1, 1).id, sf2 = ko(d, 1, 2).id;
+      await expectLater(
+        org.enterScore(
+          sf1,
+          MatchOutcome.played,
+          sets: [
+            [2, 2],
+          ],
+        ),
+        refuses(TournamentError.drawNotAllowed),
+      );
+      await expectLater(
+        org.enterScore(
+          sf1,
+          MatchOutcome.played,
+          sets: [
+            [100, 1],
+          ],
+        ),
+        refuses(TournamentError.invalidArgument),
+      );
+      await expectLater(
+        org.enterScore(
+          sf1,
+          MatchOutcome.played,
+          sets: [
+            [2, 1],
+            [1, 0],
+          ],
+        ),
+        refuses(TournamentError.invalidArgument),
+      );
+      await expectLater(
+        org.enterScore(
+          sf2,
+          MatchOutcome.decider,
+          winner: Side.a,
+          sets: [
+            [3, 1],
+          ],
+        ),
+        refuses(TournamentError.invalidArgument),
+      );
+      d = await org.enterScore(
+        sf1,
+        MatchOutcome.decider,
+        winner: Side.b,
+        sets: [
+          [2, 2],
+        ],
+      );
+      expect((ko(d, 1, 1).outcome, playerOf(d, ko(d, 2, 1).sideA)), (MatchOutcome.decider, kMeId));
+      expect((await backend.inbox()).where((n) => n.kind == 'match_result'), hasLength(1));
+      expect((await backend.inbox()).where((n) => n.kind == 'rating_updated'), isEmpty);
+
+      await enter(b, ['p3', 'p1', 'p6']);
+      await org.makeDraw(b, DrawFormat.groups, groupSize: 3, advance: 1);
+      final g = await org.publish(b);
+      final drawn = await org.enterScore(
+        g.matches.first.id,
+        MatchOutcome.played,
+        sets: [
+          [1, 1],
+        ],
+      );
+      expect(drawn.matches.first.winner, Side.draw);
+      expect(drawn.groups.single.standings.where((s) => s.drawn == 1), hasLength(2));
+    });
+  });
+
+  group('without a venue', () {
+    test('a time and a place note, no court or block; one instant per match for clashes', () async {
+      final (t, a, b) = await makeTournament(venueId: null);
+      final da = await published(a, players: ['p1', 'p2']);
+      final db = await published(b, players: ['p1', 'p3']);
+      final at = DateTime.utc(2026, 11, 25, 10, 15);
+      await expectLater(
+        org.scheduleMatch(ko(da, 1, 1).id, courtId: 'v1c1', startsAt: at),
+        refuses(TournamentError.invalidArgument),
+      );
+      await expectLater(
+        org.scheduleMatch(ko(da, 1, 1).id, startsAt: at, placeNote: 'x' * 101),
+        refuses(TournamentError.invalidArgument),
+      );
+      final m = await org.scheduleMatch(ko(da, 1, 1).id, startsAt: at, placeNote: ' Central park ');
+      expect((m.courtId, m.startsAt, m.endsAt, m.placeNote), (null, at, null, 'Central park'));
+      await expectLater(org.scheduleMatch(ko(db, 1, 1).id, startsAt: at), refuses(TournamentError.playerBusy));
+      // A minute later is another instant.
+      await org.scheduleMatch(ko(db, 1, 1).id, startsAt: at.add(const Duration(minutes: 1)));
+      await expectLater(
+        org.fillDay(t, day, ['v1c1'], const TimeOfDay(hour: 9, minute: 0)),
+        refuses(TournamentError.invalidArgument),
+      );
+    });
+  });
+
+  group('organisers', () {
+    test('a named organiser runs the tournament; anyone else is not allowed', () async {
+      final (t, a, _) = await makeTournament();
+      await enter(a, eight.take(4).toList());
+      final p1 = backend.organizerAs('p1');
+      await expectLater(p1.makeDraw(a, DrawFormat.knockout), refuses(TournamentError.notAllowed));
+      await expectLater(p1.entries(t), refuses(TournamentError.notAllowed));
+      expect((await backend.bracketAs('p1', t)).organizer, isFalse);
+
+      await backend.admin.setOrganizer(t, 'p1', add: true);
+      expect((await p1.organizedTournaments()).map((x) => x.id), [t]);
+      await p1.makeDraw(a, DrawFormat.knockout);
+      final seen = await backend.bracketAs('p1', t);
+      expect((seen.organizer, seen.draws.single.published), (true, false));
+      expect(seen.courts.map((c) => c.id), ['v1c1', 'v1c2']);
+      expect((await backend.bracketAs('p2', t)).draws, isEmpty, reason: 'a draft is for organisers');
+
+      await backend.admin.setOrganizer(t, 'p1', add: false);
+      await expectLater(p1.publish(a), refuses(TournamentError.notAllowed));
+    });
+  });
+
+  group('fill the day with groups', () {
+    // One group of four, two advancing: three rounds of two, then the final.
+    // v1's slots: 07:00, 08:30, 10:00, 11:30, 13:00, 14:30, 16:00, 17:30, …
+    Future<(String, CategoryDraw)> groupOfFour() async {
+      final (t, a, _) = await makeTournament();
+      await enter(a, ['p7', 'p1', 'p5', 'p8']);
+      await org.makeDraw(a, DrawFormat.groups, groupSize: 4, advance: 2);
+      return (t, await org.publish(a));
+    }
+
+    List<(int, int, String?, DateTime?)> times(CategoryDraw d) => [
+      for (final m in d.matches) (m.round, m.position, m.courtId, m.startsAt),
+    ];
+
+    test('a free slot between an entry\'s group matches; the final after the last of them', () async {
+      final (t, d) = await groupOfFour();
+      final result = await org.fillDay(t, day, ['v1c1', 'v1c2'], const TimeOfDay(hour: 9, minute: 0));
+      expect(result.scheduled, 7);
+      expect(result.unscheduled, isEmpty);
+      final after = (await backend.tournament.bracket(t)).draw(d.categoryId)!;
+      DateTime at(int h, int m) => DateTime.utc(2026, 11, 25, h, m);
+      expect(times(after), [
+        (1, 1, 'v1c1', at(10, 0)),
+        (1, 2, 'v1c2', at(10, 0)),
+        (2, 1, 'v1c1', at(13, 0)),
+        (2, 2, 'v1c2', at(13, 0)),
+        (3, 1, 'v1c1', at(16, 0)),
+        (3, 2, 'v1c2', at(16, 0)),
+        (1, 1, 'v1c1', at(17, 30)),
+      ]);
+    });
+
+    test('without room for the gap, the last round goes back to back; the final is reported', () async {
+      // Slots 10:00, 11:30 and 13:00. With the gap rounds 1 and 2 take 10:00 and
+      // 13:00; round 3 then fits only without it, at 11:30.
+      await backend.owner.setVenueHours(
+        'v1',
+        weekHours(weekdays: const DayHours.hm(10, 0, 14, 30), weekend: const DayHours.hm(10, 0, 14, 30)),
+      );
+      final (t, d) = await groupOfFour();
+      final result = await org.fillDay(t, day, ['v1c1', 'v1c2'], const TimeOfDay(hour: 9, minute: 0));
+      final finalId = d.matches.firstWhere((m) => m.stage == MatchStage.knockout).id;
+      expect(result.scheduled, 6);
+      expect(result.unscheduled, [finalId]);
+      final after = (await backend.tournament.bracket(t)).draw(d.categoryId)!;
+      expect(times(after).where((r) => r.$1 == 3).map((r) => r.$4), everyElement(DateTime.utc(2026, 11, 25, 11, 30)));
+    });
   });
 
   group('the sample data', () {

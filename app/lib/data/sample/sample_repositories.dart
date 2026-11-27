@@ -1739,7 +1739,7 @@ class SampleBackend
 
   /// The demo player's organiser operations (M8a): the demo player is an
   /// admin, so they organise every tournament.
-  late final OrganizerRepository organizer = _SampleOrganizerRepository(_brackets);
+  late final OrganizerRepository organizer = _SampleOrganizerRepository(_brackets, kMeId);
 
   /// Draws, schedules, scores and organisers (M8a), with the sample bracket
   /// of tournament t1.
@@ -1781,32 +1781,39 @@ class SampleBackend
   /// The tournament page's brackets as another player sees them.
   Future<TournamentBracket> bracketAs(String userId, String tournamentId) async =>
       _brackets.bracket(userId, tournamentId);
+
+  /// The organiser calls as another player, so tests can see a named
+  /// organiser, and `notAllowed` for everyone else.
+  OrganizerRepository organizerAs(String userId) => _SampleOrganizerRepository(_brackets, userId);
 }
 
 class _SampleOrganizerRepository implements OrganizerRepository {
-  _SampleOrganizerRepository(this._b);
+  _SampleOrganizerRepository(this._b, this._user);
 
   final SampleBrackets _b;
 
-  @override
-  Future<List<TournamentSummary>> organizedTournaments() async => _b.organizedTournaments(kMeId);
+  /// Who acts: the demo player, or another player in tests.
+  final String _user;
 
   @override
-  Future<List<AdminRegistration>> entries(String tournamentId) async => _b.entries(kMeId, tournamentId);
+  Future<List<TournamentSummary>> organizedTournaments() async => _b.organizedTournaments(_user);
+
+  @override
+  Future<List<AdminRegistration>> entries(String tournamentId) async => _b.entries(_user, tournamentId);
 
   @override
   Future<CategoryDraw> makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance}) async =>
-      _b.makeDraw(kMeId, categoryId, format, groupSize: groupSize, advance: advance);
+      _b.makeDraw(_user, categoryId, format, groupSize: groupSize, advance: advance);
 
   @override
   Future<CategoryDraw> swapEntries(String categoryId, String registrationA, String registrationB) async =>
-      _b.swapEntries(kMeId, categoryId, registrationA, registrationB);
+      _b.swapEntries(_user, categoryId, registrationA, registrationB);
 
   @override
-  Future<CategoryDraw> publish(String categoryId) async => _b.publish(kMeId, categoryId);
+  Future<CategoryDraw> publish(String categoryId) async => _b.publish(_user, categoryId);
 
   @override
-  Future<CategoryDraw> redo(String categoryId) async => _b.redo(kMeId, categoryId);
+  Future<CategoryDraw> redo(String categoryId) async => _b.redo(_user, categoryId);
 
   @override
   Future<TournamentMatch> scheduleMatch(
@@ -1814,7 +1821,7 @@ class _SampleOrganizerRepository implements OrganizerRepository {
     String? courtId,
     DateTime? startsAt,
     String? placeNote,
-  }) async => _b.scheduleMatch(kMeId, matchId, courtId: courtId, startsAt: startsAt, placeNote: placeNote);
+  }) async => _b.scheduleMatch(_user, matchId, courtId: courtId, startsAt: startsAt, placeNote: placeNote);
 
   @override
   Future<FillResult> fillDay(
@@ -1823,7 +1830,7 @@ class _SampleOrganizerRepository implements OrganizerRepository {
     List<String> courtIds,
     TimeOfDay from, {
     List<String>? categoryIds,
-  }) async => _b.fillDay(kMeId, tournamentId, day, courtIds, from, categoryIds: categoryIds);
+  }) async => _b.fillDay(_user, tournamentId, day, courtIds, from, categoryIds: categoryIds);
 
   @override
   Future<CategoryDraw> enterScore(
@@ -1831,10 +1838,10 @@ class _SampleOrganizerRepository implements OrganizerRepository {
     MatchOutcome outcome, {
     Side? winner,
     List<List<int>>? sets,
-  }) async => _b.enterScore(kMeId, matchId, outcome, winner: winner, sets: sets);
+  }) async => _b.enterScore(_user, matchId, outcome, winner: winner, sets: sets);
 
   @override
-  Future<CategoryDraw> withdraw(String registrationId) async => _b.withdraw(kMeId, registrationId);
+  Future<CategoryDraw> withdraw(String registrationId) async => _b.withdraw(_user, registrationId);
 }
 
 class _SampleOwnerRepository implements OwnerRepository {
