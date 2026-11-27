@@ -1964,11 +1964,37 @@ void main() {
     test('a tournament_bracket without the Task 2–3 keys still maps', () {
       final bracket = tournamentBracketFromJson({
         'organizer': false,
-        'draws': [groupDraw()..remove('winner')..remove('runner_up')..remove('finished')],
+        'draws': [
+          groupDraw()
+            ..remove('winner')
+            ..remove('runner_up')
+            ..remove('finished'),
+          // As Task 1 wrote it: groups without standings, matches without
+          // court names, end times or clashes.
+          {
+            'category_id': 'cat-3',
+            'format': 'groups',
+            'group_size': 3,
+            'advance': 1,
+            'status': 'published',
+            'outdated': false,
+            'entries': [],
+            'groups': [
+              {'id': 'grp-z', 'label': 'A'},
+            ],
+            'matches': [match('z-1', groupId: 'grp-z')],
+          },
+        ],
       }, myUserId: me);
       expect(bracket.organizer, isFalse);
-      expect(bracket.draws.single.categoryId, 'cat-1');
-      expect(bracket.draws.single.finished, isFalse);
+      expect(bracket.draws.map((d) => d.categoryId), ['cat-1', 'cat-3']);
+      expect(bracket.draws.first.finished, isFalse);
+      final old = bracket.draws.last;
+      expect(old.groups.single.label, 'A');
+      expect(old.groups.single.standings, isEmpty);
+      expect(old.matches.single.courtName, isNull);
+      expect(old.matches.single.clash, isFalse);
+      expect(old.winner, isNull);
       expect(bracket.courts, isEmpty);
       expect(bracket.myNextMatch, isNull);
       expect(bracket.finished, isFalse);
