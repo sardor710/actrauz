@@ -108,6 +108,7 @@ String joinErrorText(AppLocalizations l, Object error) {
     JoinError.tooFarAhead => l.errTooFarAhead(BookingEngine.maxDaysAhead),
     JoinError.forbidden => l.errForbidden,
     JoinError.notCancellable => l.errNotCancellable,
+    JoinError.scoreClosed => l.errScoreClosed,
     JoinError.unavailable => l.errUnavailable,
   };
 }

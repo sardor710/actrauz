@@ -2724,6 +2724,12 @@ abstract class AppLocalizations {
   /// **'The game has already started, so it cannot be cancelled'**
   String get errNotCancellable;
 
+  /// No description provided for @errScoreClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'A score can no longer be entered for this game'**
+  String get errScoreClosed;
+
   /// No description provided for @errUnavailable.
   ///
   /// In en, this message translates to:

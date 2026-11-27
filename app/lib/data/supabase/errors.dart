@@ -48,6 +48,7 @@ const _joinErrors = <String, JoinError>{
   'too_far_ahead': JoinError.tooFarAhead,
   'forbidden': JoinError.forbidden,
   'not_cancellable': JoinError.notCancellable,
+  'score_closed': JoinError.scoreClosed,
 };
 
 const _tournamentErrors = <String, TournamentError>{

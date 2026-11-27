@@ -293,33 +293,31 @@ void main() {
       expect(game.participantIds, [kMeId]);
     });
 
-    test('a player with levels', () {
-      final player = playerFromRow({
+    test('a player with levels and ratings (player_profile)', () {
+      final player = playerFromJson({
         'id': other,
-        'full_name': 'Aziz',
-        'player_levels': [
-          {'sport_id': 'padel', 'level': 3},
-          {'sport_id': 'football', 'level': 4},
-        ],
+        'name': 'Aziz',
+        'levels': {'padel': 3, 'football': 4},
+        'ratings': {
+          'padel': {'rating': 3.47, 'provisional': false, 'rated_games': 12},
+        },
       }, myUserId: me);
       expect(player.name, 'Aziz');
       expect(player.levelFor('padel'), 3);
       expect(player.levelFor('tennis'), 1);
-      expect(playerFromRow({'id': me, 'full_name': null, 'player_levels': null}, myUserId: me).id, kMeId);
+      expect(player.ratingFor('padel'), 3.47);
+      expect(player.ratings['padel']!.ratedGames, 12);
+      expect(player.ratingFor('tennis'), 1.0);
+      expect(playerFromJson({'id': me, 'name': null, 'levels': null}, myUserId: me).id, kMeId);
       expect(player.deleted, isFalse);
     });
 
-    test('deleted player shows a placeholder name: a profile row with deleted_at is deleted', () {
-      final gone = playerFromRow({
-        'id': other,
-        'full_name': null,
-        'deleted_at': '2026-11-21T10:00:00+00:00',
-        'player_levels': [],
-      }, myUserId: me);
+    test('deleted player shows a placeholder name: the deleted flag is read', () {
+      final gone = playerFromJson({'id': other, 'name': null, 'levels': {}, 'deleted': true}, myUserId: me);
       expect(gone.deleted, isTrue);
       expect(gone.name, '');
       // A null name alone is a sign-up never finished, not a deletion.
-      expect(playerFromRow({'id': other, 'full_name': null, 'deleted_at': null}, myUserId: me).deleted, isFalse);
+      expect(playerFromJson({'id': other, 'name': null}, myUserId: me).deleted, isFalse);
     });
   });
 
@@ -600,6 +598,112 @@ void main() {
       expect(mine.maxLevel, 5);
     });
 
+    test('a rated game reads its rating range and each player\'s rating; an old backend without them still maps', () {
+      final base = {
+        'id': 'g',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'venue_id': 'venue-1',
+        'host_id': me,
+        'starts_local': '2026-11-23T19:00:00',
+        'ends_local': '2026-11-23T20:30:00',
+        'spots': 4,
+        'min_level': 3,
+        'max_level': 4,
+        'participant_ids': [me, other],
+      };
+      final game = gameFromJson({
+        ...base,
+        'min_rating': 3,
+        'max_rating': 4.5,
+        'participants': [
+          {...member(me, 'Sardor'), 'rating': 3.47, 'provisional': false},
+          {...member(other, 'Aziz'), 'rating': null, 'provisional': null},
+        ],
+        'join_requests': [
+          {
+            'id': 'req-1',
+            'user_id': '33333333-3333-3333-3333-333333333333',
+            'name': 'Madina',
+            'level': 4,
+            'rating': 4.2,
+            'provisional': true,
+            'reliability': reliabilityJson,
+            'created_at': '2026-11-22T05:30:00+00:00',
+          },
+        ],
+      }, myUserId: me);
+      expect(game.minRating, 3.0);
+      expect(game.maxRating, 4.5);
+      expect(game.participants.first.rating, 3.47);
+      expect(game.participants.first.provisional, isFalse);
+      expect(game.participants.last.rating, isNull);
+      expect(game.participants.last.provisional, isFalse);
+      expect(game.joinRequests.single.member.rating, 4.2);
+      expect(game.joinRequests.single.member.provisional, isTrue);
+
+      final old = gameFromJson({
+        ...base,
+        'participants': [member(me, 'Sardor')],
+      }, myUserId: me);
+      expect(old.minRating, isNull);
+      expect(old.maxRating, isNull);
+      expect(old.minLevel, 3);
+      expect(old.participants.single.rating, isNull);
+      expect(old.participants.single.provisional, isFalse);
+    });
+
+    test('a rated game request reads its rating range and the interested players\' ratings', () {
+      final base = {
+        'id': 'r1',
+        'sport_id': 'padel',
+        'city_id': 'tashkent',
+        'host_id': other,
+        'host_name': 'Aziz',
+        'starts_local': '2026-11-24T18:00:00',
+        'ends_local': '2026-11-24T21:00:00',
+        'players_needed': 3,
+        'min_level': 2,
+        'max_level': 4,
+        'created_at': '2026-11-22T05:00:00+00:00',
+      };
+      final request = gameRequestFromJson({
+        ...base,
+        'min_rating': 2.5,
+        'max_rating': 4.99,
+        'interested': [
+          {...member(me, 'Sardor'), 'rating': 2.7, 'provisional': true},
+        ],
+      }, myUserId: me);
+      expect(request.minRating, 2.5);
+      expect(request.maxRating, 4.99);
+      expect(request.interested.single.rating, 2.7);
+      expect(request.interested.single.provisional, isTrue);
+      final old = gameRequestFromJson(base, myUserId: me);
+      expect(old.minRating, isNull);
+      expect(old.maxRating, isNull);
+    });
+
+    test('my sports: a rated sport with its rating, a simple one with a level only', () {
+      final sports = mySportsFromJson([
+        {'sport_id': 'football', 'level': 4, 'rating': null, 'provisional': null, 'rated_games': null, 'can_retake': false},
+        {'sport_id': 'padel', 'level': 2, 'rating': 2.7, 'provisional': true, 'rated_games': 0, 'can_retake': true},
+        {'sport_id': 'tennis', 'level': 3, 'rating': 3.5, 'provisional': false, 'rated_games': 11, 'can_retake': false},
+      ]);
+      expect(sports.map((s) => s.sportId), ['football', 'padel', 'tennis']);
+      expect(sports[0].level, 4);
+      expect(sports[0].rating, isNull);
+      expect(sports[0].canRetake, isFalse);
+      expect(sports[1].rating!.rating, 2.7);
+      expect(sports[1].rating!.ratedGames, 0);
+      expect(sports[1].rating!.provisional, isTrue);
+      expect(sports[1].canRetake, isTrue);
+      expect(sports[2].rating!.rating, 3.5);
+      expect(sports[2].rating!.ratedGames, 11);
+      expect(sports[2].rating!.provisional, isFalse);
+      expect(mySportsFromJson(null), isEmpty);
+    });
+
     test('a player profile has levels, reliability and games played, and I am kMeId', () {
       final profile = playerProfileFromJson({
         'id': me,
@@ -618,6 +722,19 @@ void main() {
       expect(profile.reliability.badge, ReliabilityBadge.blocked);
       expect(profile.gamesPlayed, 7);
       expect(profile.deleted, isFalse);
+      expect(profile.ratings, isEmpty, reason: 'an old backend sends no ratings');
+
+      final rated = playerProfileFromJson({
+        'id': other,
+        'name': 'Aziz',
+        'levels': {'padel': 3},
+        'ratings': {
+          'padel': {'rating': 3.5, 'provisional': true, 'rated_games': 4},
+        },
+      }, myUserId: me);
+      expect(rated.ratings['padel']!.rating, 3.5);
+      expect(rated.ratings['padel']!.ratedGames, 4);
+      expect(rated.ratings['padel']!.provisional, isTrue);
     });
 
     // `deleted` (and `customer_deleted` / `host_deleted`) is the signal; a
@@ -810,6 +927,20 @@ void main() {
         'visibility': 'public',
         'booking_id': 'b-1',
       });
+      // A rated sport sends its rating range too.
+      expect(
+        gameDraftJson(const GameDraft(sportId: 'padel', spots: 4, bookingId: 'b-1', minRating: 3, maxRating: 4.5)),
+        {
+          'sport_id': 'padel',
+          'spots': 4,
+          'min_level': 1,
+          'max_level': 5,
+          'min_rating': 3.0,
+          'max_rating': 4.5,
+          'visibility': 'public',
+          'booking_id': 'b-1',
+        },
+      );
     });
 
     test('a place pick omits what it does not set, so the backend defaults apply', () {
@@ -849,6 +980,18 @@ void main() {
           'area': 'Yunusobod',
         },
       );
+      final rated = gameRequestDraftJson(
+        GameRequestDraft(
+          sportId: 'padel',
+          playersNeeded: 1,
+          start: DateTime.utc(2026, 11, 24, 18),
+          end: DateTime.utc(2026, 11, 24, 21),
+          minRating: 2.5,
+          maxRating: 4,
+        ),
+      );
+      expect(rated['min_rating'], 2.5);
+      expect(rated['max_rating'], 4.0);
     });
 
     test('the new rule codes map to their errors', () {
@@ -863,6 +1006,7 @@ void main() {
         'too_far_ahead': JoinError.tooFarAhead,
         'forbidden': JoinError.forbidden,
         'not_cancellable': JoinError.notCancellable,
+        'score_closed': JoinError.scoreClosed,
       };
       for (final entry in join.entries) {
         expect(

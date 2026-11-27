@@ -49,17 +49,14 @@ class SupabaseGameRepository implements GameRepository {
   @override
   Future<Game> leave(String id) => _callGame('leave_game', {'p_game_id': id});
 
+  /// Through `player_profile`: ratings are not readable from the tables.
   @override
   Future<Player> player(String id) async {
     final userId = userIdOut(id, _me);
     if (id == kMeId && _me == null) return Player(id: id, name: '');
-    final row = await _client
-        .from('profiles')
-        .select('id, full_name, deleted_at, player_levels!player_levels_user_id_fkey(sport_id, level)')
-        .eq('id', userId)
-        .maybeSingle();
-    if (row == null) return Player(id: id, name: '');
-    return playerFromRow(row, myUserId: _me);
+    final json = await _client.rpc('player_profile', params: {'p_user_id': userId});
+    if (json == null) return Player(id: id, name: '');
+    return playerFromJson(Map<String, dynamic>.from(json as Map), myUserId: _me);
   }
 
   @override

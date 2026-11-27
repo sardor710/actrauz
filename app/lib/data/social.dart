@@ -1,4 +1,5 @@
 import '../domain/community.dart';
+import '../domain/competitive.dart';
 import '../domain/games.dart';
 import 'sample/sample_data.dart';
 
@@ -21,23 +22,39 @@ class Team {
   final int upcomingGames;
 }
 
-/// Teams, finding players and public profiles (product spec §9.3, §9.4).
-/// Teams are still sample data; players come from the backend. Never returns
-/// a phone number. The signed-in player is not in [players], and has id
-/// `kMeId` in [profile].
+/// Teams, finding players, public profiles and the signed-in player's own
+/// sports (product spec §9.3, §9.4; M7 design §5.1). Teams are still sample
+/// data; players come from the backend. Never returns a phone number. The
+/// signed-in player is not in [players], and has id `kMeId` in [profile].
 abstract class SocialRepository {
   Future<List<Team>> teams(String cityId);
 
   /// In the city, by name and by level in [sportId] (no level counts as 1),
-  /// leaving out players who hid themselves. Name order.
+  /// leaving out players who hid themselves. Name order. In a rated sport a
+  /// rating bound ([minRating], [maxRating]; no rating counts as 1.0) is used
+  /// instead of the level range.
   Future<List<PlayerProfile>> players(
     String cityId, {
     String? sportId,
     int minLevel = 1,
     int maxLevel = 5,
+    double? minRating,
+    double? maxRating,
     String? query,
   });
   Future<PlayerProfile> profile(String userId);
+
+  /// The sports the signed-in player has ticked, in catalogue order.
+  Future<List<MySport>> mySports();
+
+  /// Ticks a sport or changes it: a level 1–5 for a simple sport, the five
+  /// questionnaire [answers] (0–3 each) for a rated one. Answers sent after
+  /// the first rated game are ignored: the rating stays. Returns
+  /// [mySports]; a wrong combination is [JoinError.invalidArgument].
+  Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers});
+
+  /// Unticks a sport. A rating is kept and comes back with the sport.
+  Future<List<MySport>> removeSport(String sportId);
 }
 
 /// Fictional sample teams.
@@ -59,23 +76,39 @@ List<PlayerProfile> searchPlayers(
   String? sportId,
   int minLevel = 1,
   int maxLevel = 5,
+  double? minRating,
+  double? maxRating,
   String? query,
   Reliability Function(String id)? reliabilityOf,
 }) {
   final needle = query?.trim().toLowerCase() ?? '';
+  final byRating = minRating != null || maxRating != null;
+  bool fits(Player p) {
+    if (sportId == null) return true;
+    if (byRating) {
+      final rating = p.ratingFor(sportId);
+      return rating >= (minRating ?? RatingRules.min) && rating <= (maxRating ?? RatingRules.max);
+    }
+    return p.levelFor(sportId) >= minLevel && p.levelFor(sportId) <= maxLevel;
+  }
+
   return [
     for (final p in pool)
-      if ((needle.isEmpty || p.name.toLowerCase().contains(needle)) &&
-          (sportId == null || (p.levelFor(sportId) >= minLevel && p.levelFor(sportId) <= maxLevel)))
+      if ((needle.isEmpty || p.name.toLowerCase().contains(needle)) && fits(p))
         profileOf(p, reliability: reliabilityOf?.call(p.id) ?? Reliability.fresh),
   ]..sort((a, b) => a.name.compareTo(b.name));
 }
 
+/// As the backend shows a player: a rating only for a sport they have ticked.
 PlayerProfile profileOf(Player p, {Reliability reliability = Reliability.fresh, int gamesPlayed = 0}) =>
     PlayerProfile(
       id: p.id,
       name: p.name,
       levels: p.levels,
+      ratings: {
+        for (final e in p.ratings.entries)
+          if (p.levels.containsKey(e.key)) e.key: e.value,
+      },
       reliability: reliability,
       gamesPlayed: gamesPlayed,
       deleted: p.deleted,
@@ -94,8 +127,18 @@ class SampleSocialRepository implements SocialRepository {
     String? sportId,
     int minLevel = 1,
     int maxLevel = 5,
+    double? minRating,
+    double? maxRating,
     String? query,
-  }) async => searchPlayers(kSamplePlayers, sportId: sportId, minLevel: minLevel, maxLevel: maxLevel, query: query);
+  }) async => searchPlayers(
+    kSamplePlayers,
+    sportId: sportId,
+    minLevel: minLevel,
+    maxLevel: maxLevel,
+    minRating: minRating,
+    maxRating: maxRating,
+    query: query,
+  );
 
   @override
   Future<PlayerProfile> profile(String userId) async => profileOf(
@@ -104,4 +147,16 @@ class SampleSocialRepository implements SocialRepository {
       orElse: () => Player(id: userId, name: userId),
     ),
   );
+
+  /// The stand-alone repository has no signed-in player: no sports, and
+  /// nothing can be ticked (the app uses the sample backend for that).
+  @override
+  Future<List<MySport>> mySports() async => const [];
+
+  @override
+  Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers}) async =>
+      throw const JoinException(JoinError.unavailable);
+
+  @override
+  Future<List<MySport>> removeSport(String sportId) async => const [];
 }

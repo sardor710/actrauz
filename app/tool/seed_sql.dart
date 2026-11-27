@@ -1,6 +1,7 @@
 import 'package:actra/core/localized_text.dart';
 import 'package:actra/core/markets.dart';
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/models.dart';
 
 /// Builds `supabase/seed.sql` from the same sample data the app's sample
@@ -324,13 +325,30 @@ void _players(StringBuffer out) {
       for (final p in kSamplePlayers) [_id(p.id), _text(p.name), "'ru'"],
     ],
   );
+  // In a rated sport the level is the one the rating gives (app.sync_level).
   _upsert(
     out,
     'player_levels',
     ['user_id', 'sport_id', 'level'],
     [
       for (final p in kSamplePlayers)
-        for (final level in p.levels.entries) [_id(p.id), _text(level.key), '${level.value}'],
+        for (final level in p.levels.entries)
+          [
+            _id(p.id),
+            _text(level.key),
+            '${p.ratings[level.key] == null ? level.value : levelOfRating(p.ratings[level.key]!.rating)}',
+          ],
+    ],
+    key: ['user_id', 'sport_id'],
+  );
+  _upsert(
+    out,
+    'player_ratings',
+    ['user_id', 'sport_id', 'rating', 'rated_games', 'source'],
+    [
+      for (final p in kSamplePlayers)
+        for (final rating in p.ratings.entries)
+          [_id(p.id), _text(rating.key), rating.value.rating.toStringAsFixed(2), '${rating.value.ratedGames}', "'level'"],
     ],
     key: ['user_id', 'sport_id'],
   );
@@ -359,6 +377,8 @@ declare
   v_offset integer;
   v_start timestamp;
   v_booking public.bookings;
+  v_min_rating numeric;
+  v_max_rating numeric;
 begin
   select c.venue_id, c.sport_id, v.city_id, ci.utc_offset_minutes
     into v_venue_id, v_sport_id, v_city_id, v_offset
@@ -377,12 +397,17 @@ begin
     return;
   end;
 
+  -- A rated sport gets the rating range its level range stands for.
+  select rr.min_rating, rr.max_rating into v_min_rating, v_max_rating
+  from app.rating_range(v_sport_id, '{}'::jsonb, p_min_level, p_max_level) rr;
+
   insert into public.games (
     id, sport_id, city_id, venue_id, host_id, booking_id, during, utc_offset_minutes,
-    spots, min_level, max_level, price_per_player)
+    spots, min_level, max_level, min_rating, max_rating, price_per_player)
   values (
     p_game_id, v_sport_id, v_city_id, v_venue_id, p_players[1], v_booking.id, v_booking.during, v_offset,
-    p_spots, p_min_level, p_max_level, round(v_booking.total_price::numeric / p_spots)::integer);
+    p_spots, p_min_level, p_max_level, v_min_rating, v_max_rating,
+    round(v_booking.total_price::numeric / p_spots)::integer);
 
   insert into public.game_participants (game_id, user_id, joined_at)
   select p_game_id, t.user_id, v_now + t.position * interval '1 second'

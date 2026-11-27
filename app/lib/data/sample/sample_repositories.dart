@@ -3,6 +3,7 @@ import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
 import '../../domain/community.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
@@ -14,13 +15,22 @@ import '../repositories.dart';
 import '../social.dart';
 import '../supabase/mappers.dart'
     show bannerDraftJson, categoryDraftJson, courtDraftJson, isoLocal, sportDraftJson, tournamentDraftJson, venueDraftJson;
+import 'sample_competitive.dart';
 import 'sample_data.dart';
 import 'sample_tournaments.dart';
 
 /// In-memory stand-in for the backend. State lives for one app run.
 class SampleBackend
     implements CatalogRepository, BookingRepository, GameRepository, SocialRepository, NotificationRepository {
-  SampleBackend({required this.utcNow, this.meName = ''}) {
+  /// [meLevels] and [meRatings] are the demo player's sports to start with; a
+  /// new player has none.
+  SampleBackend({
+    required this.utcNow,
+    this.meName = '',
+    Map<String, int> meLevels = const {},
+    Map<String, SportRating> meRatings = const {},
+  }) {
+    _mySports = SampleSports(levels: meLevels, ratings: meRatings, sportOf: (id) => _sports[id]);
     _engine = BookingEngine(venueById: _venue);
     _seedGames();
     _seedCommunity();
@@ -33,6 +43,9 @@ class SampleBackend
   final String meName;
 
   late final BookingEngine _engine;
+
+  /// The demo player's ticked sports and ratings.
+  late final SampleSports _mySports;
 
   /// Every venue with every court, in creation order. The engine and the
   /// owner screens read these; players see only the active ones.
@@ -102,7 +115,9 @@ class SampleBackend
 
   DateTime _nowAt(Venue venue) => venueNow(cityById(venue.cityId), utcNow: utcNow());
 
-  Player get _me => Player(id: kMeId, name: meName, levels: {for (final s in kSampleSports) s.id: 3});
+  /// Every rating counts for joining, a ticked sport or not (as
+  /// `app.effective_rating`); [player] and [profile] show the ticked ones.
+  Player get _me => Player(id: kMeId, name: meName, levels: {..._mySports.levels}, ratings: {..._mySports.ratings});
 
   /// Every sample game sits on a real booking, so its slot shows as taken.
   void _seedGames() {
@@ -113,6 +128,14 @@ class SampleBackend
       final start = dateOnly(now).add(Duration(days: seed.daysAhead, hours: seed.hour, minutes: seed.minute));
       final slot = SlotTime(start, start.add(Duration(minutes: court.slotMinutes)));
       final hostId = seed.participantIds.first;
+      // A rated sport: the rating range the level range stands for.
+      final range = ratingRangeFor(
+        _sports[court.sportId]!,
+        minRating: null,
+        maxRating: null,
+        minLevel: seed.minLevel,
+        maxLevel: seed.maxLevel,
+      );
       try {
         final held = _engine.hold(userId: hostId, venueId: venue.id, courtId: court.id, slots: [slot], now: now);
         final booking = _engine.confirm(held.id, now: now, players: seed.spots);
@@ -128,6 +151,8 @@ class SampleBackend
           participantIds: seed.participantIds,
           minLevel: seed.minLevel,
           maxLevel: seed.maxLevel,
+          minRating: range?.min,
+          maxRating: range?.max,
           pricePerPlayer: (booking.totalPrice / seed.spots).round(),
           bookingId: booking.id,
         );
@@ -143,6 +168,13 @@ class SampleBackend
     for (final seed in kRequestSeeds) {
       final cityNow = _cityNow(seed.cityId);
       final day = dateOnly(cityNow).add(Duration(days: seed.daysAhead));
+      final range = ratingRangeFor(
+        _sports[seed.sportId]!,
+        minRating: null,
+        maxRating: null,
+        minLevel: seed.minLevel,
+        maxLevel: seed.maxLevel,
+      );
       final request = GameRequest(
         id: seed.id,
         sportId: seed.sportId,
@@ -155,6 +187,8 @@ class SampleBackend
         playersNeeded: seed.playersNeeded,
         minLevel: seed.minLevel,
         maxLevel: seed.maxLevel,
+        minRating: range?.min,
+        maxRating: range?.max,
         note: seed.note,
         createdAt: utcNow().subtract(const Duration(hours: 5)),
         interested: [for (final id in seed.interestedIds) _member(id, seed.sportId)],
@@ -374,13 +408,20 @@ class SampleBackend
 
   bool _exists(String userId) => userId == kMeId || kSamplePlayers.any((p) => p.id == userId);
 
-  GameMember _member(String userId, String sportId) => GameMember(
-    id: userId,
-    name: _nameOf(userId),
-    level: _playerOf(userId).levelFor(sportId),
-    reliability: _reliability(userId),
-    deleted: _deleted.contains(userId),
-  );
+  GameMember _member(String userId, String sportId) {
+    final player = _playerOf(userId);
+    // Only rated sports have ratings at all.
+    final rating = player.ratings[sportId];
+    return GameMember(
+      id: userId,
+      name: _nameOf(userId),
+      level: player.levelFor(sportId),
+      rating: rating?.rating,
+      provisional: rating?.provisional ?? false,
+      reliability: _reliability(userId),
+      deleted: _deleted.contains(userId),
+    );
+  }
 
   /// Sample players live in Tashkent, like the demo player until they choose a city.
   static const _homeCityId = 'tashkent';
@@ -536,6 +577,14 @@ class SampleBackend
     }
     final sport = _sports[draft.sportId];
     if (sport == null || !sport.active) throw const JoinException(JoinError.notFound);
+    // A rated sport keeps a rating range and derives the levels from it.
+    final range = ratingRangeFor(
+      sport,
+      minRating: draft.minRating,
+      maxRating: draft.maxRating,
+      minLevel: draft.minLevel,
+      maxLevel: draft.maxLevel,
+    );
 
     final String cityId;
     final GameKind kind;
@@ -603,8 +652,10 @@ class SampleBackend
       end: end,
       spots: draft.spots,
       participantIds: [userId],
-      minLevel: draft.minLevel,
-      maxLevel: draft.maxLevel,
+      minLevel: range == null ? draft.minLevel : levelOfRating(range.min),
+      maxLevel: range == null ? draft.maxLevel : levelOfRating(range.max),
+      minRating: range?.min,
+      maxRating: range?.max,
       pricePerPlayer: price,
       bookingId: bookingId,
       note: _blank(draft.note),
@@ -685,8 +736,10 @@ class SampleBackend
   @override
   Future<Player> player(String id) async {
     final p = _playerOf(id);
-    // As the backend returns it: a deleted account has no name or levels left.
-    return _deleted.contains(id) ? Player(id: p.id, name: '', deleted: true) : p;
+    // As the backend returns it: a deleted account has no name or levels left,
+    // and a rating shows only for a sport that is ticked.
+    if (_deleted.contains(id)) return Player(id: p.id, name: '', deleted: true);
+    return Player(id: p.id, name: p.name, levels: p.levels, ratings: profileOf(p).ratings);
   }
 
   @override
@@ -832,6 +885,13 @@ class SampleBackend
     }
     final sport = _sports[draft.sportId];
     if (sport == null || !sport.active) throw const JoinException(JoinError.notFound);
+    final range = ratingRangeFor(
+      sport,
+      minRating: draft.minRating,
+      maxRating: draft.maxRating,
+      minLevel: draft.minLevel,
+      maxLevel: draft.maxLevel,
+    );
     if (draft.venueId != null && (!_venues.containsKey(draft.venueId) || _inactiveVenues.contains(draft.venueId))) {
       throw const JoinException(JoinError.notFound);
     }
@@ -850,8 +910,10 @@ class SampleBackend
           start: draft.start,
           end: draft.end,
           playersNeeded: draft.playersNeeded,
-          minLevel: draft.minLevel,
-          maxLevel: draft.maxLevel,
+          minLevel: range == null ? draft.minLevel : levelOfRating(range.min),
+          maxLevel: range == null ? draft.maxLevel : levelOfRating(range.max),
+          minRating: range?.min,
+          maxRating: range?.max,
           note: _blank(draft.note),
           createdAt: utcNow(),
         ),
@@ -947,6 +1009,8 @@ class SampleBackend
         spots: place.spots ?? 1 + r.playersNeeded,
         minLevel: r.minLevel,
         maxLevel: r.maxLevel,
+        minRating: r.minRating,
+        maxRating: r.maxRating,
         visibility: place.visibility ?? GameVisibility.public,
         note: r.note,
         pace: place.pace,
@@ -985,15 +1049,26 @@ class SampleBackend
     String? sportId,
     int minLevel = 1,
     int maxLevel = 5,
+    double? minRating,
+    double? maxRating,
     String? query,
-  }) async => searchPlayers(
-    kSamplePlayers,
-    sportId: sportId,
-    minLevel: minLevel,
-    maxLevel: maxLevel,
-    query: query,
-    reliabilityOf: _reliability,
-  );
+  }) async {
+    // As `list_players_rated`: a rating bound only in a rated sport.
+    final byRating = sportId != null && (minRating != null || maxRating != null);
+    if (byRating && !(_sports[sportId]?.sport.competitiveRating ?? false)) {
+      throw const JoinException(JoinError.invalidArgument);
+    }
+    return searchPlayers(
+      kSamplePlayers,
+      sportId: sportId,
+      minLevel: minLevel,
+      maxLevel: maxLevel,
+      minRating: minRating,
+      maxRating: maxRating,
+      query: query,
+      reliabilityOf: _reliability,
+    );
+  }
 
   @override
   Future<PlayerProfile> profile(String userId) async => profileOf(
@@ -1002,6 +1077,21 @@ class SampleBackend
     reliability: _reliability(userId),
     gamesPlayed: (_reliabilityEvents[userId] ?? const []).where((e) => e.kind == ReliabilityKind.gameCompleted).length,
   );
+
+  @override
+  Future<List<MySport>> mySports() async => _mySports.mySports();
+
+  @override
+  Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers}) async {
+    _mySports.set(sportId, level: level, answers: answers);
+    return _mySports.mySports();
+  }
+
+  @override
+  Future<List<MySport>> removeSport(String sportId) async {
+    _mySports.remove(sportId);
+    return _mySports.mySports();
+  }
 
   // ---- NotificationRepository ----
 

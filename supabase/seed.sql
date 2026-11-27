@@ -186,6 +186,17 @@ insert into public.player_levels (user_id, sport_id, level) values
   (md5('actra:p8')::uuid, 'tennis', 2)
 on conflict (user_id, sport_id) do update set level = excluded.level;
 
+insert into public.player_ratings (user_id, sport_id, rating, rated_games, source) values
+  (md5('actra:p1')::uuid, 'padel', 3.50, 12, 'level'),
+  (md5('actra:p2')::uuid, 'padel', 2.50, 4, 'level'),
+  (md5('actra:p2')::uuid, 'tennis', 3.50, 4, 'level'),
+  (md5('actra:p4')::uuid, 'tennis', 4.50, 12, 'level'),
+  (md5('actra:p5')::uuid, 'padel', 3.50, 12, 'level'),
+  (md5('actra:p7')::uuid, 'padel', 4.50, 12, 'level'),
+  (md5('actra:p8')::uuid, 'padel', 3.50, 12, 'level'),
+  (md5('actra:p8')::uuid, 'tennis', 2.50, 12, 'level')
+on conflict (user_id, sport_id) do update set rating = excluded.rating, rated_games = excluded.rated_games, source = excluded.source;
+
 -- Sample games. Each sits on a real booking made through the booking
 -- functions, so its slot shows as taken. Recreated on every run.
 delete from public.games where host_id in (md5('actra:p1')::uuid, md5('actra:p2')::uuid, md5('actra:p3')::uuid, md5('actra:p4')::uuid, md5('actra:p5')::uuid, md5('actra:p6')::uuid, md5('actra:p7')::uuid, md5('actra:p8')::uuid);
@@ -205,6 +216,8 @@ declare
   v_offset integer;
   v_start timestamp;
   v_booking public.bookings;
+  v_min_rating numeric;
+  v_max_rating numeric;
 begin
   select c.venue_id, c.sport_id, v.city_id, ci.utc_offset_minutes
     into v_venue_id, v_sport_id, v_city_id, v_offset
@@ -223,12 +236,17 @@ begin
     return;
   end;
 
+  -- A rated sport gets the rating range its level range stands for.
+  select rr.min_rating, rr.max_rating into v_min_rating, v_max_rating
+  from app.rating_range(v_sport_id, '{}'::jsonb, p_min_level, p_max_level) rr;
+
   insert into public.games (
     id, sport_id, city_id, venue_id, host_id, booking_id, during, utc_offset_minutes,
-    spots, min_level, max_level, price_per_player)
+    spots, min_level, max_level, min_rating, max_rating, price_per_player)
   values (
     p_game_id, v_sport_id, v_city_id, v_venue_id, p_players[1], v_booking.id, v_booking.during, v_offset,
-    p_spots, p_min_level, p_max_level, round(v_booking.total_price::numeric / p_spots)::integer);
+    p_spots, p_min_level, p_max_level, v_min_rating, v_max_rating,
+    round(v_booking.total_price::numeric / p_spots)::integer);
 
   insert into public.game_participants (game_id, user_id, joined_at)
   select p_game_id, t.user_id, v_now + t.position * interval '1 second'

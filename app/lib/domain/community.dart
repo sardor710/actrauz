@@ -1,6 +1,8 @@
 // Players, reliability, the inbox and Game Requests (product spec §8.3, §9.2,
 // §9.4, §13). Pure types: the backend and the sample data fill them in.
 
+import 'competitive.dart';
+
 // ---- Reliability ----
 
 enum ReliabilityBadge {
@@ -88,6 +90,8 @@ class GameMember {
     required this.id,
     required this.name,
     this.level = 1,
+    this.rating,
+    this.provisional = false,
     this.reliability = Reliability.fresh,
     this.deleted = false,
   });
@@ -101,6 +105,13 @@ class GameMember {
 
   /// Level 1–5 in the game's sport; 1 when they have not set one.
   final int level;
+
+  /// Rating in the game's sport when it is a rated one and they have a
+  /// rating; null otherwise.
+  final double? rating;
+
+  /// The [rating] has fewer than ten rated games behind it.
+  final bool provisional;
   final Reliability reliability;
 }
 
@@ -111,6 +122,7 @@ class PlayerProfile {
     required this.name,
     this.cityId,
     this.levels = const {},
+    this.ratings = const {},
     this.reliability = Reliability.fresh,
     this.gamesPlayed = 0,
     this.deleted = false,
@@ -123,8 +135,12 @@ class PlayerProfile {
   /// The account was deleted.
   final bool deleted;
 
-  /// Self-selected level 1–5 per sport id.
+  /// Self-selected level 1–5 per sport id (derived from the rating in a rated
+  /// sport).
   final Map<String, int> levels;
+
+  /// Rating per rated sport the player has ticked.
+  final Map<String, SportRating> ratings;
   final Reliability reliability;
 
   /// Completed games the player took part in.
@@ -154,6 +170,8 @@ class GameRequest {
     this.area,
     this.minLevel = 1,
     this.maxLevel = 5,
+    this.minRating,
+    this.maxRating,
     this.note,
     this.status = GameRequestStatus.open,
     this.gameId,
@@ -184,6 +202,11 @@ class GameRequest {
   final int playersNeeded;
   final int minLevel;
   final int maxLevel;
+
+  /// The rating range in a rated sport (null in a simple sport); the level
+  /// range is derived from it.
+  final double? minRating;
+  final double? maxRating;
   final String? note;
   final GameRequestStatus status;
 
@@ -221,6 +244,8 @@ class GameRequest {
     area: area,
     minLevel: minLevel,
     maxLevel: maxLevel,
+    minRating: minRating,
+    maxRating: maxRating,
     note: note,
     status: status ?? this.status,
     gameId: gameId ?? this.gameId,
@@ -238,6 +263,8 @@ class GameRequestDraft {
     required this.end,
     this.minLevel = 1,
     this.maxLevel = 5,
+    this.minRating,
+    this.maxRating,
     this.venueId,
     this.area,
     this.note,
@@ -247,6 +274,10 @@ class GameRequestDraft {
   final int playersNeeded;
   final int minLevel;
   final int maxLevel;
+
+  /// A rated sport: both ends, or neither (the level range is then converted).
+  final double? minRating;
+  final double? maxRating;
   final DateTime start;
   final DateTime end;
   final String? venueId;

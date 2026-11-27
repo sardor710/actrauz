@@ -1522,6 +1522,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errNotCancellable => 'Игра уже началась, её нельзя отменить';
 
   @override
+  String get errScoreClosed => 'Для этой игры счёт больше нельзя внести';
+
+  @override
   String get errUnavailable => 'Нет связи с сервером. Проверьте подключение.';
 
   @override

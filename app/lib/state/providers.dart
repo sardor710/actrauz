@@ -19,6 +19,7 @@ import '../data/supabase/supabase_social_repository.dart';
 import '../data/supabase/supabase_tournament_repository.dart';
 import '../domain/booking_engine.dart';
 import '../domain/community.dart';
+import '../domain/competitive.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
 import '../domain/pricing.dart';
@@ -64,9 +65,21 @@ final cityNowProvider = Provider<DateTime Function()>((ref) {
   return () => venueNow(city, utcNow: clock());
 });
 
+/// The demo player's sports when the sample backend starts: none, as for a
+/// new player. Tests override it to start with sports already ticked.
+final demoSportsProvider = Provider<({Map<String, int> levels, Map<String, SportRating> ratings})>(
+  (ref) => (levels: const {}, ratings: const {}),
+);
+
 final sampleBackendProvider = Provider<SampleBackend>((ref) {
   final name = ref.watch(sessionProvider.select((s) => s.userName)) ?? '';
-  return SampleBackend(utcNow: ref.watch(clockProvider), meName: name);
+  final sports = ref.watch(demoSportsProvider);
+  return SampleBackend(
+    utcNow: ref.watch(clockProvider),
+    meName: name,
+    meLevels: sports.levels,
+    meRatings: sports.ratings,
+  );
 });
 
 /// The Supabase client for whoever is signed in now. Depending on the
@@ -194,6 +207,9 @@ final playerProfileProvider = FutureProvider.family<PlayerProfile, String>(
   (ref, id) => ref.watch(socialRepositoryProvider).profile(id),
 );
 
+/// The sports the signed-in player has ticked, with levels and ratings.
+final mySportsProvider = FutureProvider<List<MySport>>((ref) => ref.watch(socialRepositoryProvider).mySports());
+
 /// The newest page of the inbox. Older pages are loaded with
 /// `NotificationRepository.inbox(before: …, beforeId: …)` by the screen.
 final inboxProvider = FutureProvider<List<AppNotification>>(
@@ -246,6 +262,15 @@ void refreshGames(WidgetRef ref) {
   ref.invalidate(gameRequestProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
+}
+
+/// Refreshes everything that shows the player's sports, levels and ratings,
+/// and the games whose join check depends on them.
+void refreshSports(WidgetRef ref) {
+  ref.invalidate(mySportsProvider);
+  ref.invalidate(playerProvider);
+  ref.invalidate(playerProfileProvider);
+  refreshGames(ref);
 }
 
 /// Refreshes everything that depends on bookings.

@@ -1,9 +1,17 @@
 import 'community.dart';
+import 'competitive.dart';
 
 export 'community.dart' show GameMember, Reliability, ReliabilityBadge;
+export 'competitive.dart' show SportRating;
 
 class Player {
-  const Player({required this.id, required this.name, this.levels = const {}, this.deleted = false});
+  const Player({
+    required this.id,
+    required this.name,
+    this.levels = const {},
+    this.ratings = const {},
+    this.deleted = false,
+  });
 
   final String id;
   final String name;
@@ -15,8 +23,14 @@ class Player {
   /// Self-selected level 1–5 per sport id (product spec §8.1).
   final Map<String, int> levels;
 
+  /// Rating per rated sport id (padel, tennis).
+  final Map<String, SportRating> ratings;
+
   /// A player who has not set a level for a sport counts as a beginner.
   int levelFor(String sportId) => levels[sportId] ?? 1;
+
+  /// A player with no rating in a rated sport counts as the minimum, 1.0.
+  double ratingFor(String sportId) => ratings[sportId]?.rating ?? RatingRules.min;
 }
 
 /// Where a game happens (product spec §9.1).
@@ -66,6 +80,8 @@ class Game {
     this.visibility = GameVisibility.public,
     this.minLevel = 1,
     this.maxLevel = 5,
+    this.minRating,
+    this.maxRating,
     this.pricePerPlayer,
     this.bookingId,
     this.note,
@@ -98,6 +114,11 @@ class Game {
   final List<String> participantIds;
   final int minLevel;
   final int maxLevel;
+
+  /// The rating range of a game in a rated sport (null in a simple sport);
+  /// [minLevel] and [maxLevel] are derived from it.
+  final double? minRating;
+  final double? maxRating;
   final int? pricePerPlayer;
   final String? bookingId;
   final String? note;
@@ -151,6 +172,8 @@ class Game {
     participantIds: participantIds ?? this.participantIds,
     minLevel: minLevel,
     maxLevel: maxLevel,
+    minRating: minRating,
+    maxRating: maxRating,
     pricePerPlayer: pricePerPlayer ?? this.pricePerPlayer,
     bookingId: bookingId,
     note: clearNote ? null : (note ?? this.note),
@@ -176,6 +199,8 @@ class GameDraft {
     required this.spots,
     this.minLevel = 1,
     this.maxLevel = 5,
+    this.minRating,
+    this.maxRating,
     this.visibility = GameVisibility.public,
     this.note,
     this.pace,
@@ -193,6 +218,10 @@ class GameDraft {
   final int spots;
   final int minLevel;
   final int maxLevel;
+
+  /// A rated sport: both ends, or neither (the level range is then converted).
+  final double? minRating;
+  final double? maxRating;
   final GameVisibility visibility;
   final String? note;
   final String? pace;
@@ -269,6 +298,10 @@ enum JoinError {
   /// The game has started: it can no longer be cancelled.
   notCancellable,
 
+  /// The game can no longer take a score: not a rated sport, not finished
+  /// yet, more than 7 days past, or its result was voided.
+  scoreClosed,
+
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
 }
@@ -282,9 +315,10 @@ class JoinException implements Exception {
   String toString() => 'JoinException(${error.name})';
 }
 
-/// One-tap join for players inside the level range. An invited player
-/// ([invited]) opens an invite-only game and skips the level check; everyone
-/// else outside the range sends a join request instead.
+/// One-tap join for players inside the level range, or the rating range in a
+/// rated sport. An invited player ([invited]) opens an invite-only game and
+/// skips the check; everyone else outside the range sends a join request
+/// instead.
 Game joinGame(Game game, Player player, {bool invited = false}) {
   // As in the database: without an open invite an invite-only game does not exist for the player, even for a
   // player already in it.
@@ -292,8 +326,15 @@ Game joinGame(Game game, Player player, {bool invited = false}) {
   if (game.participantIds.contains(player.id)) throw const JoinException(JoinError.alreadyJoined);
   if (game.isFull) throw const JoinException(JoinError.full);
   if (!invited) {
-    final level = player.levelFor(game.sportId);
-    if (level < game.minLevel || level > game.maxLevel) throw const JoinException(JoinError.levelOutOfRange);
+    final minRating = game.minRating;
+    final maxRating = game.maxRating;
+    if (minRating != null && maxRating != null) {
+      final rating = player.ratingFor(game.sportId);
+      if (rating < minRating || rating > maxRating) throw const JoinException(JoinError.levelOutOfRange);
+    } else {
+      final level = player.levelFor(game.sportId);
+      if (level < game.minLevel || level > game.maxLevel) throw const JoinException(JoinError.levelOutOfRange);
+    }
   }
   return game.copyWith(participantIds: [...game.participantIds, player.id]);
 }

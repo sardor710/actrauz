@@ -753,6 +753,7 @@
   "errGameExists": "This booking already has a game",
   "errForbidden": "You cannot do this in this game",
   "errNotCancellable": "The game has already started, so it cannot be cancelled",
+  "errScoreClosed": "A score can no longer be entered for this game",
   "errUnavailable": "Cannot reach the server. Check your connection.",
   "gamesTabRequests": "Requests",
   "homeRequests": "Game Requests",

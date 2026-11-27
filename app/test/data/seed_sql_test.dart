@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../tool/seed_sql.dart';
@@ -54,6 +55,29 @@ void main() {
     expect(sql, contains('name_kk = excluded.name_kk'));
     expect(sql, contains("('almaty', 'Olmaota', 'Алматы', 'Алматы', 'Almaty'"));
     expect(sql, contains("('gym', 'Sport zali', 'Тренажёрный зал', 'Жаттығу залы', 'Gym'"));
+  });
+
+  test('players get their padel and tennis ratings, and the level written beside each is derived from it', () {
+    expect(sql, contains('insert into public.player_ratings (user_id, sport_id, rating, rated_games, source) values'));
+    expect(sql, contains('on conflict (user_id, sport_id) do update set rating = excluded.rating'));
+    for (final p in kSamplePlayers) {
+      for (final entry in p.ratings.entries) {
+        final rating = entry.value;
+        expect(
+          sql,
+          contains("(md5('actra:${p.id}')::uuid, '${entry.key}', ${rating.rating.toStringAsFixed(2)}, ${rating.ratedGames}, 'level')"),
+          reason: '${p.id} ${entry.key}',
+        );
+        expect(
+          sql,
+          contains("(md5('actra:${p.id}')::uuid, '${entry.key}', ${levelOfRating(rating.rating)})"),
+          reason: '${p.id} ${entry.key}',
+        );
+      }
+    }
+    expect(sql.indexOf('insert into public.player_ratings'), greaterThan(sql.indexOf('insert into public.profiles')));
+    // Seeded games in a rated sport get the rating range the database derives from their levels.
+    expect(sql, contains('app.rating_range(v_sport_id'));
   });
 
   test('every sample row is in the seed', () {

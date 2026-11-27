@@ -3,6 +3,7 @@ import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/booking_engine.dart';
 import 'package:actra/domain/community.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/slot_generator.dart';
@@ -525,6 +526,179 @@ void main() {
       expect(forOwner.payload['venue_id'], 'v1');
       expect((forOwner.payload['court_name'] as Map).keys, containsAll(['uz', 'ru', 'kk', 'en']));
       expect(forOwner.route, '/owner/v1');
+    });
+  });
+
+  group('ratings', () {
+    Matcher joinError(JoinError error) => throwsA(isA<JoinException>().having((e) => e.error, 'error', error));
+
+    test('every sample player in padel or tennis has a rating that agrees with their level', () {
+      for (final p in kSamplePlayers) {
+        for (final sportId in ['padel', 'tennis']) {
+          final level = p.levels[sportId];
+          final rating = p.ratings[sportId];
+          expect(rating == null, level == null, reason: '${p.id} $sportId');
+          if (rating == null) continue;
+          expect(rating.rating, level! + 0.5, reason: '${p.id} $sportId');
+          expect(levelOfRating(rating.rating), level, reason: '${p.id} $sportId');
+          expect(rating.ratedGames, p.id == 'p2' ? 4 : 12, reason: '${p.id} $sportId');
+        }
+        expect(p.ratings.keys.toSet().difference({'padel', 'tennis'}), isEmpty, reason: p.id);
+      }
+    });
+
+    test('a new player has no sports', () async {
+      expect(await backend.mySports(), isEmpty);
+      expect((await backend.player(kMeId)).levels, isEmpty);
+    });
+
+    test('the questionnaire places me in padel; I can retake it until my first rated game', () async {
+      final sports = await backend.setSport('padel', answers: [1, 2, 1, 0, 2]);
+      final padel = sports.single;
+      expect(padel.sportId, 'padel');
+      expect(padel.rating!.rating, 2.7);
+      expect(padel.rating!.ratedGames, 0);
+      expect(padel.rating!.provisional, isTrue);
+      expect(padel.level, 2);
+      expect(padel.canRetake, isTrue);
+      expect((await backend.player(kMeId)).levelFor('padel'), 2);
+      expect((await backend.player(kMeId)).ratingFor('padel'), 2.7);
+      expect((await backend.profile(kMeId)).ratings['padel']!.rating, 2.7);
+
+      final again = await backend.setSport('padel', answers: [3, 3, 3, 3, 3]);
+      expect(again.single.rating!.rating, 5.0);
+      expect(again.single.level, 5);
+    });
+
+    test('a rating with rated games is kept when the questionnaire is answered again', () async {
+      final rated = SampleBackend(
+        utcNow: () => utcNow,
+        meRatings: const {'tennis': SportRating(rating: 3.8, ratedGames: 3)},
+      );
+      final tennis = (await rated.mySports()).single;
+      expect(tennis.level, 3);
+      expect(tennis.canRetake, isFalse);
+      final after = (await rated.setSport('tennis', answers: [0, 0, 0, 0, 0])).single;
+      expect(after.rating!.rating, 3.8);
+      expect(after.rating!.ratedGames, 3);
+      expect(after.level, 3);
+    });
+
+    test('a simple sport takes a level; the wrong kind of answer is refused', () async {
+      final sports = await backend.setSport('football', level: 4);
+      expect(sports.single.sportId, 'football');
+      expect(sports.single.level, 4);
+      expect(sports.single.rating, isNull);
+      expect(sports.single.canRetake, isFalse);
+      expect((await backend.setSport('football', level: 2)).single.level, 2);
+
+      await expectLater(backend.setSport('football', level: 6), joinError(JoinError.invalidArgument));
+      await expectLater(backend.setSport('football', answers: [1, 1, 1, 1, 1]), joinError(JoinError.invalidArgument));
+      await expectLater(backend.setSport('padel', level: 3), joinError(JoinError.invalidArgument));
+      await expectLater(backend.setSport('padel', answers: [1, 1, 1, 1]), joinError(JoinError.invalidArgument));
+      await expectLater(backend.setSport('padel'), joinError(JoinError.invalidArgument));
+      await expectLater(backend.setSport('cricket', level: 3), joinError(JoinError.invalidArgument));
+    });
+
+    test('my sports come in catalogue order; removing one keeps its rating for later', () async {
+      await backend.setSport('padel', answers: [1, 2, 1, 0, 2]);
+      await backend.setSport('football', level: 4);
+      expect((await backend.mySports()).map((s) => s.sportId), ['football', 'padel']);
+
+      final left = await backend.removeSport('padel');
+      expect(left.map((s) => s.sportId), ['football']);
+      expect((await backend.profile(kMeId)).ratings, isEmpty);
+      expect((await backend.player(kMeId)).levels, {'football': 4});
+
+      // Ticking padel again brings the rating back while it has no rated games: the answers replace it.
+      final back = await backend.setSport('padel', answers: [0, 0, 0, 0, 0]);
+      expect(back.map((s) => s.sportId), ['football', 'padel']);
+      expect(back.last.rating!.rating, 1.0);
+    });
+
+    test('players can be found by rating in a rated sport', () async {
+      final found = await backend.players('tashkent', sportId: 'padel', minRating: 3, maxRating: 4);
+      expect(found.map((p) => p.id), unorderedEquals(['p1', 'p5', 'p8']));
+      for (final p in found) {
+        expect(p.ratings['padel']!.rating, inInclusiveRange(3, 4));
+      }
+      // No rating counts as 1.0.
+      final low = await backend.players('tashkent', sportId: 'tennis', minRating: 1, maxRating: 1.5);
+      expect(low.map((p) => p.id), unorderedEquals(['p1', 'p3', 'p5', 'p6', 'p7']));
+    });
+
+    test('a padel game with a rating range derives its levels; a range sent as levels becomes ratings', () async {
+      final bookingSlot = SlotTime(DateTime.utc(2026, 11, 22, 11, 30), DateTime.utc(2026, 11, 22, 13, 0));
+      final held = await backend.hold('v1', 'v1c1', [bookingSlot]);
+      final booking = await backend.confirm(held.id, players: 4);
+      final game = await backend.create(
+        GameDraft(sportId: 'padel', spots: 4, bookingId: booking.id, minRating: 3, maxRating: 4.5),
+      );
+      expect(game.minLevel, 3);
+      expect(game.maxLevel, 4);
+      expect(game.minRating, 3.0);
+      expect(game.maxRating, 4.5);
+      expect((await backend.game(game.id)).minRating, 3.0);
+      expect((await backend.game(game.id)).maxRating, 4.5);
+
+      // p7 (4.5) fits; p2 (2.5) does not and would have to ask.
+      expect((await backend.joinAs('p7', game.id)).participantIds, [kMeId, 'p7']);
+      await expectLater(backend.joinAs('p2', game.id), joinError(JoinError.levelOutOfRange));
+
+      // The seeded padel game 2-4 reads as 2.00-4.99; a running game has no rating range.
+      final g1 = await backend.game('g1');
+      expect((g1.minRating, g1.maxRating), (2.0, 4.99));
+      final g4 = await backend.game('g4');
+      expect((g4.minRating, g4.maxRating), (3.0, 7.0));
+      expect((await backend.game('g2')).minRating, isNull);
+
+      // One end only, or an upside-down range, is refused.
+      final held2 = await backend.hold('v1', 'v1c2', [bookingSlot]);
+      final booking2 = await backend.confirm(held2.id, players: 4);
+      await expectLater(
+        backend.create(GameDraft(sportId: 'padel', spots: 4, bookingId: booking2.id, minRating: 3)),
+        joinError(JoinError.invalidArgument),
+      );
+      await expectLater(
+        backend.create(GameDraft(sportId: 'padel', spots: 4, bookingId: booking2.id, minRating: 4, maxRating: 3)),
+        joinError(JoinError.invalidArgument),
+      );
+    });
+
+    test('participants show their rating in a rated sport, and nothing in a simple one', () async {
+      final g1 = await backend.game('g1');
+      final p2 = g1.participants.firstWhere((m) => m.id == 'p2');
+      expect(p2.rating, 2.5);
+      expect(p2.provisional, isTrue);
+      final p1 = g1.participants.firstWhere((m) => m.id == 'p1');
+      expect(p1.rating, 3.5);
+      expect(p1.provisional, isFalse);
+      final football = await backend.game('g2');
+      expect(football.participants.every((m) => m.rating == null && !m.provisional), isTrue);
+    });
+
+    test('a padel Game Request carries its rating range into the game it becomes', () async {
+      final request = await backend.createRequest(
+        GameRequestDraft(
+          sportId: 'padel',
+          playersNeeded: 1,
+          start: DateTime.utc(2026, 11, 23, 18),
+          end: DateTime.utc(2026, 11, 23, 21),
+          minRating: 2.5,
+          maxRating: 4,
+        ),
+      );
+      expect((request.minLevel, request.maxLevel), (2, 4));
+      expect((request.minRating, request.maxRating), (2.5, 4.0));
+      expect((await backend.request('rq1')).minRating, 2.0);
+      expect((await backend.request('rq2')).minRating, isNull);
+
+      final slot = SlotTime(DateTime.utc(2026, 11, 23, 19), DateTime.utc(2026, 11, 23, 20, 30));
+      final held = await backend.hold('v1', 'v1c2', [slot]);
+      final booking = await backend.confirm(held.id, players: 2);
+      final game = await backend.convertRequest(request.id, PlacePick(bookingId: booking.id));
+      expect((game.minRating, game.maxRating), (2.5, 4.0));
+      expect((game.minLevel, game.maxLevel), (2, 4));
     });
   });
 }

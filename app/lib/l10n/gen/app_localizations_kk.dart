@@ -1507,6 +1507,9 @@ class AppLocalizationsKk extends AppLocalizations {
       'Ойын басталып кетті, сондықтан оны болдырмау мүмкін емес';
 
   @override
+  String get errScoreClosed => 'Бұл ойынға енді есеп енгізу мүмкін емес';
+
+  @override
   String get errUnavailable =>
       'Серверге қосылу мүмкін емес. Байланысты тексеріңіз.';
 

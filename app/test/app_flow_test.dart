@@ -1,4 +1,6 @@
 import 'package:actra/app.dart';
+import 'package:actra/data/sample/sample_data.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:actra/features/common/widgets.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +12,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Sunday 22 Nov 2026, 10:00 in Tashkent (UTC+5).
 final sundayMorning = DateTime.utc(2026, 11, 22, 5, 0);
 
-Future<void> pumpApp(WidgetTester tester, {Map<String, Object> prefs = const {}, DateTime? utcNow}) async {
+/// The demo player's sports in most tests: level 3 in every simple sport and
+/// an established 3.50 in padel and tennis (level 3 there too), as before
+/// the demo player started with no sports.
+final _level3Everywhere = (
+  levels: {for (final s in kSampleSports) s.id: 3},
+  ratings: {
+    for (final s in kSampleSports)
+      if (s.competitiveRating) s.id: const SportRating(rating: 3.5, ratedGames: 12),
+  },
+);
+
+/// [withSports] false starts the demo player with no sports, as a new player.
+Future<void> pumpApp(
+  WidgetTester tester, {
+  Map<String, Object> prefs = const {},
+  DateTime? utcNow,
+  bool withSports = true,
+}) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sharedPrefs = await SharedPreferences.getInstance();
   await initializeDateFormatting();
@@ -25,6 +44,7 @@ Future<void> pumpApp(WidgetTester tester, {Map<String, Object> prefs = const {},
       overrides: [
         sharedPrefsProvider.overrideWithValue(sharedPrefs),
         if (utcNow != null) clockProvider.overrideWithValue(() => utcNow),
+        if (withSports) demoSportsProvider.overrideWithValue(_level3Everywhere),
       ],
       child: const ActraApp(),
     ),
@@ -32,7 +52,8 @@ Future<void> pumpApp(WidgetTester tester, {Map<String, Object> prefs = const {},
   await tester.pumpAndSettle();
 }
 
-const signedIn = <String, Object>{'lang': 'en', 'city': 'tashkent', 'user_name': 'Test'};
+/// `sports_prompted`: the one-time "My sports" offer has been seen already.
+const signedIn = <String, Object>{'lang': 'en', 'city': 'tashkent', 'user_name': 'Test', 'sports_prompted': true};
 
 Future<void> tap(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);

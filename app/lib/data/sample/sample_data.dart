@@ -324,15 +324,48 @@ const kMeId = 'me';
 /// Venues the signed-in demo player manages as an owner in sample mode.
 const kSampleOwnedVenueIds = {'v1', 'v4', 'v6'};
 
+/// In padel and tennis each sample player has a rating of their level plus
+/// 0.5, established by 12 rated games (Dilnoza is still provisional with 4);
+/// the level is the one derived from it.
 const kSamplePlayers = <Player>[
-  Player(id: 'p1', name: 'Aziz', levels: {'padel': 3, 'football': 3}),
-  Player(id: 'p2', name: 'Dilnoza', levels: {'padel': 2, 'tennis': 3}),
+  Player(
+    id: 'p1',
+    name: 'Aziz',
+    levels: {'padel': 3, 'football': 3},
+    ratings: {'padel': SportRating(rating: 3.5, ratedGames: 12)},
+  ),
+  Player(
+    id: 'p2',
+    name: 'Dilnoza',
+    levels: {'padel': 2, 'tennis': 3},
+    ratings: {'padel': SportRating(rating: 2.5, ratedGames: 4), 'tennis': SportRating(rating: 3.5, ratedGames: 4)},
+  ),
   Player(id: 'p3', name: 'Timur', levels: {'football': 4}),
-  Player(id: 'p4', name: 'Madina', levels: {'tennis': 4}),
-  Player(id: 'p5', name: 'Arman', levels: {'padel': 3}),
+  Player(
+    id: 'p4',
+    name: 'Madina',
+    levels: {'tennis': 4},
+    ratings: {'tennis': SportRating(rating: 4.5, ratedGames: 12)},
+  ),
+  Player(
+    id: 'p5',
+    name: 'Arman',
+    levels: {'padel': 3},
+    ratings: {'padel': SportRating(rating: 3.5, ratedGames: 12)},
+  ),
   Player(id: 'p6', name: 'Aigerim', levels: {'football': 2}),
-  Player(id: 'p7', name: 'Bekzod', levels: {'football': 3, 'padel': 4}),
-  Player(id: 'p8', name: 'Kamila', levels: {'padel': 3, 'tennis': 2}),
+  Player(
+    id: 'p7',
+    name: 'Bekzod',
+    levels: {'football': 3, 'padel': 4},
+    ratings: {'padel': SportRating(rating: 4.5, ratedGames: 12)},
+  ),
+  Player(
+    id: 'p8',
+    name: 'Kamila',
+    levels: {'padel': 3, 'tennis': 2},
+    ratings: {'padel': SportRating(rating: 3.5, ratedGames: 12), 'tennis': SportRating(rating: 2.5, ratedGames: 12)},
+  ),
 ];
 
 /// A sample game, placed relative to "today" when the sample backend starts.

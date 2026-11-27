@@ -121,4 +121,47 @@ void main() {
     expect(g.copyWith(participantIds: ['host', 'ali']).meetingPoint, 'Bunyodkor park, main gate');
     expect(g.copyWith(participantIds: ['host', 'ali']).kind, GameKind.mapPoint);
   });
+
+  group('rating ranges', () {
+    // 3.0-4.5, with the whole-number range the database derives from it.
+    Game rated() => Game(
+      id: 'g4',
+      sportId: 'padel',
+      cityId: 'tashkent',
+      venueId: 'v1',
+      hostId: 'host',
+      start: DateTime.utc(2026, 11, 23, 19),
+      end: DateTime.utc(2026, 11, 23, 20, 30),
+      spots: 4,
+      participantIds: const ['host'],
+      minLevel: 3,
+      maxLevel: 4,
+      minRating: 3.0,
+      maxRating: 4.5,
+    );
+
+    Player rating(String id, double value) =>
+        Player(id: id, name: id, levels: {'padel': value.floor()}, ratings: {'padel': SportRating(rating: value, ratedGames: 12)});
+
+    test('the rating decides, not the level: 4.7 is outside 3.0-4.5 although its level 4 is inside 3-4', () {
+      expect(errorOf(() => joinGame(rated(), rating('ali', 4.7))), JoinError.levelOutOfRange);
+      expect(joinGame(rated(), rating('ali', 4.5)).participantIds, ['host', 'ali']);
+      expect(joinGame(rated(), rating('ali', 3.0)).participantIds, ['host', 'ali']);
+    });
+
+    test('an invited player skips the rating check', () {
+      expect(joinGame(rated(), rating('ali', 4.7), invited: true).participantIds, ['host', 'ali']);
+    });
+
+    test('a player with no rating counts as 1.0', () {
+      expect(player('ali', level: 3).ratingFor('padel'), 1.0);
+      expect(errorOf(() => joinGame(rated(), player('ali', level: 3))), JoinError.levelOutOfRange);
+    });
+
+    test('copyWith keeps the rating range', () {
+      final g = rated().copyWith(participantIds: ['host', 'ali']);
+      expect(g.minRating, 3.0);
+      expect(g.maxRating, 4.5);
+    });
+  });
 }

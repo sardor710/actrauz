@@ -3,6 +3,7 @@ import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
 import '../../domain/community.dart';
+import '../../domain/competitive.dart';
 import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../domain/owner.dart';
@@ -450,9 +451,34 @@ GameMember gameMemberFromJson(Row json, {required String? myUserId, String idKey
   id: _userId(json[idKey], myUserId),
   name: json['name'] as String? ?? '',
   level: json['level'] as int? ?? 1,
+  rating: _double(json['rating']),
+  provisional: json['provisional'] == true,
   reliability: _reliabilityOf(json['reliability']),
   deleted: json['deleted'] == true,
 );
+
+/// `{ rating, provisional, rated_games }` (provisional follows from the
+/// count).
+SportRating sportRatingFromJson(Row json) =>
+    SportRating(rating: _double(json['rating'])!, ratedGames: json['rated_games'] as int? ?? 0);
+
+/// `ratings` of `player_json`: sport id → rating. Absent from a backend
+/// before M7.
+Map<String, SportRating> _ratingsOf(Object? value) => {
+  for (final e in (value as Map? ?? const {}).entries)
+    e.key as String: sportRatingFromJson(Map<String, dynamic>.from(e.value as Map)),
+};
+
+/// The array returned by `my_sports`, `set_my_sport` and `remove_my_sport`.
+List<MySport> mySportsFromJson(Object? json) => [
+  for (final row in _rows(json))
+    MySport(
+      sportId: row['sport_id'] as String,
+      level: row['level'] as int?,
+      rating: row['rating'] == null ? null : sportRatingFromJson(row),
+      canRetake: row['can_retake'] == true,
+    ),
+];
 
 MyGameStatus? _myGameStatus(Object? value) => switch (value) {
   null => null,
@@ -485,6 +511,8 @@ Game gameFromJson(Row json, {required String? myUserId}) => Game(
   participantIds: [for (final id in (json['participant_ids'] as List? ?? const [])) _userId(id, myUserId)],
   minLevel: json['min_level'] as int? ?? 1,
   maxLevel: json['max_level'] as int? ?? 5,
+  minRating: _double(json['min_rating']),
+  maxRating: _double(json['max_rating']),
   pricePerPlayer: json['price_per_player'] as int?,
   bookingId: json['booking_id'] as String?,
   note: json['note'] as String?,
@@ -525,6 +553,8 @@ GameRequest gameRequestFromJson(Row json, {required String? myUserId}) {
     playersNeeded: json['players_needed'] as int,
     minLevel: json['min_level'] as int? ?? 1,
     maxLevel: json['max_level'] as int? ?? 5,
+    minRating: _double(json['min_rating']),
+    maxRating: _double(json['max_rating']),
     note: json['note'] as String?,
     status: switch (json['status']) {
       null || 'open' => GameRequestStatus.open,
@@ -551,11 +581,16 @@ PlayerProfile playerProfileFromJson(Row json, {required String? myUserId}) => Pl
   id: _userId(json['id'], myUserId),
   name: json['name'] as String? ?? '',
   cityId: json['city_id'] as String?,
-  levels: {for (final e in (json['levels'] as Map? ?? const {}).entries) e.key as String: e.value as int},
+  levels: _levelsOf(json['levels']),
+  ratings: _ratingsOf(json['ratings']),
   reliability: _reliabilityOf(json['reliability']),
   gamesPlayed: json['games_played'] as int? ?? 0,
   deleted: json['deleted'] == true,
 );
+
+Map<String, int> _levelsOf(Object? value) => {
+  for (final e in (value as Map? ?? const {}).entries) e.key as String: e.value as int,
+};
 
 /// One row of `my_notifications`.
 AppNotification notificationFromJson(Row json) => AppNotification(
@@ -583,6 +618,8 @@ Map<String, Object?> gameDraftJson(GameDraft draft) => {
   'spots': draft.spots,
   'min_level': draft.minLevel,
   'max_level': draft.maxLevel,
+  if (draft.minRating != null) 'min_rating': draft.minRating,
+  if (draft.maxRating != null) 'max_rating': draft.maxRating,
   'visibility': _visibilityCode(draft.visibility),
   if (_blankToNull(draft.note) != null) 'note': _blankToNull(draft.note),
   if (_blankToNull(draft.pace) != null) 'pace': _blankToNull(draft.pace),
@@ -619,6 +656,8 @@ Map<String, Object?> gameRequestDraftJson(GameRequestDraft draft) => {
   'players_needed': draft.playersNeeded,
   'min_level': draft.minLevel,
   'max_level': draft.maxLevel,
+  if (draft.minRating != null) 'min_rating': draft.minRating,
+  if (draft.maxRating != null) 'max_rating': draft.maxRating,
   'starts_local': isoLocal(draft.start),
   'ends_local': isoLocal(draft.end),
   if (draft.venueId != null) 'venue_id': draft.venueId,
@@ -626,13 +665,15 @@ Map<String, Object?> gameRequestDraftJson(GameRequestDraft draft) => {
   if (_blankToNull(draft.note) != null) 'note': _blankToNull(draft.note),
 };
 
-/// A profile row with `player_levels` embedded. `deleted_at` set means the
-/// account was deleted (a null `full_name` alone is an unfinished sign-up).
-Player playerFromRow(Row row, {required String? myUserId}) => Player(
-  id: _userId(row['id'], myUserId),
-  name: row['full_name'] as String? ?? '',
-  levels: {for (final l in _rows(row['player_levels'])) l['sport_id'] as String: l['level'] as int},
-  deleted: row['deleted_at'] != null,
+/// The result of `player_profile` (`player_json`), as the player the game
+/// screens check: levels and ratings. `deleted: true` means the account was
+/// deleted (a null name alone is an unfinished sign-up).
+Player playerFromJson(Row json, {required String? myUserId}) => Player(
+  id: _userId(json['id'], myUserId),
+  name: json['name'] as String? ?? '',
+  levels: _levelsOf(json['levels']),
+  ratings: _ratingsOf(json['ratings']),
+  deleted: json['deleted'] == true,
 );
 
 // ---- Tournaments ----

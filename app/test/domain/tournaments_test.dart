@@ -3,6 +3,7 @@ import 'package:actra/core/markets.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/community.dart';
+import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/models.dart';
 import 'package:actra/domain/tournaments.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,16 @@ void main() {
 
   setUp(() {
     utcNow = DateTime.utc(2026, 11, 22, 5);
-    backend = SampleBackend(utcNow: () => utcNow, meName: 'Sam');
+    // The demo player at level 3 in every sport (3.50 in the rated ones).
+    backend = SampleBackend(
+      utcNow: () => utcNow,
+      meName: 'Sam',
+      meLevels: {for (final s in kSampleSports) s.id: 3},
+      meRatings: {
+        for (final s in kSampleSports)
+          if (s.competitiveRating) s.id: const SportRating(rating: 3.5, ratedGames: 12),
+      },
+    );
   });
 
   Matcher refuses(TournamentError error) => throwsA(isA<TournamentException>().having((e) => e.error, 'error', error));

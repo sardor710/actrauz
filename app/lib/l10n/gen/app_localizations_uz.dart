@@ -1499,6 +1499,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get errNotCancellable => 'Oʻyin boshlangan, uni bekor qilib boʻlmaydi';
 
   @override
+  String get errScoreClosed => 'Bu oʻyin uchun endi hisob kiritib boʻlmaydi';
+
+  @override
   String get errUnavailable =>
       'Serverga ulanib boʻlmadi. Internetni tekshiring.';
 

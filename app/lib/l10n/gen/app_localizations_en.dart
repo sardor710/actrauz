@@ -1501,6 +1501,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'The game has already started, so it cannot be cancelled';
 
   @override
+  String get errScoreClosed => 'A score can no longer be entered for this game';
+
+  @override
   String get errUnavailable =>
       'Cannot reach the server. Check your connection.';
 

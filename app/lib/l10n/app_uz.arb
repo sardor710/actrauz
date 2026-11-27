@@ -437,6 +437,7 @@
   "errGameExists": "Bu bronda allaqachon oʻyin bor",
   "errForbidden": "Siz bu oʻyinda buni qila olmaysiz",
   "errNotCancellable": "Oʻyin boshlangan, uni bekor qilib boʻlmaydi",
+  "errScoreClosed": "Bu oʻyin uchun endi hisob kiritib boʻlmaydi",
   "errUnavailable": "Serverga ulanib boʻlmadi. Internetni tekshiring.",
   "gamesTabRequests": "Eʼlonlar",
   "homeRequests": "Oʻyin eʼlonlari",
