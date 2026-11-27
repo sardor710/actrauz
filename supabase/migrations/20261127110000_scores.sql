@@ -211,7 +211,9 @@ begin
      or (select count(distinct u) from unnest(v_players) u) <> cardinality(v_players)
      or not (p_user = any (v_players))
      or (select count(*) from public.game_participants p where p.game_id = p_game_id and p.user_id = any (v_players))
-        <> cardinality(v_players) then
+        <> cardinality(v_players)
+     -- A deleted account stays a participant of past games but plays no more results.
+     or exists (select 1 from public.profiles pr where pr.id = any (v_players) and pr.deleted_at is not null) then
     raise exception 'invalid_argument';
   end if;
   v_sets := app.whole_sets(p_sets);
@@ -248,6 +250,8 @@ end $$;
 -- Moves the ratings of a pending or disputed result and confirms it; does
 -- nothing in any other state. A player without a rating first gets the
 -- average of those who have one (capped), or the default if nobody has.
+-- A result with a deleted account among its players is never applied: it
+-- becomes void (no events, no rating rows) and the remaining players hear.
 create function app.apply_result(p_result_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -273,6 +277,17 @@ declare
 begin
   select r.* into v_result from public.match_results r where r.id = p_result_id for update;
   if not found or v_result.status not in ('pending', 'disputed') then return; end if;
+  if exists (select 1 from public.match_result_players p
+             join public.profiles pr on pr.id = p.user_id
+             where p.result_id = p_result_id and pr.deleted_at is not null) then
+    update public.match_results r set status = 'void' where r.id = p_result_id returning * into v_result;
+    perform app.notify(p.user_id, 'score_resolved', 'ratings',
+      app.result_note(v_result) || jsonb_build_object('action', 'void'), p_now)
+    from public.match_result_players p
+    join public.profiles pr on pr.id = p.user_id
+    where p.result_id = p_result_id and pr.deleted_at is null;
+    return;
+  end if;
   select g.sport_id into v_sport from public.games g where g.id = v_result.game_id;
 
   -- Starting ratings for the players who have none.
@@ -404,13 +419,16 @@ end $$;
 --      by user_id (each from the first of its results, as app.apply_result
 --      would compute it), so apply_result later inserts nothing;
 --   3. all their players' rating rows, in one statement ordered by user_id.
--- app.apply_result then finds every lock already held.
+-- app.apply_result then finds every lock already held. Steps 2 and 3 leave
+-- out the results with a deleted account among their players, which
+-- apply_result voids without touching any rating.
 create function app.auto_confirm_scores(p_now timestamptz) returns integer
 language plpgsql
 set search_path = ''
 as $$
 declare
   v_ids uuid[];
+  v_rated uuid[];
   v_id uuid;
 begin
   select array_agg(t.id order by t.id) into v_ids
@@ -419,6 +437,11 @@ begin
         order by r.id
         for update skip locked) t;
   if v_ids is null then return 0; end if;
+  select coalesce(array_agg(i), '{}') into v_rated
+  from unnest(v_ids) i
+  where not exists (select 1 from public.match_result_players p
+                    join public.profiles pr on pr.id = p.user_id
+                    where p.result_id = i and pr.deleted_at is not null);
 
   insert into public.player_ratings (user_id, sport_id, rating, rated_games, source, created_at, updated_at)
   select s.user_id, s.sport_id, s.rating, 0, 'first_result', p_now, p_now
@@ -433,7 +456,7 @@ begin
     from public.match_result_players p
     join public.match_results r on r.id = p.result_id
     join public.games g on g.id = r.game_id
-    where p.result_id = any (v_ids)
+    where p.result_id = any (v_rated)
       and not exists (select 1 from public.player_ratings x where x.user_id = p.user_id and x.sport_id = g.sport_id)
     order by p.user_id, g.sport_id, p.result_id) s
   order by s.user_id, s.sport_id
@@ -443,7 +466,7 @@ begin
   where exists (select 1 from public.match_result_players p
                 join public.match_results r on r.id = p.result_id
                 join public.games g on g.id = r.game_id
-                where p.result_id = any (v_ids) and p.user_id = pr.user_id and g.sport_id = pr.sport_id)
+                where p.result_id = any (v_rated) and p.user_id = pr.user_id and g.sport_id = pr.sport_id)
   order by pr.user_id, pr.sport_id
   for update;
 
@@ -511,6 +534,13 @@ begin
   where r.id = p_result_id
   returning * into v_result;
 
+  -- A confirm that apply_result turned into a void (a deleted player in the
+  -- result) is audited as one; apply_result has already told the players.
+  if p_action in ('confirm', 'correct') and v_result.status = 'void' then
+    perform app.audit(p_user, 'score_void', 'match_result', p_result_id::text,
+      to_jsonb(v_before), to_jsonb(v_result), p_now);
+    return;
+  end if;
   perform app.audit(p_user, 'score_' || p_action, 'match_result', p_result_id::text,
     to_jsonb(v_before), to_jsonb(v_result), p_now);
   perform app.notify(p.user_id, 'score_resolved', 'ratings',
@@ -672,7 +702,8 @@ to authenticated, service_role;
 -- at least one confirmed result in the sport, not deleted, not hidden from
 -- search, best first (rating, then rated games, then id), at most p_limit.
 -- me: the caller with their place among those players and themselves (so a
--- hidden caller still sees it), null without a confirmed result.
+-- hidden caller still sees it); null unless the caller's own city is
+-- p_city_id and they have a confirmed result in the sport.
 create function app.leaderboard(p_user uuid, p_sport_id text, p_city_id text, p_limit integer) returns jsonb
 language sql
 set search_path = ''
@@ -698,6 +729,7 @@ as $$
     from public.player_ratings r
     join public.profiles p on p.id = r.user_id
     where r.user_id = p_user and r.sport_id = p_sport_id and r.rated_games >= 1
+      and p.city_id = p_city_id and p.deleted_at is null
   )
   select jsonb_build_object(
     'rows', coalesce(

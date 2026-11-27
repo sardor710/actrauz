@@ -672,6 +672,70 @@ test('no results, no place', async () => {
   assert.deepEqual(await leaderboard(unrated, 'tennis', 'farcity'), { rows: [], me: null });
 });
 
+test('a player from another city has no place here', async () => {
+  const visitor = await almaty('Visitor', '4.20', 3);
+  const board = await leaderboard(visitor, 'tennis', 'tashkent');
+  assert.equal(board.me, null);
+  assert.ok(!board.rows.some((r) => r.id === visitor));
+  assert.equal((await leaderboard(visitor, 'tennis', 'almaty')).me.id, visitor);
+});
+
+// --- deleted players and scores ----------------------------------------------
+
+test('a score cannot name a deleted player', async () => {
+  const players = await four('3.50');
+  const [h, p, o1, o2] = players;
+  const gameId = await finishedGame('padel', players);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [o2, now]);
+  await expectError(enter(h, gameId, [h, p], [o1, o2], [[6, 4]]), 'invalid_argument');
+  // Singles without them is fine.
+  assert.equal((await enter(h, gameId, [h], [o1], [[6, 4]])).status, 'pending');
+});
+
+test('a result with a player deleted afterwards is never applied', async () => {
+  const [a, b, c] = await Promise.all(['Kept A', 'Kept B', 'Kept C'].map((n) => rated(n, '3.50')));
+  const gone = await player('Deleted later');
+  const fresh = await player('Unrated stays unrated');
+  // Doubles [a, gone] v [b, fresh], straight into the table as pending.
+  const gameId = await finishedGame('padel', [a, gone, b, fresh]);
+  const r = await one(
+    `insert into match_results (game_id, entered_by, sets, winner, entered_at, confirm_deadline)
+     values ($1, $2, '[[6, 4]]', 'a', $3, $4) returning id`,
+    [gameId, a, now, plus(24)],
+  );
+  await pool.query(
+    `insert into match_result_players (result_id, user_id, side) values ($1, $2, 'a'), ($1, $3, 'a'), ($1, $4, 'b'), ($1, $5, 'b')`,
+    [r.id, a, gone, b, fresh],
+  );
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [gone, now]);
+
+  assert.equal(await autoConfirm(plus(24)), 1);
+  assert.equal((await resultRow(r.id)).status, 'void');
+  assert.equal((await events(r.id)).length, 0);
+  assert.equal(await ratingRow(gone), undefined);
+  assert.equal(await ratingRow(fresh), undefined);
+  assert.deepEqual(await ratingRow(a), { rating: '3.50', rated_games: 0, source: 'questionnaire' });
+  const voided = await notices('score_resolved', r.id);
+  assert.deepEqual(voided.map((n) => n.user_id), sorted([a, b, fresh]));
+  assert.ok(voided.every((n) => n.payload.action === 'void'));
+
+  // An admin confirming a disputed one gets the same void, audited as one.
+  const admin = await addAdmin(pool, await player('Void admin'));
+  const [d, e2] = await Promise.all(['Disp D', 'Disp E'].map((n) => rated(n, '3.50')));
+  const other = await finishedGame('padel', [d, e2, c]);
+  const disputed = await enter(d, other, [d], [e2], [[6, 4]]);
+  await dispute(e2, disputed.id, null);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [e2, now]);
+  await resolve(admin, disputed.id, 'confirm');
+  assert.equal((await resultRow(disputed.id)).status, 'void');
+  assert.equal((await events(disputed.id)).length, 0);
+  assert.deepEqual(
+    (await pool.query(`select action from audit_log where entity_id = $1`, [disputed.id])).rows.map((x) => x.action),
+    ['score_void'],
+  );
+  assert.deepEqual((await notices('score_resolved', disputed.id)).map((n) => n.user_id), [d]);
+});
+
 // --- past games, leaving, the finished-game notice ---------------------------
 
 test('past games', async () => {
