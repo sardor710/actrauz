@@ -88,13 +88,6 @@ class TeamAvatar extends StatelessWidget {
   }
 }
 
-/// "Level 3" in a simple sport; the rating, provisional or not, in a rated one.
-String _levelText(AppLocalizations l, {required int level, double? rating, bool provisional = false}) {
-  if (rating == null) return l.level(level);
-  final value = formatRating(rating);
-  return provisional ? l.ratingWithProvisional(value) : value;
-}
-
 /// A team (design §7): its upcoming games, who is in it, and the join, leave
 /// and captain tools.
 class TeamScreen extends ConsumerWidget {
@@ -205,6 +198,7 @@ class TeamScreen extends ConsumerWidget {
                             if (i > 0) const Divider(height: 1),
                             _MemberRow(
                               team: team,
+                              rated: isRatedSport(ref.watch(sportsProvider).valueOrNull ?? const [], team.sportId),
                               member: team.members[i],
                               onMenu: () => _memberMenu(context, ref, team, team.members[i]),
                             ),
@@ -349,6 +343,7 @@ class _Requests extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
     final social = ref.read(socialRepositoryProvider);
+    final rated = isRatedSport(ref.watch(sportsProvider).valueOrNull ?? const [], team.sportId);
     return SectionCard(
       title: l.teamRequestsTitle,
       child: Column(
@@ -371,7 +366,13 @@ class _Requests extends ConsumerWidget {
                         runSpacing: 4,
                         children: [
                           Pill(
-                            text: _levelText(l, level: team.requests[i].level, rating: team.requests[i].rating),
+                            text: memberLevel(
+                              l,
+                              rated: rated,
+                              level: team.requests[i].level,
+                              rating: team.requests[i].rating,
+                              provisional: team.requests[i].provisional,
+                            ),
                           ),
                           ReliabilityPill(reliability: team.requests[i].reliability),
                         ],
@@ -408,9 +409,12 @@ class _Requests extends ConsumerWidget {
 }
 
 class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.team, required this.member, required this.onMenu});
+  const _MemberRow({required this.team, required this.rated, required this.member, required this.onMenu});
 
   final Team team;
+
+  /// The team's sport is rated.
+  final bool rated;
   final TeamMember member;
   final VoidCallback onMenu;
 
@@ -446,8 +450,9 @@ class _MemberRow extends StatelessWidget {
                         ),
                       if (!member.deleted) ...[
                         Pill(
-                          text: _levelText(
+                          text: memberLevel(
                             l,
+                            rated: rated,
                             level: member.level,
                             rating: member.rating,
                             provisional: member.provisional,

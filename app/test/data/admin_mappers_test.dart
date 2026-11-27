@@ -403,6 +403,12 @@ void main() {
       expect(review.disputes[0].names.containsKey('u-me'), isTrue, reason: 'no signed-in id: ids stay as sent');
     });
 
+    test('a report reason a later backend adds reads as other', () {
+      final json = reviewJson();
+      ((json['reports'] as List).first as Map)['reason'] = 'cheating';
+      expect(adminReviewFromJson(json, myUserId: null).reports.first.reason, ReportReason.other);
+    });
+
     test('reports: reason, text, date, game and score, or neither', () {
       final review = adminReviewFromJson(reviewJson(), myUserId: 'u-me');
       expect(review.reports, hasLength(2));

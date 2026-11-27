@@ -237,6 +237,7 @@ class GameRequestScreen extends ConsumerWidget {
                                 for (final member in request.interested)
                                   _MemberTile(
                                     member: member,
+                                    rated: sport?.competitiveRating ?? false,
                                     onRemove: request.isMine && active ? () => _remove(context, ref, member) : null,
                                   ),
                               ],
@@ -295,9 +296,12 @@ class _Banner extends StatelessWidget {
 }
 
 class _MemberTile extends StatelessWidget {
-  const _MemberTile({required this.member, this.onRemove});
+  const _MemberTile({required this.member, required this.rated, this.onRemove});
 
   final GameMember member;
+
+  /// The request is in a rated sport.
+  final bool rated;
 
   /// Set for the poster.
   final VoidCallback? onRemove;
@@ -326,7 +330,13 @@ class _MemberTile extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       Pill(
-                        text: memberLevel(context, member),
+                        text: memberLevel(
+                          l,
+                          rated: rated,
+                          level: member.level,
+                          rating: member.rating,
+                          provisional: member.provisional,
+                        ),
                         icon: Icons.bar_chart_rounded,
                         color: AppColors.primarySoft,
                         onColor: AppColors.primaryDark,

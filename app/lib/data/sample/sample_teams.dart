@@ -433,8 +433,15 @@ TeamMember _teamMember(GameMember m, {required bool captain}) => TeamMember(
   deleted: m.deleted,
 );
 
-TeamRequest _request(_Ask a, GameMember m) =>
-    TeamRequest(id: a.id, userId: a.userId, name: m.name, level: m.level, rating: m.rating, reliability: m.reliability);
+TeamRequest _request(_Ask a, GameMember m) => TeamRequest(
+  id: a.id,
+  userId: a.userId,
+  name: m.name,
+  level: m.level,
+  rating: m.rating,
+  provisional: m.provisional,
+  reliability: m.reliability,
+);
 
 class _Team {
   _Team({

@@ -2,7 +2,6 @@ import 'package:actra/app.dart';
 import 'package:actra/data/admin_repository.dart';
 import 'package:actra/data/sample/sample_data.dart' show kMeId;
 import 'package:actra/domain/admin.dart';
-import 'package:actra/domain/competitive.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/features/admin/admin_review_screen.dart';
 import 'package:actra/features/social/player_profile_screen.dart';

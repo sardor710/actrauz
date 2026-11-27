@@ -89,6 +89,7 @@ class JoinRequestsSection extends ConsumerWidget {
     final l = context.l;
     if (game.joinRequests.isEmpty) return const SizedBox.shrink();
     final repo = ref.read(gameRepositoryProvider);
+    final rated = isRatedSport(ref.watch(sportsProvider).valueOrNull ?? const [], game.sportId);
     String nameOf(GameMember m) => playerName(l, m.name, deleted: m.deleted);
 
     return SectionCard(
@@ -116,7 +117,13 @@ class JoinRequestsSection extends ConsumerWidget {
                               runSpacing: 4,
                               children: [
                                 Pill(
-                                  text: memberLevel(context, request.member),
+                                  text: memberLevel(
+                                    l,
+                                    rated: rated,
+                                    level: request.member.level,
+                                    rating: request.member.rating,
+                                    provisional: request.member.provisional,
+                                  ),
                                   icon: Icons.bar_chart_rounded,
                                   color: AppColors.primarySoft,
                                   onColor: AppColors.primaryDark,

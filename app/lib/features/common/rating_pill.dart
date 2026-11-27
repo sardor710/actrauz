@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../domain/competitive.dart';
-import '../../domain/games.dart';
 import '../../domain/models.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -49,15 +48,25 @@ String levelOrRating(BuildContext context, Sport sport, {int? level, SportRating
   return rating.provisional ? l.ratingWithProvisional(value) : value;
 }
 
-/// A player in a game or Game Request: their rating when it is in a rated
-/// sport (the server sends one there), otherwise "Level 3".
-String memberLevel(BuildContext context, GameMember member) {
-  final l = context.l;
-  final rating = member.rating;
-  if (rating == null) return l.level(member.level);
+/// A player in a game, a Game Request or a team: their rating in a [rated]
+/// sport ("3.47 · provisional" while provisional, "No rating yet" without
+/// one), otherwise "Level 3". A rating the server sent is shown even while
+/// the sports are loading.
+String memberLevel(
+  AppLocalizations l, {
+  required bool rated,
+  required int level,
+  double? rating,
+  bool provisional = false,
+}) {
+  if (rating == null) return rated ? l.noRatingYet : l.level(level);
   final value = formatRating(rating);
-  return member.provisional ? l.ratingWithProvisional(value) : value;
+  return provisional ? l.ratingWithProvisional(value) : value;
 }
+
+/// Whether [sportId] is a rated sport (padel, tennis), as far as [sports] says.
+bool isRatedSport(List<Sport> sports, String sportId) =>
+    sports.where((s) => s.id == sportId).firstOrNull?.competitiveRating ?? false;
 
 /// "3.47" and, while the player has fewer than 10 rated games, a
 /// "Provisional" tag; with [showGames] also the rated-games count.

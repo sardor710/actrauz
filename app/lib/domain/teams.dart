@@ -116,6 +116,7 @@ class TeamRequest {
     required this.name,
     this.level = 1,
     this.rating,
+    this.provisional = false,
     this.reliability = Reliability.fresh,
   });
 
@@ -124,6 +125,9 @@ class TeamRequest {
   final String name;
   final int level;
   final double? rating;
+
+  /// Fewer than 10 rated games in the team's (rated) sport.
+  final bool provisional;
   final Reliability reliability;
 }
 

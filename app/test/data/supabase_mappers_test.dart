@@ -1786,8 +1786,10 @@ void main() {
       expect(asked.myRequestId, 'req-1');
       expect(teamFromJson(summary({'join_policy': 'open', 'description': null}), myUserId: me).joinPolicy,
           TeamJoinPolicy.open);
-      expect(() => teamFromJson(summary({'my_status': 'boss'}), myUserId: me), throwsFormatException);
-      expect(() => teamFromJson(summary({'join_policy': 'closed'}), myUserId: me), throwsFormatException);
+      // A value a later backend adds does not break the page: no status, and
+      // the stricter policy.
+      expect(teamFromJson(summary({'my_status': 'boss'}), myUserId: me).myStatus, isNull);
+      expect(teamFromJson(summary({'join_policy': 'closed'}), myUserId: me).joinPolicy, TeamJoinPolicy.approval);
     });
 
     test('team_json: members captain first, requests for the captain, games', () {
@@ -1871,6 +1873,16 @@ void main() {
       expect(request.name, 'Aziz');
       expect(request.level, 2);
       expect(request.rating, 2.5);
+      expect(request.provisional, isFalse, reason: 'no provisional key: an older backend');
+      final newer = teamFromJson(
+        summary({
+          'requests': [
+            {'id': 'req-2', 'user_id': other, 'name': 'Aziz', 'level': 3, 'rating': 3.1, 'provisional': true},
+          ],
+        }),
+        myUserId: me,
+      );
+      expect(newer.requests.single.provisional, isTrue);
       expect(request.reliability.badge, ReliabilityBadge.limited);
 
       final game = team.games.single;

@@ -657,8 +657,8 @@ AdminReview adminReviewFromJson(Row json, {required String? myUserId}) => AdminR
           'language' => ReportReason.language,
           'aggression' => ReportReason.aggression,
           'false_score' => ReportReason.falseScore,
-          'other' => ReportReason.other,
-          final other => throw FormatException('Unknown report reason "$other"'),
+          // Also a reason a later backend adds.
+          _ => ReportReason.other,
         },
         details: r['details'] as String?,
         createdAt: _instant(r['created_at']),
@@ -750,8 +750,8 @@ Team teamFromJson(Row json, {required String? myUserId}) => Team(
   description: json['description'] as String?,
   joinPolicy: switch (json['join_policy']) {
     'open' => TeamJoinPolicy.open,
-    'approval' => TeamJoinPolicy.approval,
-    final other => throw FormatException('Unknown join policy "$other"'),
+    // Also a policy a later backend adds: the stricter one.
+    _ => TeamJoinPolicy.approval,
   },
   colorSeed: (json['color_seed'] as num?)?.toInt() ?? 0,
   captainId: _userId(json['captain_id'], myUserId),
@@ -763,7 +763,8 @@ Team teamFromJson(Row json, {required String? myUserId}) => Team(
     'member' => MyTeamStatus.member,
     'requested' => MyTeamStatus.requested,
     'invited' => MyTeamStatus.invited,
-    final other => throw FormatException('Unknown team status "$other"'),
+    // A status a later backend adds: shown as no status.
+    _ => null,
   },
   myRequestId: json['my_request_id'] as String?,
   members: [
@@ -787,6 +788,8 @@ Team teamFromJson(Row json, {required String? myUserId}) => Team(
         name: r['name'] as String? ?? '',
         level: (r['level'] as num?)?.toInt() ?? 1,
         rating: _double(r['rating']),
+        // Sent by newer backends only.
+        provisional: r['provisional'] == true,
         reliability: _reliabilityOf(r['reliability']),
       ),
   ],
