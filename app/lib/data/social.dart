@@ -2,7 +2,6 @@ import '../domain/community.dart';
 import '../domain/competitive.dart';
 import '../domain/games.dart';
 import '../domain/teams.dart';
-import 'sample/sample_data.dart';
 
 /// Teams, finding players, public profiles and the signed-in player's own
 /// sports (product spec §9.3, §9.4; M7 design §5.1, §7). Never returns a
@@ -112,7 +111,7 @@ abstract class SocialRepository {
 }
 
 /// Players matching a search, from [pool], as profiles with [reliabilityOf].
-/// Shared by the stand-alone sample repository and the sample backend.
+/// Used by the sample backend.
 List<PlayerProfile> searchPlayers(
   Iterable<Player> pool, {
   String? sportId,
@@ -162,99 +161,3 @@ PlayerProfile profileOf(
       teams: teams,
       deleted: p.deleted,
     );
-
-class SampleSocialRepository implements SocialRepository {
-  const SampleSocialRepository();
-
-  /// The stand-alone repository has no teams; the app uses the sample
-  /// backend for them.
-  @override
-  Future<List<Team>> teams(String cityId) async => const [];
-
-  @override
-  Future<Team> team(String id) async => throw const JoinException(JoinError.notFound);
-
-  @override
-  Future<Team> createTeam(TeamDraft draft) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> updateTeam(String id, TeamDraft draft) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<void> deleteTeam(String id) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> joinTeam(String id) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<void> leaveTeam(String id) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<void> withdrawTeamRequest(String requestId) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> decideTeamRequest(String requestId, {required bool approve}) async =>
-      throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> removeTeamMember(String teamId, String userId) async =>
-      throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<void> inviteToTeam(String teamId, String userId) async => throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> respondTeamInvite(String teamId, {required bool accept}) async =>
-      throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<Team> transferCaptain(String teamId, String userId) async =>
-      throw const JoinException(JoinError.unavailable);
-
-  /// Sample players are not tied to a city yet.
-  @override
-  Future<List<PlayerProfile>> players(
-    String cityId, {
-    String? sportId,
-    int minLevel = 1,
-    int maxLevel = 5,
-    double? minRating,
-    double? maxRating,
-    String? query,
-  }) async => searchPlayers(
-    kSamplePlayers,
-    sportId: sportId,
-    minLevel: minLevel,
-    maxLevel: maxLevel,
-    minRating: minRating,
-    maxRating: maxRating,
-    query: query,
-  );
-
-  @override
-  Future<PlayerProfile> profile(String userId) async => profileOf(
-    kSamplePlayers.firstWhere(
-      (p) => p.id == userId,
-      orElse: () => Player(id: userId, name: userId),
-    ),
-  );
-
-  /// The stand-alone repository has no signed-in player: no sports, and
-  /// nothing can be ticked (the app uses the sample backend for that).
-  @override
-  Future<List<MySport>> mySports() async => const [];
-
-  @override
-  Future<List<MySport>> setSport(String sportId, {int? level, List<int>? answers}) async =>
-      throw const JoinException(JoinError.unavailable);
-
-  @override
-  Future<List<MySport>> removeSport(String sportId) async => const [];
-
-  @override
-  Future<Leaderboard> leaderboard(String sportId, String cityId) async => const Leaderboard(rows: []);
-
-  @override
-  Future<void> reportPlayer(String targetId, {String? gameId, required ReportReason reason, String? details}) async =>
-      throw const JoinException(JoinError.unavailable);
-}
