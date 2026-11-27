@@ -825,5 +825,6 @@
   "teamGameOpens": "Hammaga ochiladi · {when}",
   "notifTeamGamePosted": "«{team}» jamoasi uchun yangi oʻyin",
   "teamHandoverConfirm": "Sardorlikni {name}ga topshirib, jamoadan chiqasizmi?",
-  "teamHandoverLeaveFailed": "Sardorlik topshirildi, lekin jamoadan chiqib boʻlmadi. Qayta urinish uchun «Jamoadan chiqish» tugmasini bosing."
+  "teamHandoverLeaveFailed": "Sardorlik topshirildi, lekin jamoadan chiqib boʻlmadi. Qayta urinish uchun «Jamoadan chiqish» tugmasini bosing.",
+  "teamPlaysIn": "Bu jamoa {city} shahrida oʻynaydi"
 }

@@ -2876,4 +2876,9 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get teamHandoverLeaveFailed =>
       'Sardorlik topshirildi, lekin jamoadan chiqib boʻlmadi. Qayta urinish uchun «Jamoadan chiqish» tugmasini bosing.';
+
+  @override
+  String teamPlaysIn(String city) {
+    return 'Bu jamoa $city shahrida oʻynaydi';
+  }
 }

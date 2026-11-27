@@ -2878,4 +2878,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get teamHandoverLeaveFailed =>
       'You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.';
+
+  @override
+  String teamPlaysIn(String city) {
+    return 'This team plays in $city';
+  }
 }

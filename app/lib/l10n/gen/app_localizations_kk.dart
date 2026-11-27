@@ -2887,4 +2887,9 @@ class AppLocalizationsKk extends AppLocalizations {
   @override
   String get teamHandoverLeaveFailed =>
       'Капитан рөлі берілді, бірақ командадан шығу сәтсіз аяқталды. Қайталау үшін «Командадан шығу» түймесін басыңыз.';
+
+  @override
+  String teamPlaysIn(String city) {
+    return 'Бұл команда $city қаласында ойнайды';
+  }
 }

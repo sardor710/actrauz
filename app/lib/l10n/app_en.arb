@@ -1696,5 +1696,13 @@
       }
     }
   },
-  "teamHandoverLeaveFailed": "You handed the captain role over, but leaving the team failed. Use “Leave team” to try again."
+  "teamHandoverLeaveFailed": "You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.",
+  "teamPlaysIn": "This team plays in {city}",
+  "@teamPlaysIn": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  }
 }

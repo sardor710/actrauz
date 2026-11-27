@@ -5057,6 +5057,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You handed the captain role over, but leaving the team failed. Use “Leave team” to try again.'**
   String get teamHandoverLeaveFailed;
+
+  /// No description provided for @teamPlaysIn.
+  ///
+  /// In en, this message translates to:
+  /// **'This team plays in {city}'**
+  String teamPlaysIn(String city);
 }
 
 class _AppLocalizationsDelegate

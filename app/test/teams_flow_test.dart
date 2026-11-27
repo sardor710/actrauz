@@ -493,6 +493,38 @@ void main() {
     expect(tester.widget<RadioListTile<String>>(_key('who-team-${team.id}')).checked, isTrue);
   });
 
+  testWidgets("a team chosen for another city's game stays visible and blocks Create until Everyone is picked", (
+    tester,
+  ) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    final backend = containerOf(tester).read(sampleBackendProvider);
+    // My team plays in Almaty; the game would be in Tashkent, the current city.
+    final team = await backend.createTeam(
+      const TeamDraft(name: 'Almaty Runners', sportId: 'running', cityId: 'almaty'),
+    );
+    await _refresh(tester);
+
+    await _go(tester, '/games/new?team=${team.id}');
+    await tester.enterText(_key('meeting-point'), 'Riverside');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(_key('who-team-${team.id}'));
+    final row = tester.widget<RadioListTile<String>>(_key('who-team-${team.id}'));
+    expect(row.checked, isTrue);
+    expect(row.onChanged, isNull, reason: 'shown, but it cannot be chosen here');
+    expect(find.text('This team plays in Almaty'), findsOneWidget);
+    expect(tester.widget<FilledButton>(_key('create-game-submit')).onPressed, isNull);
+
+    await tap(tester, _key('who-public'));
+    expect(tester.widget<FilledButton>(_key('create-game-submit')).onPressed, isNotNull);
+    await tap(tester, _key('create-game-submit'));
+
+    expect(find.byType(GameScreen), findsOneWidget);
+    final game = (await backend.games('tashkent')).singleWhere((g) => g.meetingPoint == 'Riverside');
+    expect(game.team, isNull);
+    expect(game.visibility, GameVisibility.public);
+    expect(game.publicFrom, isNull);
+  });
+
   testWidgets('team choice is hidden without a team', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     final backend = containerOf(tester).read(sampleBackendProvider);

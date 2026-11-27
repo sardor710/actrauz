@@ -63,6 +63,18 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
   String? _error;
 
   @override
+  void didUpdateWidget(CreateGameScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The open form reached again by "Post a game": it is now for that team,
+    // in the team's sport.
+    if (widget.teamId != null && widget.teamId != oldWidget.teamId) {
+      _teamId = widget.teamId;
+      _openHours = null;
+      _sportId = null;
+    }
+  }
+
+  @override
   void dispose() {
     _place.dispose();
     _note.dispose();
@@ -172,8 +184,15 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
         if (t.isCaptain && t.sportId == sportId && t.cityId == gameCityId) t,
     ];
     final team = myTeams.where((t) => t.id == _teamId).firstOrNull;
+    // A team chosen before (or by "Post a game") that this game cannot be
+    // for: the booking or the current city is not the team's. It stays in
+    // view, and nothing is created until the player picks a booking there or
+    // chooses who else can join: never silently a public game.
+    final stranded = team == null
+        ? teams.where((t) => t.id == _teamId && t.isCaptain && t.sportId == sportId).firstOrNull
+        : null;
     final spots = _spots ?? (sport?.defaultPlayers ?? 4).clamp(SpotsStepper.min, SpotsStepper.max);
-    final canCreate = sport != null && !_busy && (!sport.bookable || chosen != null);
+    final canCreate = sport != null && !_busy && (!sport.bookable || chosen != null) && stranded == null;
 
     return Scaffold(
       appBar: AppBar(
@@ -199,7 +218,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                             selected: s.id == sportId,
                             onTap: () => setState(() {
                               // Another sport has other teams.
-                              if (s.id != sportId) _teamId = null;
+                              if (s.id != sportId) _clearTeam();
                               _sportId = s.id;
                               _error = null;
                             }),
@@ -268,7 +287,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                       LevelRangeCard(rated: true, values: _ratings, onChanged: (v) => setState(() => _ratings = v))
                     else
                       LevelRangeCard(values: _levels, onChanged: (v) => setState(() => _levels = v)),
-                    if (myTeams.isEmpty)
+                    if (myTeams.isEmpty && stranded == null)
                       SectionCard(
                         title: l.visibilityLabel,
                         child: SizedBox(
@@ -285,7 +304,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                         ),
                       )
                     else ...[
-                      _whoSection(myTeams, team),
+                      _whoSection(myTeams, team, stranded: stranded),
                       if (team != null) _opensSection(),
                     ],
                     SectionCard(
@@ -346,24 +365,35 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
   static const _public = '_public';
   static const _inviteOnly = '_invite';
 
+  /// No team any more: nor its opening time.
+  void _clearTeam() {
+    _teamId = null;
+    _openHours = null;
+  }
+
   /// Everyone, invite only, or one of the teams the player captains.
-  Widget _whoSection(List<Team> teams, Team? team) {
+  /// [stranded]: the team chosen before that plays in another city; shown
+  /// chosen but disabled, with where it plays.
+  Widget _whoSection(List<Team> teams, Team? team, {Team? stranded}) {
     final l = context.l;
-    final selected = team?.id ?? (_visibility == GameVisibility.public ? _public : _inviteOnly);
-    Widget choice(String key, String value, String label, IconData icon) => RadioListTile<String>(
+    final selected = team?.id ?? stranded?.id ?? (_visibility == GameVisibility.public ? _public : _inviteOnly);
+    Widget choice(String key, String value, String label, IconData icon, {String? note}) => RadioListTile<String>(
       key: ValueKey(key),
       contentPadding: EdgeInsets.zero,
       value: value,
       groupValue: selected,
-      onChanged: (v) => setState(() {
-        if (v == _public || v == _inviteOnly) {
-          _teamId = null;
-          _visibility = v == _public ? GameVisibility.public : GameVisibility.inviteOnly;
-        } else {
-          _teamId = v;
-        }
-      }),
+      onChanged: note != null
+          ? null
+          : (v) => setState(() {
+              if (v == _public || v == _inviteOnly) {
+                _clearTeam();
+                _visibility = v == _public ? GameVisibility.public : GameVisibility.inviteOnly;
+              } else {
+                _teamId = v;
+              }
+            }),
       title: Text(label, style: AppText.bodyStrong),
+      subtitle: note == null ? null : Text(note, style: manrope(13.5, 600, color: AppColors.error)),
       secondary: Icon(icon, color: AppColors.muted),
     );
 
@@ -375,6 +405,14 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
           choice('who-public', _public, l.visibilityPublic, Icons.public_rounded),
           choice('who-invite', _inviteOnly, l.visibilityInviteOnly, Icons.lock_outline_rounded),
           for (final t in teams) choice('who-team-${t.id}', t.id, l.teamGameChoice(t.name), Icons.groups_outlined),
+          if (stranded != null)
+            choice(
+              'who-team-${stranded.id}',
+              stranded.id,
+              l.teamGameChoice(stranded.name),
+              Icons.groups_outlined,
+              note: l.teamPlaysIn(cityById(stranded.cityId).name.resolve(context.lang)),
+            ),
         ],
       ),
     );

@@ -2912,4 +2912,9 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get teamHandoverLeaveFailed =>
       'Роль капитана передана, но выйти из команды не удалось. Нажмите «Выйти из команды», чтобы попробовать снова.';
+
+  @override
+  String teamPlaysIn(String city) {
+    return 'Эта команда играет в городе $city';
+  }
 }
