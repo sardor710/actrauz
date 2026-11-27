@@ -2032,6 +2032,45 @@ class AppLocalizationsUz extends AppLocalizations {
       'Toʻlovni faqat roʻyxatdan oʻtgan arizalarda belgilash mumkin';
 
   @override
+  String get errDrawExists =>
+      'Turnirda allaqachon setka bor: sport turi, maydon va kategoriya turini endi oʻzgartirib boʻlmaydi';
+
+  @override
+  String get errDrawPublished =>
+      'Setka eʼlon qilingan: ishtirokchilar tarkibi yopilgan';
+
+  @override
+  String get errDrawOutdated =>
+      'Qurʼadan keyin arizalar oʻzgardi. Qurʼani qaytadan tashlang';
+
+  @override
+  String get errDrawFinal =>
+      'Hisob kiritilgan: setkani endi qayta tuzib boʻlmaydi';
+
+  @override
+  String get errTooFewEntries =>
+      'Bu format uchun roʻyxatdan oʻtgan arizalar yetarli emas';
+
+  @override
+  String get errPlayerBusy => 'Bu oʻyindagi oʻyinchi shu vaqtda boshqa oʻyinda';
+
+  @override
+  String get errNextMatchPlayed =>
+      'Keyingi oʻyinda allaqachon hisob bor: bu natijani endi oʻzgartirib boʻlmaydi';
+
+  @override
+  String get errDrawNotAllowed =>
+      'Chiqib ketish oʻyini durang bilan tugashi mumkin emas';
+
+  @override
+  String get errTournamentBlock =>
+      'Bu vaqt turnir oʻyini uchun band. Uni faqat tashkilotchi koʻchira oladi';
+
+  @override
+  String get errMatchesOutsideDates =>
+      'Baʼzi oʻyinlar yangi sanalardan tashqarida belgilangan. Avval ularni koʻchiring';
+
+  @override
   String get paidLabel => 'Toʻlangan';
 
   @override

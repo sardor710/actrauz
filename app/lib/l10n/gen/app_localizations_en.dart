@@ -2034,6 +2034,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errNotMarkable => 'Only registered entries can be marked paid';
 
   @override
+  String get errDrawExists =>
+      'This tournament already has a draw: the sport, venue and category type can no longer change';
+
+  @override
+  String get errDrawPublished => 'The draw is published: entries are locked';
+
+  @override
+  String get errDrawOutdated =>
+      'Entries changed since the draw was made. Make the draw again';
+
+  @override
+  String get errDrawFinal =>
+      'A score has been entered: the draw can no longer be redone';
+
+  @override
+  String get errTooFewEntries =>
+      'Not enough registered entries for this format';
+
+  @override
+  String get errPlayerBusy =>
+      'A player in this match is in another match at that time';
+
+  @override
+  String get errNextMatchPlayed =>
+      'The next match already has a score: this result can no longer change';
+
+  @override
+  String get errDrawNotAllowed => 'A knockout match cannot end in a draw';
+
+  @override
+  String get errTournamentBlock =>
+      'This time is held for a tournament match. Only the organiser can move it';
+
+  @override
+  String get errMatchesOutsideDates =>
+      'Some matches are scheduled outside the new dates. Move them first';
+
+  @override
   String get paidLabel => 'Paid';
 
   @override

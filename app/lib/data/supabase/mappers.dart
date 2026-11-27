@@ -1,7 +1,10 @@
+import 'package:flutter/material.dart' show TimeOfDay;
+
 import '../../core/localized_text.dart';
 import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/brackets.dart';
 import '../../domain/community.dart';
 import '../../domain/competitive.dart';
 import '../../domain/games.dart';
@@ -1133,3 +1136,176 @@ Map<String, Object?> tournamentDraftJson(TournamentDraft draft) => {
   if (draft.id == null && draft.categories.isNotEmpty)
     'categories': [for (final c in draft.categories) categoryDraftJson(c, nested: true)],
 };
+
+// ---- Brackets (M8a) ----
+
+DrawFormat drawFormatOf(String value) => switch (value) {
+  'knockout' => DrawFormat.knockout,
+  'groups' => DrawFormat.groups,
+  _ => throw FormatException('Unknown draw format "$value"'),
+};
+
+MatchStage matchStageOf(String value) => switch (value) {
+  'group' => MatchStage.group,
+  'knockout' => MatchStage.knockout,
+  _ => throw FormatException('Unknown match stage "$value"'),
+};
+
+MatchStatus matchStatusOf(String value) => switch (value) {
+  'waiting' => MatchStatus.waiting,
+  'ready' => MatchStatus.ready,
+  'done' => MatchStatus.done,
+  _ => throw FormatException('Unknown match status "$value"'),
+};
+
+MatchOutcome matchOutcomeOf(String value) => switch (value) {
+  'played' => MatchOutcome.played,
+  'walkover' => MatchOutcome.walkover,
+  'retired' => MatchOutcome.retired,
+  'decider' => MatchOutcome.decider,
+  'bye' => MatchOutcome.bye,
+  'none' => MatchOutcome.none,
+  _ => throw FormatException('Unknown match outcome "$value"'),
+};
+
+Side sideOf(String value) => switch (value) {
+  'a' => Side.a,
+  'b' => Side.b,
+  'draw' => Side.draw,
+  _ => throw FormatException('Unknown side "$value"'),
+};
+
+/// `p_format` of `make_draw`.
+String drawFormatCode(DrawFormat format) => format.name;
+
+/// `p_outcome` of `enter_match_score`.
+String matchOutcomeCode(MatchOutcome outcome) => outcome.name;
+
+/// `p_winner` of `enter_match_score`.
+String sideCode(Side side) => side.name;
+
+/// `p_from` of `fill_day`: `09:05`.
+String timeOfDayJson(TimeOfDay time) => '${_two(time.hour)}:${_two(time.minute)}';
+
+List<List<int>>? _setsOf(Object? value) => value == null
+    ? null
+    : [
+        for (final set in value as List) [for (final n in set as List) (n as num).toInt()],
+      ];
+
+/// `app.match_json`: sides are registration ids (never swapped for
+/// [kMeId]); times are venue wall-clock. `court_name`, `ends_at` and `clash`
+/// are absent from a backend before the schedule (M8a Task 2).
+TournamentMatch tournamentMatchFromJson(Row json) => TournamentMatch(
+  id: json['id'] as String,
+  stage: matchStageOf(json['stage'] as String),
+  groupId: json['group_id'] as String?,
+  round: json['round'] as int,
+  position: json['position'] as int,
+  sideA: json['side_a'] as String?,
+  sideB: json['side_b'] as String?,
+  aEmpty: json['a_empty'] as bool? ?? false,
+  bEmpty: json['b_empty'] as bool? ?? false,
+  status: matchStatusOf(json['status'] as String),
+  outcome: json['outcome'] == null ? null : matchOutcomeOf(json['outcome'] as String),
+  winner: json['winner'] == null ? null : sideOf(json['winner'] as String),
+  sets: _setsOf(json['sets']),
+  courtId: json['court_id'] as String?,
+  courtName: json['court_name'] == null ? null : localizedTextFromJson(json['court_name']),
+  startsAt: _wallClockOrNull(json['starts_at']),
+  endsAt: _wallClockOrNull(json['ends_at']),
+  placeNote: json['place_note'] as String?,
+  clash: json['clash'] as bool? ?? false,
+);
+
+/// One of a group's `standings` (`app.group_standings`).
+GroupStanding groupStandingFromJson(Row json) => GroupStanding(
+  registrationId: json['registration_id'] as String,
+  played: json['played'] as int? ?? 0,
+  won: json['won'] as int? ?? 0,
+  drawn: json['drawn'] as int? ?? 0,
+  lost: json['lost'] as int? ?? 0,
+  points: json['points'] as int? ?? 0,
+  setsFor: json['sets_for'] as int? ?? 0,
+  setsAgainst: json['sets_against'] as int? ?? 0,
+  gamesFor: json['games_for'] as int? ?? 0,
+  gamesAgainst: json['games_against'] as int? ?? 0,
+  place: json['place'] as int,
+  advancing: json['advancing'] as bool? ?? false,
+  withdrawn: json['withdrawn'] as bool? ?? false,
+);
+
+/// `app.draw_json`, returned by `make_draw`, `swap_draw_entries`,
+/// `publish_draw`, `redo_draw`, `enter_match_score` and `withdraw_entry`.
+/// Players are user ids (the signed-in one is [kMeId]). `standings`,
+/// `winner`, `runner_up` and `finished` are absent from a backend before
+/// score entry (M8a Task 3).
+CategoryDraw categoryDrawFromJson(Row json, {required String? myUserId}) => CategoryDraw(
+  categoryId: json['category_id'] as String,
+  format: drawFormatOf(json['format'] as String),
+  groupSize: json['group_size'] as int?,
+  advance: json['advance'] as int?,
+  published: json['status'] == 'published',
+  outdated: json['outdated'] as bool? ?? false,
+  entries: [
+    for (final e in _rows(json['entries']))
+      DrawEntry(
+        registrationId: e['registration_id'] as String,
+        seed: e['seed'] as int,
+        strength: (e['strength'] as num? ?? 0).toDouble(),
+        groupId: e['group_id'] as String?,
+        withdrawn: e['withdrawn'] as bool? ?? false,
+        players: [for (final p in _rows(e['players'])) playerRefFromJson(p, myUserId: myUserId)],
+      ),
+  ],
+  groups: [
+    for (final g in _rows(json['groups']))
+      DrawGroup(
+        id: g['id'] as String,
+        label: g['label'] as String,
+        standings: [for (final s in _rows(g['standings'])) groupStandingFromJson(s)],
+      ),
+  ],
+  matches: [for (final m in _rows(json['matches'])) tournamentMatchFromJson(m)],
+  winner: json['winner'] as String?,
+  runnerUp: json['runner_up'] as String?,
+  finished: json['finished'] as bool? ?? false,
+);
+
+/// One of `tournament_bracket`'s `courts`.
+CourtRef courtRefFromJson(Row json) => CourtRef(
+  id: json['id'] as String,
+  name: localizedTextFromJson(json['name']),
+  slotMinutes: json['slot_minutes'] as int,
+);
+
+/// `tournament_bracket`: `{organizer, draws, courts, my_next_match,
+/// finished}`; `courts` (M8a Task 2), `my_next_match` and `finished` (Task 3)
+/// are absent from an older backend.
+TournamentBracket tournamentBracketFromJson(Row json, {required String? myUserId}) {
+  final next = _jsonMap(json['my_next_match']);
+  return TournamentBracket(
+    organizer: json['organizer'] as bool? ?? false,
+    draws: [for (final d in _rows(json['draws'])) categoryDrawFromJson(d, myUserId: myUserId)],
+    courts: [for (final c in _rows(json['courts'])) courtRefFromJson(c)],
+    myNextMatch: next == null
+        ? null
+        : NextMatch(match: tournamentMatchFromJson(next), categoryId: next['category_id'] as String),
+    finished: json['finished'] as bool? ?? false,
+  );
+}
+
+/// One row of `my_tournament_matches`: match JSON plus `tournament_id`,
+/// `category_id` and the tournament's `title_*`.
+MyMatch myMatchFromJson(Row json) => MyMatch(
+  match: tournamentMatchFromJson(json),
+  tournamentId: json['tournament_id'] as String,
+  title: textOf(json, 'title'),
+  categoryId: json['category_id'] as String,
+);
+
+/// `fill_day`: `{scheduled, unscheduled: [match id]}`.
+FillResult fillResultFromJson(Row json) => FillResult(
+  scheduled: json['scheduled'] as int? ?? 0,
+  unscheduled: [for (final id in (json['unscheduled'] as List? ?? const [])) id as String],
+);

@@ -268,6 +268,45 @@ enum TournamentError {
   /// Admin only: paid can be set on `registered` entries only.
   notMarkable,
 
+  // ---- Brackets (M8a) ----
+
+  /// Admin: the sport or venue cannot change once a category has a draw;
+  /// the kind of a category with a draw, or its deletion, likewise.
+  drawExists,
+
+  /// The draw is published: entries are locked and the draft calls refused.
+  drawPublished,
+
+  /// The draft's entries changed since it was made: make it again.
+  drawOutdated,
+
+  /// A score was entered: the draw can no longer be redone.
+  drawFinal,
+
+  /// Fewer registered entries than the format needs (2, or 3 for groups).
+  tooFewEntries,
+
+  /// The court slot is booked or blocked.
+  slotTaken,
+
+  /// A player of the match is in another match at that time.
+  playerBusy,
+
+  /// The next match that depends on this one already has a score.
+  nextMatchPlayed,
+
+  /// A knockout match cannot end level.
+  drawNotAllowed,
+
+  /// Owner: a tournament match's block is the organiser's to move.
+  tournamentBlock,
+
+  /// Admin: new dates would leave a scheduled match outside them.
+  matchesOutsideDates,
+
+  /// A match cannot be scheduled in the past.
+  inPast,
+
   /// No connection, an expired session, a server fault.
   unavailable,
 }

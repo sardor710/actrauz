@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../domain/brackets.dart';
 import '../../domain/tournaments.dart';
 import '../repositories.dart';
 import 'errors.dart';
@@ -83,5 +84,17 @@ class SupabaseTournamentRepository implements TournamentRepository {
   Future<PlayerRef?> findPlayerByPhone(String phone) => guardTournament(() async {
     final json = await _client.rpc('find_player_by_phone', params: {'p_phone': phone});
     return json == null ? null : playerRefFromJson(_map(json), myUserId: _me);
+  });
+
+  @override
+  Future<TournamentBracket> bracket(String tournamentId) => guardTournament(() async {
+    final json = await _client.rpc('tournament_bracket', params: {'p_tournament_id': tournamentId});
+    return tournamentBracketFromJson(_map(json), myUserId: _me);
+  });
+
+  @override
+  Future<List<MyMatch>> myMatches() => guardTournament(() async {
+    final rows = await _client.rpc('my_tournament_matches');
+    return [for (final row in rows as List) myMatchFromJson(_map(row))];
   });
 }

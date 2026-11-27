@@ -7,6 +7,7 @@ import '../core/app_config.dart';
 import '../core/markets.dart';
 import '../data/auth/auth_repository.dart';
 import '../data/location/city_locator.dart';
+import '../data/organizer_repository.dart';
 import '../data/repositories.dart';
 import '../data/sample/sample_repositories.dart';
 import '../data/social.dart';
@@ -15,9 +16,11 @@ import '../data/supabase/supabase_booking_repository.dart';
 import '../data/supabase/supabase_catalog_repository.dart';
 import '../data/supabase/supabase_game_repository.dart';
 import '../data/supabase/supabase_notification_repository.dart';
+import '../data/supabase/supabase_organizer_repository.dart';
 import '../data/supabase/supabase_social_repository.dart';
 import '../data/supabase/supabase_tournament_repository.dart';
 import '../domain/booking_engine.dart';
+import '../domain/brackets.dart';
 import '../domain/community.dart';
 import '../domain/competitive.dart';
 import '../domain/games.dart';
@@ -126,6 +129,12 @@ final tournamentRepositoryProvider = Provider<TournamentRepository>(
       : ref.watch(sampleBackendProvider).tournament,
 );
 
+final organizerRepositoryProvider = Provider<OrganizerRepository>(
+  (ref) => ref.watch(backendEnabledProvider)
+      ? SupabaseOrganizerRepository(_clientForCurrentPlayer(ref))
+      : ref.watch(sampleBackendProvider).organizer,
+);
+
 final sportsProvider = FutureProvider<List<Sport>>((ref) => ref.watch(catalogRepositoryProvider).sports());
 
 final venuesProvider = FutureProvider<List<Venue>>(
@@ -159,6 +168,19 @@ final tournamentProvider = FutureProvider.family<Tournament, String>(
 /// not ended, newest first.
 final myRegistrationsProvider = FutureProvider<List<Registration>>(
   (ref) => ref.watch(tournamentRepositoryProvider).myRegistrations(),
+);
+
+/// A tournament's draws as the player may see them, by tournament id.
+final bracketProvider = FutureProvider.family<TournamentBracket, String>(
+  (ref, id) => ref.watch(tournamentRepositoryProvider).bracket(id),
+);
+
+/// The player's tournament matches ("My matches").
+final myMatchesProvider = FutureProvider<List<MyMatch>>((ref) => ref.watch(tournamentRepositoryProvider).myMatches());
+
+/// The active tournaments the player organises.
+final organizedTournamentsProvider = FutureProvider<List<TournamentSummary>>(
+  (ref) => ref.watch(organizerRepositoryProvider).organizedTournaments(),
 );
 
 typedef AvailabilityKey = ({String venueId, String courtId, DateTime date});
@@ -338,6 +360,9 @@ void refreshTournaments(WidgetRef ref) {
   ref.invalidate(tournamentsProvider);
   ref.invalidate(tournamentProvider);
   ref.invalidate(myRegistrationsProvider);
+  ref.invalidate(bracketProvider);
+  ref.invalidate(myMatchesProvider);
+  ref.invalidate(organizedTournamentsProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }

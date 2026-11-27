@@ -3624,6 +3624,66 @@ abstract class AppLocalizations {
   /// **'Only registered entries can be marked paid'**
   String get errNotMarkable;
 
+  /// No description provided for @errDrawExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This tournament already has a draw: the sport, venue and category type can no longer change'**
+  String get errDrawExists;
+
+  /// No description provided for @errDrawPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'The draw is published: entries are locked'**
+  String get errDrawPublished;
+
+  /// No description provided for @errDrawOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries changed since the draw was made. Make the draw again'**
+  String get errDrawOutdated;
+
+  /// No description provided for @errDrawFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'A score has been entered: the draw can no longer be redone'**
+  String get errDrawFinal;
+
+  /// No description provided for @errTooFewEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough registered entries for this format'**
+  String get errTooFewEntries;
+
+  /// No description provided for @errPlayerBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A player in this match is in another match at that time'**
+  String get errPlayerBusy;
+
+  /// No description provided for @errNextMatchPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'The next match already has a score: this result can no longer change'**
+  String get errNextMatchPlayed;
+
+  /// No description provided for @errDrawNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'A knockout match cannot end in a draw'**
+  String get errDrawNotAllowed;
+
+  /// No description provided for @errTournamentBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'This time is held for a tournament match. Only the organiser can move it'**
+  String get errTournamentBlock;
+
+  /// No description provided for @errMatchesOutsideDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Some matches are scheduled outside the new dates. Move them first'**
+  String get errMatchesOutsideDates;
+
   /// No description provided for @paidLabel.
   ///
   /// In en, this message translates to:

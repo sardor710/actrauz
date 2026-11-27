@@ -2060,6 +2060,44 @@ class AppLocalizationsRu extends AppLocalizations {
       'Оплату можно отметить только у зарегистрированных заявок';
 
   @override
+  String get errDrawExists =>
+      'В турнире уже есть сетка: вид спорта, площадку и тип категории больше нельзя менять';
+
+  @override
+  String get errDrawPublished => 'Сетка опубликована: состав участников закрыт';
+
+  @override
+  String get errDrawOutdated =>
+      'Заявки изменились после жеребьёвки. Проведите её заново';
+
+  @override
+  String get errDrawFinal => 'Счёт уже внесён: сетку больше нельзя переделать';
+
+  @override
+  String get errTooFewEntries =>
+      'Недостаточно зарегистрированных заявок для этого формата';
+
+  @override
+  String get errPlayerBusy =>
+      'Игрок этого матча в это время играет в другом матче';
+
+  @override
+  String get errNextMatchPlayed =>
+      'У следующего матча уже есть счёт: этот результат больше нельзя изменить';
+
+  @override
+  String get errDrawNotAllowed =>
+      'Матч на выбывание не может закончиться вничью';
+
+  @override
+  String get errTournamentBlock =>
+      'Это время занято матчем турнира. Перенести его может только организатор';
+
+  @override
+  String get errMatchesOutsideDates =>
+      'Некоторые матчи назначены вне новых дат. Сначала перенесите их';
+
+  @override
   String get paidLabel => 'Оплачено';
 
   @override

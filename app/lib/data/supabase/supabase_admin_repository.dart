@@ -172,6 +172,25 @@ class SupabaseAdminRepository implements AdminRepository {
     () async => (await _client.rpc('admin_offer_next', params: {'p_category_id': categoryId})) as int,
   );
 
+  List<PlayerRef> _organizers(Object? json) => [
+    for (final row in (json as List? ?? const [])) playerRefFromJson(_map(row), myUserId: _me),
+  ];
+
+  @override
+  Future<List<PlayerRef>> organizers(String tournamentId) => guardTournament(
+    () async => _organizers(await _client.rpc('tournament_organizers', params: {'p_tournament_id': tournamentId})),
+  );
+
+  @override
+  Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add}) => guardTournament(
+    () async => _organizers(
+      await _client.rpc(
+        'admin_set_organizer',
+        params: {'p_tournament_id': tournamentId, 'p_user_id': userIdOut(userId, _me), 'p_add': add},
+      ),
+    ),
+  );
+
   @override
   Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to}) =>
       guardTournament(() async {

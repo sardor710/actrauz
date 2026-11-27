@@ -1,7 +1,10 @@
+import 'package:flutter/material.dart' show TimeOfDay;
+
 import '../../core/localized_text.dart';
 import '../../core/markets.dart';
 import '../../domain/admin.dart';
 import '../../domain/booking_engine.dart';
+import '../../domain/brackets.dart';
 import '../../domain/community.dart';
 import '../../domain/competitive.dart';
 import '../../domain/games.dart';
@@ -11,6 +14,7 @@ import '../../domain/teams.dart';
 import '../../domain/tournaments.dart';
 import '../../domain/pricing.dart';
 import '../admin_repository.dart';
+import '../organizer_repository.dart';
 import '../owner_repository.dart';
 import '../repositories.dart';
 import '../social.dart';
@@ -1725,6 +1729,56 @@ class SampleBackend
   /// The demo player is an admin. A separate object for the same reason as
   /// [owner]: `venues()` and `sports()` clash with [CatalogRepository].
   late final AdminRepository admin = _SampleAdminRepository(this);
+
+  // ---- Organiser ----
+
+  /// The demo player's organiser operations (M8a). Not built yet: Task 5B.
+  final OrganizerRepository organizer = const _SampleOrganizerRepository();
+}
+
+/// Brackets in sample mode arrive with M8a Task 5B.
+class _SampleOrganizerRepository implements OrganizerRepository {
+  const _SampleOrganizerRepository();
+
+  static Never _todo() => throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
+
+  @override
+  Future<List<TournamentSummary>> organizedTournaments() => _todo();
+
+  @override
+  Future<List<AdminRegistration>> entries(String tournamentId) => _todo();
+
+  @override
+  Future<CategoryDraw> makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance}) => _todo();
+
+  @override
+  Future<CategoryDraw> swapEntries(String categoryId, String registrationA, String registrationB) => _todo();
+
+  @override
+  Future<CategoryDraw> publish(String categoryId) => _todo();
+
+  @override
+  Future<CategoryDraw> redo(String categoryId) => _todo();
+
+  @override
+  Future<TournamentMatch> scheduleMatch(String matchId, {String? courtId, DateTime? startsAt, String? placeNote}) =>
+      _todo();
+
+  @override
+  Future<FillResult> fillDay(
+    String tournamentId,
+    DateTime day,
+    List<String> courtIds,
+    TimeOfDay from, {
+    List<String>? categoryIds,
+  }) => _todo();
+
+  @override
+  Future<CategoryDraw> enterScore(String matchId, MatchOutcome outcome, {Side? winner, List<List<int>>? sets}) =>
+      _todo();
+
+  @override
+  Future<CategoryDraw> withdraw(String registrationId) => _todo();
 }
 
 class _SampleOwnerRepository implements OwnerRepository {
@@ -2537,6 +2591,14 @@ class _SampleAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<List<PlayerRef>> organizers(String tournamentId) =>
+      throw UnimplementedError('Organisers in sample mode (M8a Task 5B)');
+
+  @override
+  Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add}) =>
+      throw UnimplementedError('Organisers in sample mode (M8a Task 5B)');
+
+  @override
   Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to}) async {
     if (cityId != null && !_knownCity(cityId)) throw const TournamentException(TournamentError.notFound);
     final first = dateOnly(from);
@@ -2635,6 +2697,13 @@ class _SampleTournamentRepository implements TournamentRepository {
 
   @override
   Future<PlayerRef?> findPlayerByPhone(String phone) async => _rules.findPlayerByPhone(kMeId, phone);
+
+  @override
+  Future<TournamentBracket> bracket(String tournamentId) =>
+      throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
+
+  @override
+  Future<List<MyMatch>> myMatches() => throw UnimplementedError('Brackets in sample mode (M8a Task 5B)');
 }
 
 enum _Invite { pending, accepted, declined }

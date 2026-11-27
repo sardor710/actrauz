@@ -107,6 +107,18 @@ const _tournamentErrors = <String, TournamentError>{
   'rate_limited': TournamentError.rateLimited,
   'not_allowed': TournamentError.notAllowed,
   'not_markable': TournamentError.notMarkable,
+  'draw_exists': TournamentError.drawExists,
+  'draw_published': TournamentError.drawPublished,
+  'draw_outdated': TournamentError.drawOutdated,
+  'draw_final': TournamentError.drawFinal,
+  'too_few_entries': TournamentError.tooFewEntries,
+  'slot_taken': TournamentError.slotTaken,
+  'player_busy': TournamentError.playerBusy,
+  'next_match_played': TournamentError.nextMatchPlayed,
+  'draw_not_allowed': TournamentError.drawNotAllowed,
+  'tournament_block': TournamentError.tournamentBlock,
+  'matches_outside_dates': TournamentError.matchesOutsideDates,
+  'in_past': TournamentError.inPast,
 };
 
 /// The rule a failed booking call broke, or `unavailable` for anything else

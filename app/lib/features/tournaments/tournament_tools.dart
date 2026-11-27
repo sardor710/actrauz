@@ -34,6 +34,18 @@ String tournamentErrorText(AppLocalizations l, Object error) {
     TournamentError.hasRegistrations => l.errHasRegistrations,
     TournamentError.notAllowed => l.adminOnly,
     TournamentError.notMarkable => l.errNotMarkable,
+    TournamentError.drawExists => l.errDrawExists,
+    TournamentError.drawPublished => l.errDrawPublished,
+    TournamentError.drawOutdated => l.errDrawOutdated,
+    TournamentError.drawFinal => l.errDrawFinal,
+    TournamentError.tooFewEntries => l.errTooFewEntries,
+    TournamentError.slotTaken => l.errSlotTaken,
+    TournamentError.playerBusy => l.errPlayerBusy,
+    TournamentError.nextMatchPlayed => l.errNextMatchPlayed,
+    TournamentError.drawNotAllowed => l.errDrawNotAllowed,
+    TournamentError.tournamentBlock => l.errTournamentBlock,
+    TournamentError.matchesOutsideDates => l.errMatchesOutsideDates,
+    TournamentError.inPast => l.errInPast,
   };
 }
 

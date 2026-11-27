@@ -1,4 +1,5 @@
 import '../domain/booking_engine.dart';
+import '../domain/brackets.dart';
 import '../domain/community.dart';
 import '../domain/games.dart';
 import '../domain/models.dart';
@@ -163,6 +164,16 @@ abstract class TournamentRepository {
   /// Whether an account has this exact phone number. Never returns the
   /// phone; at most 20 calls an hour ([TournamentError.rateLimited]).
   Future<PlayerRef?> findPlayerByPhone(String phone);
+
+  /// The draws the player may see (drafts only for organisers), in category
+  /// order, with the player's next match. A hidden tournament exists only
+  /// for its organisers ([TournamentError.notFound] otherwise).
+  Future<TournamentBracket> bracket(String tournamentId);
+
+  /// The player's matches in published draws of active tournaments, byes
+  /// left out: those still to play first, by start time, then the finished
+  /// ones, latest first.
+  Future<List<MyMatch>> myMatches();
 }
 
 /// The player's inbox and community settings.

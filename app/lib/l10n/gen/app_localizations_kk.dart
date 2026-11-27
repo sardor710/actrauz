@@ -2042,6 +2042,44 @@ class AppLocalizationsKk extends AppLocalizations {
       'Тек тіркелген қатысуларды ғана төленді деп белгілеуге болады';
 
   @override
+  String get errDrawExists =>
+      'Турнирде жеребе тартылған: спорт түрін, алаңды және санат түрін енді өзгертуге болмайды';
+
+  @override
+  String get errDrawPublished => 'Жеребе жарияланды: қатысушылар құрамы жабық';
+
+  @override
+  String get errDrawOutdated =>
+      'Жеребеден кейін өтінімдер өзгерді. Жеребені қайта тартыңыз';
+
+  @override
+  String get errDrawFinal =>
+      'Есеп енгізілді: жеребені енді қайта тартуға болмайды';
+
+  @override
+  String get errTooFewEntries =>
+      'Бұл формат үшін тіркелген қатысулар жеткіліксіз';
+
+  @override
+  String get errPlayerBusy =>
+      'Осы матчтағы ойыншы бұл уақытта басқа матчта ойнайды';
+
+  @override
+  String get errNextMatchPlayed =>
+      'Келесі матчта есеп бар: бұл нәтижені енді өзгертуге болмайды';
+
+  @override
+  String get errDrawNotAllowed => 'Шығу матчы тең нәтижемен аяқтала алмайды';
+
+  @override
+  String get errTournamentBlock =>
+      'Бұл уақыт турнир матчына бөлінген. Оны тек ұйымдастырушы ауыстыра алады';
+
+  @override
+  String get errMatchesOutsideDates =>
+      'Кейбір матчтар жаңа күндерден тыс белгіленген. Алдымен оларды ауыстырыңыз';
+
+  @override
   String get paidLabel => 'Төленді';
 
   @override

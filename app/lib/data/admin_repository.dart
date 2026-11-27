@@ -96,6 +96,14 @@ abstract class AdminRepository {
   /// deadline. Returns how many were offered; `full` when there is no free spot.
   Future<int> offerNext(String categoryId);
 
+  /// The tournament's organisers, by name (M8a design §5).
+  Future<List<PlayerRef>> organizers(String tournamentId);
+
+  /// Adds ([add]) or removes [userId] as an organiser of the tournament; the
+  /// person is told. Returns the organisers afterwards. `notFound` for a
+  /// missing tournament or user.
+  Future<List<PlayerRef>> setOrganizer(String tournamentId, String userId, {required bool add});
+
   /// [cityId] `null` = every city. [from] to [to] inclusive, at most 366 days.
   Future<AdminDashboard> dashboard({String? cityId, required DateTime from, required DateTime to});
 

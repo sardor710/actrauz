@@ -5,6 +5,7 @@ import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/supabase/errors.dart';
 import 'package:actra/data/supabase/mappers.dart';
 import 'package:actra/domain/booking_engine.dart';
+import 'package:actra/domain/brackets.dart';
 import 'package:actra/domain/community.dart';
 import 'package:actra/domain/games.dart';
 import 'package:actra/domain/models.dart';
@@ -12,6 +13,7 @@ import 'package:actra/domain/pricing.dart';
 import 'package:actra/domain/slot_generator.dart';
 import 'package:actra/domain/teams.dart';
 import 'package:actra/domain/tournaments.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1631,6 +1633,19 @@ void main() {
         'rate_limited': TournamentError.rateLimited,
         'not_allowed': TournamentError.notAllowed,
         'not_markable': TournamentError.notMarkable,
+        // M8a: draws, the schedule and scores.
+        'draw_exists': TournamentError.drawExists,
+        'draw_published': TournamentError.drawPublished,
+        'draw_outdated': TournamentError.drawOutdated,
+        'draw_final': TournamentError.drawFinal,
+        'too_few_entries': TournamentError.tooFewEntries,
+        'slot_taken': TournamentError.slotTaken,
+        'player_busy': TournamentError.playerBusy,
+        'next_match_played': TournamentError.nextMatchPlayed,
+        'draw_not_allowed': TournamentError.drawNotAllowed,
+        'tournament_block': TournamentError.tournamentBlock,
+        'matches_outside_dates': TournamentError.matchesOutsideDates,
+        'in_past': TournamentError.inPast,
       };
       for (final e in codes.entries) {
         expect(
@@ -1642,7 +1657,7 @@ void main() {
       // Anything else: no connection, a server fault, a code of another feature.
       expect(tournamentExceptionFor(StateError('offline')).error, TournamentError.unavailable);
       expect(
-        tournamentExceptionFor(const PostgrestException(message: 'slot_taken', code: 'P0001')).error,
+        tournamentExceptionFor(const PostgrestException(message: 'hold_expired', code: 'P0001')).error,
         TournamentError.unavailable,
       );
       const already = TournamentException(TournamentError.full);
@@ -1659,6 +1674,394 @@ void main() {
         throwsA(isA<TournamentException>().having((e) => e.error, 'error', TournamentError.unavailable)),
       );
       expect(await guardTournament(() async => 7), 7);
+    });
+  });
+
+  group('brackets', () {
+    Map<String, dynamic> match(
+      String id, {
+      String stage = 'group',
+      String? groupId = 'grp-a',
+      int round = 1,
+      int position = 1,
+      String? a = 'reg-1',
+      String? b = 'reg-2',
+      String status = 'ready',
+      Map<String, dynamic>? extra,
+    }) => {
+      'id': id,
+      'stage': stage,
+      'group_id': groupId,
+      'round': round,
+      'position': position,
+      'side_a': a,
+      'side_b': b,
+      'a_empty': false,
+      'b_empty': false,
+      'status': status,
+      'outcome': null,
+      'winner': null,
+      'sets': null,
+      'court_id': null,
+      'starts_at': null,
+      'place_note': null,
+      ...?extra,
+    };
+
+    Map<String, dynamic> standing(String reg, int place, {bool advancing = false, bool withdrawn = false}) => {
+      'registration_id': reg,
+      'played': 2,
+      'won': 3 - place,
+      'drawn': 0,
+      'lost': place - 1,
+      'points': (3 - place) * 2,
+      'sets_for': 4 - place,
+      'sets_against': place,
+      'games_for': 24 - place,
+      'games_against': 10 + place,
+      'place': place,
+      'advancing': advancing,
+      'withdrawn': withdrawn,
+    };
+
+    Map<String, dynamic> entry(String reg, int seed, List<Map<String, dynamic>> players, {bool withdrawn = false}) => {
+      'registration_id': reg,
+      'seed': seed,
+      'strength': 1450.5,
+      'group_id': 'grp-a',
+      'withdrawn': withdrawn,
+      'players': players,
+    };
+
+    /// A published groups draw after every Task 2–3 change: standings,
+    /// result keys, court names, end times and clashes.
+    Map<String, dynamic> groupDraw() => {
+      'category_id': 'cat-1',
+      'format': 'groups',
+      'group_size': 3,
+      'advance': 2,
+      'status': 'published',
+      'outdated': false,
+      'entries': [
+        entry('reg-1', 1, [
+          {'id': me, 'name': 'Sam'},
+          {'id': other, 'name': 'Aziz'},
+        ]),
+        entry('reg-2', 2, [
+          {'id': 'p3', 'name': 'Bek'},
+        ]),
+        entry('reg-3', 3, [
+          {'id': 'p4', 'name': 'Olim'},
+        ], withdrawn: true),
+      ],
+      'groups': [
+        {
+          'id': 'grp-a',
+          'label': 'A',
+          'standings': [
+            standing('reg-1', 1, advancing: true),
+            standing('reg-2', 2, advancing: true),
+            standing('reg-3', 3, withdrawn: true),
+          ],
+        },
+      ],
+      'matches': [
+        match(
+          'm-1',
+          status: 'done',
+          extra: {
+            'outcome': 'played',
+            'winner': 'a',
+            'sets': [
+              [6, 4],
+              [3, 6],
+              [7, 5],
+            ],
+            'court_id': 'court-1',
+            'court_name': {'uz': '1-kort', 'ru': 'Корт 1', 'kk': 'Корт 1', 'en': 'Court 1'},
+            'starts_at': '2026-12-05T10:00:00',
+            'ends_at': '2026-12-05T11:30:00',
+            'clash': false,
+          },
+        ),
+        match(
+          'm-2',
+          position: 2,
+          a: 'reg-2',
+          b: 'reg-3',
+          status: 'done',
+          extra: {'outcome': 'walkover', 'winner': 'a', 'place_note': 'Court by the café'},
+        ),
+        match(
+          'm-3',
+          stage: 'knockout',
+          groupId: null,
+          a: null,
+          b: null,
+          status: 'waiting',
+          extra: {'starts_at': '2026-12-06T09:00:00', 'clash': true, 'b_empty': true},
+        ),
+        match(
+          'm-4',
+          stage: 'knockout',
+          groupId: null,
+          round: 2,
+          a: 'reg-1',
+          b: 'reg-2',
+          status: 'done',
+          extra: {
+            'outcome': 'decider',
+            'winner': 'b',
+            'sets': [
+              [2, 2],
+            ],
+          },
+        ),
+      ],
+      'winner': 'reg-2',
+      'runner_up': 'reg-1',
+      'finished': true,
+    };
+
+    test('a groups draw maps fully', () {
+      final draw = categoryDrawFromJson(groupDraw(), myUserId: me);
+      expect(draw.categoryId, 'cat-1');
+      expect(draw.format, DrawFormat.groups);
+      expect(draw.groupSize, 3);
+      expect(draw.advance, 2);
+      expect(draw.published, isTrue);
+      expect(draw.outdated, isFalse);
+      expect(draw.winner, 'reg-2');
+      expect(draw.runnerUp, 'reg-1');
+      expect(draw.finished, isTrue);
+
+      expect(draw.entries.map((e) => e.registrationId), ['reg-1', 'reg-2', 'reg-3']);
+      final first = draw.entries.first;
+      expect(first.seed, 1);
+      expect(first.strength, 1450.5);
+      expect(first.groupId, 'grp-a');
+      expect(first.withdrawn, isFalse);
+      // Players are user ids: I am kMeId.
+      expect(first.players, const [PlayerRef(id: kMeId, name: 'Sam'), PlayerRef(id: other, name: 'Aziz')]);
+      expect(draw.entries.last.withdrawn, isTrue);
+      expect(draw.entry('reg-2').players.single.name, 'Bek');
+
+      final group = draw.groups.single;
+      expect(group.id, 'grp-a');
+      expect(group.label, 'A');
+      expect(group.standings.map((s) => s.registrationId), ['reg-1', 'reg-2', 'reg-3']);
+      final top = group.standings.first;
+      expect(
+        [top.played, top.won, top.drawn, top.lost, top.points, top.setsFor, top.setsAgainst, top.gamesFor, top.gamesAgainst],
+        [2, 2, 0, 0, 4, 3, 1, 23, 11],
+      );
+      expect(top.place, 1);
+      expect(top.advancing, isTrue);
+      expect(group.standings.last.withdrawn, isTrue);
+      expect(group.standings.last.advancing, isFalse);
+
+      expect(draw.matches, hasLength(4));
+      final m1 = draw.matches[0];
+      expect(m1.id, 'm-1');
+      expect(m1.stage, MatchStage.group);
+      expect(m1.groupId, 'grp-a');
+      expect(m1.round, 1);
+      expect(m1.position, 1);
+      // Sides are registration ids, never swapped for kMeId.
+      expect(m1.sideA, 'reg-1');
+      expect(m1.sideB, 'reg-2');
+      expect(m1.status, MatchStatus.done);
+      expect(m1.outcome, MatchOutcome.played);
+      expect(m1.winner, Side.a);
+      expect(m1.winnerEntry, 'reg-1');
+      expect(m1.sets, [
+        [6, 4],
+        [3, 6],
+        [7, 5],
+      ]);
+      expect(m1.courtId, 'court-1');
+      expect(m1.courtName!.resolve('en'), 'Court 1');
+      expect(m1.courtName!.resolve('kk'), 'Корт 1');
+      // Venue wall-clock time, as everywhere.
+      expect(m1.startsAt, DateTime.utc(2026, 12, 5, 10));
+      expect(m1.endsAt, DateTime.utc(2026, 12, 5, 11, 30));
+      expect(m1.clash, isFalse);
+
+      final m2 = draw.matches[1];
+      expect(m2.outcome, MatchOutcome.walkover);
+      expect(m2.sets, isNull);
+      expect(m2.placeNote, 'Court by the café');
+      expect(m2.courtName, isNull);
+
+      final m3 = draw.matches[2];
+      expect(m3.stage, MatchStage.knockout);
+      expect(m3.groupId, isNull);
+      expect(m3.sideA, isNull);
+      expect(m3.bEmpty, isTrue);
+      expect(m3.aEmpty, isFalse);
+      expect(m3.status, MatchStatus.waiting);
+      expect(m3.outcome, isNull);
+      expect(m3.winner, isNull);
+      expect(m3.startsAt, DateTime.utc(2026, 12, 6, 9));
+      expect(m3.endsAt, isNull);
+      expect(m3.clash, isTrue);
+
+      final m4 = draw.matches[3];
+      expect(m4.outcome, MatchOutcome.decider);
+      expect(m4.winner, Side.b);
+      expect(m4.winnerEntry, 'reg-2');
+    });
+
+    test('every format, stage, status, outcome and side the database writes', () {
+      expect(drawFormatOf('knockout'), DrawFormat.knockout);
+      expect(drawFormatOf('groups'), DrawFormat.groups);
+      expect(matchStageOf('group'), MatchStage.group);
+      expect(matchStageOf('knockout'), MatchStage.knockout);
+      for (final s in MatchStatus.values) {
+        expect(matchStatusOf(s.name), s);
+      }
+      for (final o in MatchOutcome.values) {
+        expect(matchOutcomeOf(o.name), o);
+      }
+      expect(sideOf('a'), Side.a);
+      expect(sideOf('b'), Side.b);
+      expect(sideOf('draw'), Side.draw);
+      expect(() => matchOutcomeOf('forfeit'), throwsFormatException);
+    });
+
+    test('a knockout draft from Task 1 (no standings, result keys, court names or clashes) still maps', () {
+      final draw = categoryDrawFromJson({
+        'category_id': 'cat-2',
+        'format': 'knockout',
+        'group_size': null,
+        'advance': null,
+        'status': 'draft',
+        'outdated': true,
+        'entries': [
+          {'registration_id': 'reg-9', 'seed': 1, 'strength': 3, 'group_id': null, 'withdrawn': false, 'players': []},
+        ],
+        'groups': [],
+        'matches': [match('k-1', stage: 'knockout', groupId: null, a: 'reg-9', b: null, status: 'done',
+            extra: {'outcome': 'bye', 'winner': 'a', 'b_empty': true, 'starts_at': '2026-12-05T10:00:00'})],
+      }, myUserId: me);
+      expect(draw.format, DrawFormat.knockout);
+      expect(draw.groupSize, isNull);
+      expect(draw.advance, isNull);
+      expect(draw.published, isFalse);
+      expect(draw.outdated, isTrue);
+      expect(draw.winner, isNull);
+      expect(draw.runnerUp, isNull);
+      expect(draw.finished, isFalse);
+      expect(draw.entries.single.strength, 3.0);
+      expect(draw.groups, isEmpty);
+      final bye = draw.matches.single;
+      expect(bye.outcome, MatchOutcome.bye);
+      expect(bye.courtName, isNull);
+      expect(bye.endsAt, isNull);
+      expect(bye.clash, isFalse);
+    });
+
+    test('a tournament_bracket without the Task 2–3 keys still maps', () {
+      final bracket = tournamentBracketFromJson({
+        'organizer': false,
+        'draws': [groupDraw()..remove('winner')..remove('runner_up')..remove('finished')],
+      }, myUserId: me);
+      expect(bracket.organizer, isFalse);
+      expect(bracket.draws.single.categoryId, 'cat-1');
+      expect(bracket.draws.single.finished, isFalse);
+      expect(bracket.courts, isEmpty);
+      expect(bracket.myNextMatch, isNull);
+      expect(bracket.finished, isFalse);
+      expect(bracket.draw('cat-1')?.format, DrawFormat.groups);
+      expect(bracket.draw('cat-x'), isNull);
+    });
+
+    test('a tournament_bracket for an organiser: courts, my next match and finished', () {
+      final bracket = tournamentBracketFromJson({
+        'organizer': true,
+        'draws': [groupDraw()],
+        'courts': [
+          {
+            'id': 'court-1',
+            'name': {'uz': '1-kort', 'ru': 'Корт 1', 'kk': 'Корт 1', 'en': 'Court 1'},
+            'slot_minutes': 90,
+          },
+        ],
+        'my_next_match': match('m-7', a: 'reg-1', b: 'reg-2', extra: {'category_id': 'cat-1', 'starts_at': '2026-12-05T12:00:00'}),
+        'finished': true,
+      }, myUserId: me);
+      expect(bracket.organizer, isTrue);
+      final court = bracket.courts.single;
+      expect(court.id, 'court-1');
+      expect(court.name.resolve('uz'), '1-kort');
+      expect(court.slotMinutes, 90);
+      expect(bracket.myNextMatch!.categoryId, 'cat-1');
+      expect(bracket.myNextMatch!.match.id, 'm-7');
+      expect(bracket.myNextMatch!.match.startsAt, DateTime.utc(2026, 12, 5, 12));
+      expect(bracket.finished, isTrue);
+    });
+
+    test('a row of my_tournament_matches carries its tournament and category', () {
+      final mine = myMatchFromJson(
+        match(
+          'm-1',
+          status: 'done',
+          extra: {
+            'outcome': 'played',
+            'winner': 'b',
+            'sets': [
+              [1, 6],
+              [2, 6],
+            ],
+            'tournament_id': 'tour-1',
+            'category_id': 'cat-1',
+            'title_uz': 'Kubok',
+            'title_ru': 'Кубок',
+            'title_kk': 'Кубогы',
+            'title_en': 'Cup',
+          },
+        ),
+      );
+      expect(mine.tournamentId, 'tour-1');
+      expect(mine.categoryId, 'cat-1');
+      expect(mine.title.resolve('kk'), 'Кубогы');
+      expect(mine.title.resolve('en'), 'Cup');
+      expect(mine.match.winner, Side.b);
+      expect(mine.match.sets!.length, 2);
+    });
+
+    test('my_organized_tournaments rows and fill_day results', () {
+      final summary = tournamentSummaryFromJson({
+        'id': 'tour-1',
+        'title_uz': 'Kubok',
+        'title_ru': 'Кубок',
+        'title_en': 'Cup',
+        'title_kk': 'Кубогы',
+        'starts_on': '2026-12-05',
+        'ends_on': '2026-12-06',
+        'city_id': 'tashkent',
+        'sport_id': 'padel',
+      });
+      expect(summary.id, 'tour-1');
+      expect(summary.title.resolve('ru'), 'Кубок');
+      expect(summary.start, DateTime.utc(2026, 12, 5));
+      expect(summary.end, DateTime.utc(2026, 12, 6));
+      expect(summary.venueId, isNull);
+
+      final fill = fillResultFromJson({
+        'scheduled': 5,
+        'unscheduled': ['m-8', 'm-9'],
+      });
+      expect(fill.scheduled, 5);
+      expect(fill.unscheduled, ['m-8', 'm-9']);
+      expect(fillResultFromJson({'scheduled': 0, 'unscheduled': []}).unscheduled, isEmpty);
+    });
+
+    test('what the organiser calls send', () {
+      expect(timeOfDayJson(const TimeOfDay(hour: 9, minute: 5)), '09:05');
+      expect(drawFormatCode(DrawFormat.groups), 'groups');
+      expect(matchOutcomeCode(MatchOutcome.walkover), 'walkover');
+      expect(sideCode(Side.draw), 'draw');
     });
   });
 
