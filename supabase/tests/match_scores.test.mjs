@@ -395,6 +395,15 @@ test('single group', async () => {
   assert.equal(j.winner, group[0]);
   assert.equal(j.runner_up, group[1]);
   for (const p of await playersOf(group[0])) assert.equal((await notesOf(p, 'category_won')).length, 1);
+
+  // The champion deletes their account: the deletion succeeds, the result stays.
+  const [champion] = await playersOf(group[0]);
+  await pool.query(`select app.delete_account($1, $2)`, [champion, now]);
+  assert.equal(await statusOf(group[0]), 'removed');
+  const after = await drawJson(cat);
+  assert.equal(after.winner, group[0]);
+  assert.equal(after.runner_up, group[1]);
+  for (const p of await playersOf(group[1])) assert.equal((await notesOf(p, 'category_won')).length, 0);
 });
 
 // --- withdrawals ---------------------------------------------------------------------
@@ -554,8 +563,8 @@ test('advancing into a clash is flagged', async () => {
 test('walkover releases a future block', async () => {
   const { venueId, courts } = await venue();
   const t = await tournament({ venueId });
-  const { cat } = await published(t, { n: 4 });
-  const [s1, s2] = await knockout(cat, 1);
+  const { cat } = await published(t, { n: 8 });
+  const [s1, s2, s3] = await knockout(cat, 1);
   await schedule(s1.id, courts[0], at(day, 10));
   await schedule(s2.id, courts[1], at(day, 10));
 
@@ -569,6 +578,13 @@ test('walkover releases a future block', async () => {
   await score(organizer, s2.id, 'walkover', 'b', null, tashkent(day, 10, 30));
   assert.equal((await blocksOf(s2.id)).length, 1);
   assert.equal((await matchJson(s2.id)).starts_at, at(day, 10));
+
+  // A withdrawal's walkover before the start releases the block as well.
+  await schedule(s3.id, courts[0], at(day, 13));
+  await withdraw(organizer, s3.side_a);
+  assert.equal((await blocksOf(s3.id)).length, 0);
+  const w = await matchJson(s3.id);
+  assert.deepEqual([w.outcome, w.starts_at, w.court_id], ['walkover', null, null]);
 });
 
 test('my next match', async () => {
@@ -603,6 +619,10 @@ test('my next match', async () => {
   b = await bracket(me);
   assert.equal(b.my_next_match, null);
   assert.equal(b.finished, true);
+  // A category with entries but no draw yet: the tournament is not finished.
+  const extra = await addCategory(pool, t);
+  await addEntries(pool, extra, [await player('X1'), await player('X2')]);
+  assert.equal((await bracket(me)).finished, false);
 });
 
 test('organiser plays', async () => {

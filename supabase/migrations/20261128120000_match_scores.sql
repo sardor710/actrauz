@@ -658,7 +658,8 @@ end $$;
 -- (before its start the block is released); otherwise the entry's side
 -- becomes empty and the match settles when the other side arrives. A
 -- knockout walkover the entry won over another withdrawn entry becomes a
--- match with no winner. Played matches stay.
+-- match with no winner. Played matches stay. Once the category is finished
+-- nothing in the draw changes (an account deleted later keeps the result).
 create function app.withdraw_locked(p_actor uuid, p_registration_id uuid, p_category_id uuid, p_now timestamptz)
 returns void
 language plpgsql
@@ -671,6 +672,7 @@ declare
   v_tournament_id uuid;
   v_setting text;
   v_won_before uuid;
+  v_finished boolean;
   v_groups_done boolean;
   v_match public.tournament_matches;
   v_id uuid;
@@ -686,6 +688,7 @@ begin
   v_before := v_reg;
   select c.tournament_id into v_tournament_id from public.tournament_categories c where c.id = p_category_id;
   v_won_before := (app.category_result(p_category_id) ->> 'winner')::uuid;
+  v_finished := (app.category_result(p_category_id) ->> 'finished')::boolean;
   v_groups_done := not exists (select 1 from public.tournament_matches m
                                where m.category_id = p_category_id and m.stage = 'group' and m.status <> 'done');
 
@@ -697,7 +700,8 @@ begin
   where r.id = v_reg.id returning * into v_reg;
   perform set_config('actra.draw_override', coalesce(v_setting, ''), true);
 
-  if v_draw.status = 'published' then
+  -- A finished category keeps its result: the entry only leaves.
+  if v_draw.status = 'published' and not v_finished then
     update public.tournament_draw_entries e set withdrawn_at = p_now where e.registration_id = v_reg.id;
 
     -- Both sides of a knockout match withdrawn: no winner, and the next
@@ -850,8 +854,8 @@ end $$;
 -- Redefined from 20261128110000_schedule.sql: "my_next_match" (the caller's
 -- first match still to play in a published draw, by start time, then group
 -- before knockout, round and position: match_json plus "category_id", or
--- null) and "finished" (at least one published draw, every category with a
--- draw has a published one, and all are finished).
+-- null) and "finished" (every category of the tournament has a published
+-- draw that is finished).
 create or replace function app.tournament_bracket(p_user uuid, p_tournament_id uuid) returns jsonb
 language plpgsql
 set search_path = ''
@@ -890,9 +894,8 @@ begin
       order by m.starts_at nulls last, m.stage, m.round, c.sort_order, c.created_at, c.id, m.position
       limit 1),
     'finished', (
-      select count(*) > 0 and bool_and(d.status = 'published' and (app.category_result(d.category_id) ->> 'finished')::boolean)
-      from public.tournament_draws d
-      join public.tournament_categories c on c.id = d.category_id
+      select count(*) > 0 and bool_and((app.category_result(c.id) ->> 'finished')::boolean)
+      from public.tournament_categories c
       where c.tournament_id = p_tournament_id));
 end $$;
 
@@ -985,6 +988,15 @@ begin
   loop
     perform pg_advisory_xact_lock(hashtext('tournament:' || v_id::text));
   end loop;
+  -- Every category of the player's live entries next, in id order (the lock
+  -- the cancel-registrations step below takes), so that no category is
+  -- locked after a withdrawal has written its tournament row.
+  perform 1 from public.tournament_categories c
+  where c.id in (
+    select r.category_id from public.tournament_registrations r
+    where (r.user_id = p_user or r.partner_id = p_user) and r.status = any (c_live))
+  order by c.id
+  for update;
   for v_id in
     select r.id from public.tournament_registrations r
     join public.tournament_draws d on d.category_id = r.category_id and d.locked
