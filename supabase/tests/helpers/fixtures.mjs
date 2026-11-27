@@ -98,3 +98,46 @@ export const tashkent = (day, hour, minute = 0) => `${day}T${pad(hour)}:${pad(mi
 
 export const monday = '2026-11-23';
 export const saturday = '2026-11-28';
+
+/**
+ * A tournament written straight to the table (M8 tests): in the venue's city,
+ * or Tashkent without a venue. Registration closes at 00:00 on startsOn.
+ */
+export async function addTournament(pool, { sportId = 'padel', venueId = null, startsOn = '2026-12-10', endsOn = startsOn } = {}) {
+  await addCities(pool);
+  const { rows } = await pool.query(
+    `insert into tournaments (city_id, sport_id, venue_id, title_en, title_ru, title_uz, starts_on, ends_on)
+     values (coalesce((select v.city_id from venues v where v.id = $2), 'tashkent'), $1, $2, 'Cup', 'Кубок', 'Kubok', $3, $4)
+     returning id`,
+    [sportId, venueId, startsOn, endsOn],
+  );
+  return rows[0].id;
+}
+
+/** A category of the tournament (open levels, no fee). */
+export async function addCategory(pool, tournamentId, { kind = 'singles', cap = 32 } = {}) {
+  const { rows } = await pool.query(
+    `insert into tournament_categories (tournament_id, name_en, name_ru, name_uz, kind, cap)
+     values ($1, $2, $2, $2, $3, $4) returning id`,
+    [tournamentId, kind === 'pairs' ? 'Pairs' : 'Singles', kind, cap],
+  );
+  return rows[0].id;
+}
+
+/**
+ * One `registered` entry per user, in order; partners[i] (pairs) is the
+ * confirmed partner of users[i]. Returns the registration ids.
+ */
+export async function addEntries(pool, categoryId, users, { partners = [] } = {}) {
+  const ids = [];
+  for (const [i, userId] of users.entries()) {
+    const partnerId = partners[i] ?? null;
+    const { rows } = await pool.query(
+      `insert into tournament_registrations (category_id, user_id, partner_id, partner_confirmed, status, fee, currency, created_at, decided_at)
+       values ($1, $2, $3, true, 'registered', 0, 'UZS', now(), now()) returning id`,
+      [categoryId, userId, partnerId],
+    );
+    ids.push(rows[0].id);
+  }
+  return ids;
+}
