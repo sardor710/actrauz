@@ -328,6 +328,14 @@ class ScoreBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
+    // From [names]: a missing or empty name is a deleted account's.
+    String nameOf(String id) {
+      final names = this.names;
+      if (names == null) return memberName(l, game!, id);
+      final name = names[id];
+      return name == null || name.isEmpty ? l.deletedPlayer : name;
+    }
+
     Widget side(List<String> ids, bool a) {
       final won = result.winner == (a ? MatchWinner.a : MatchWinner.b);
       final style = won ? AppText.bodyStrong : AppText.body;
@@ -337,7 +345,7 @@ class ScoreBoard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                [for (final id in ids) names?[id] ?? memberName(l, game!, id)].join(', '),
+                [for (final id in ids) nameOf(id)].join(', '),
                 style: style,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

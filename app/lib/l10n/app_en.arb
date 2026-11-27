@@ -1708,5 +1708,12 @@
   "errAlreadyInTeam": "You are already in this team",
   "errAlreadyAskedTeam": "You have already asked to join this team",
   "errCaptainOnly": "Only the captain can do this",
-  "errWindowClosed": "The time for this has passed"
+  "errWindowClosed": "The time for this has passed",
+  "auditScoreConfirm": "Score confirmed",
+  "auditScoreCorrect": "Score corrected",
+  "auditScoreVoid": "Score voided",
+  "auditScoreKeep": "Score kept",
+  "auditReportClosed": "Report closed",
+  "auditTeamDeleted": "Team deleted",
+  "reviewCloseReport": "Close report"
 }

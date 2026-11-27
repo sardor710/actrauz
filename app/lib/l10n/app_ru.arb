@@ -830,5 +830,12 @@
   "errAlreadyInTeam": "Вы уже в этой команде",
   "errAlreadyAskedTeam": "Вы уже отправили заявку в эту команду",
   "errCaptainOnly": "Это может сделать только капитан",
-  "errWindowClosed": "Время для этого уже прошло"
+  "errWindowClosed": "Время для этого уже прошло",
+  "auditScoreConfirm": "Счёт подтверждён",
+  "auditScoreCorrect": "Счёт исправлен",
+  "auditScoreVoid": "Счёт аннулирован",
+  "auditScoreKeep": "Счёт оставлен в силе",
+  "auditReportClosed": "Жалоба закрыта",
+  "auditTeamDeleted": "Команда удалена",
+  "reviewCloseReport": "Закрыть жалобу"
 }

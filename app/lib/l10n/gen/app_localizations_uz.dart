@@ -2894,4 +2894,25 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get errWindowClosed => 'Buning vaqti oʻtib ketdi';
+
+  @override
+  String get auditScoreConfirm => 'Hisob tasdiqlandi';
+
+  @override
+  String get auditScoreCorrect => 'Hisob tuzatildi';
+
+  @override
+  String get auditScoreVoid => 'Hisob bekor qilindi';
+
+  @override
+  String get auditScoreKeep => 'Hisob kuchda qoldirildi';
+
+  @override
+  String get auditReportClosed => 'Shikoyat yopildi';
+
+  @override
+  String get auditTeamDeleted => 'Jamoa oʻchirildi';
+
+  @override
+  String get reviewCloseReport => 'Shikoyatni yopish';
 }

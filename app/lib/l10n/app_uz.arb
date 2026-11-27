@@ -830,5 +830,12 @@
   "errAlreadyInTeam": "Siz allaqachon shu jamoadasiz",
   "errAlreadyAskedTeam": "Siz bu jamoaga allaqachon soʻrov yuborgansiz",
   "errCaptainOnly": "Buni faqat sardor qila oladi",
-  "errWindowClosed": "Buning vaqti oʻtib ketdi"
+  "errWindowClosed": "Buning vaqti oʻtib ketdi",
+  "auditScoreConfirm": "Hisob tasdiqlandi",
+  "auditScoreCorrect": "Hisob tuzatildi",
+  "auditScoreVoid": "Hisob bekor qilindi",
+  "auditScoreKeep": "Hisob kuchda qoldirildi",
+  "auditReportClosed": "Shikoyat yopildi",
+  "auditTeamDeleted": "Jamoa oʻchirildi",
+  "reviewCloseReport": "Shikoyatni yopish"
 }

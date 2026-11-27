@@ -5087,6 +5087,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The time for this has passed'**
   String get errWindowClosed;
+
+  /// No description provided for @auditScoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Score confirmed'**
+  String get auditScoreConfirm;
+
+  /// No description provided for @auditScoreCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Score corrected'**
+  String get auditScoreCorrect;
+
+  /// No description provided for @auditScoreVoid.
+  ///
+  /// In en, this message translates to:
+  /// **'Score voided'**
+  String get auditScoreVoid;
+
+  /// No description provided for @auditScoreKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Score kept'**
+  String get auditScoreKeep;
+
+  /// No description provided for @auditReportClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Report closed'**
+  String get auditReportClosed;
+
+  /// No description provided for @auditTeamDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Team deleted'**
+  String get auditTeamDeleted;
+
+  /// No description provided for @reviewCloseReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Close report'**
+  String get reviewCloseReport;
 }
 
 class _AppLocalizationsDelegate

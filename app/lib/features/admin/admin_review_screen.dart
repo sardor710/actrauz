@@ -311,7 +311,10 @@ class _ReportCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      l.reviewReportLine(report.reporterName, report.targetName),
+                      l.reviewReportLine(
+                        report.reporterName.isEmpty ? l.deletedPlayer : report.reporterName,
+                        report.targetName.isEmpty ? l.deletedPlayer : report.targetName,
+                      ),
                       style: AppText.cardTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -399,6 +402,7 @@ class _CloseSheetState extends State<_CloseSheet> {
     return AdminSheetFrame(
       title: l.reviewCloseTitle,
       saveKey: const ValueKey('review-close-save'),
+      saveLabel: l.reviewCloseReport,
       onSave: () => Navigator.of(context).pop(_note.text),
       children: [
         TextField(

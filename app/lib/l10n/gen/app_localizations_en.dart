@@ -2895,4 +2895,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errWindowClosed => 'The time for this has passed';
+
+  @override
+  String get auditScoreConfirm => 'Score confirmed';
+
+  @override
+  String get auditScoreCorrect => 'Score corrected';
+
+  @override
+  String get auditScoreVoid => 'Score voided';
+
+  @override
+  String get auditScoreKeep => 'Score kept';
+
+  @override
+  String get auditReportClosed => 'Report closed';
+
+  @override
+  String get auditTeamDeleted => 'Team deleted';
+
+  @override
+  String get reviewCloseReport => 'Close report';
 }

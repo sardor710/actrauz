@@ -2929,4 +2929,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errWindowClosed => 'Время для этого уже прошло';
+
+  @override
+  String get auditScoreConfirm => 'Счёт подтверждён';
+
+  @override
+  String get auditScoreCorrect => 'Счёт исправлен';
+
+  @override
+  String get auditScoreVoid => 'Счёт аннулирован';
+
+  @override
+  String get auditScoreKeep => 'Счёт оставлен в силе';
+
+  @override
+  String get auditReportClosed => 'Жалоба закрыта';
+
+  @override
+  String get auditTeamDeleted => 'Команда удалена';
+
+  @override
+  String get reviewCloseReport => 'Закрыть жалобу';
 }

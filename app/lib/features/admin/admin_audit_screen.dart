@@ -59,6 +59,12 @@ String auditActionText(AppLocalizations l, AuditEntry entry) {
     // owner_account_deleted, with its prefix stripped above.
     'account_deleted' => l.auditOwnerAccountDeleted,
     'hide_sample' => l.auditHideSample,
+    'score_confirm' => l.auditScoreConfirm,
+    'score_correct' => l.auditScoreCorrect,
+    'score_void' => l.auditScoreVoid,
+    'score_keep' => l.auditScoreKeep,
+    'report_closed' => l.auditReportClosed,
+    'team_deleted' => l.auditTeamDeleted,
     _ => entry.action,
   };
 }

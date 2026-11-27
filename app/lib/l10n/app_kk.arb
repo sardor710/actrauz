@@ -830,5 +830,12 @@
   "errAlreadyInTeam": "Сіз осы командадасыз",
   "errAlreadyAskedTeam": "Сіз бұл командаға өтінім жіберіп қойдыңыз",
   "errCaptainOnly": "Мұны тек капитан жасай алады",
-  "errWindowClosed": "Бұған берілген уақыт өтіп кетті"
+  "errWindowClosed": "Бұған берілген уақыт өтіп кетті",
+  "auditScoreConfirm": "Есеп расталды",
+  "auditScoreCorrect": "Есеп түзетілді",
+  "auditScoreVoid": "Есеп болдырылмады",
+  "auditScoreKeep": "Есеп күшінде қалдырылды",
+  "auditReportClosed": "Шағым жабылды",
+  "auditTeamDeleted": "Команда жойылды",
+  "reviewCloseReport": "Шағымды жабу"
 }

@@ -178,6 +178,7 @@ class AdminSheetFrame extends StatelessWidget {
     this.error,
     this.busy = false,
     this.extraAction,
+    this.saveLabel,
   });
 
   final String title;
@@ -189,6 +190,9 @@ class AdminSheetFrame extends StatelessWidget {
 
   /// Shown under the save button, for example Delete.
   final Widget? extraAction;
+
+  /// The main button's text; "Save" when null.
+  final String? saveLabel;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -208,7 +212,7 @@ class AdminSheetFrame extends StatelessWidget {
               Text(error!, style: manrope(14, 600, color: AppColors.error)),
             ],
             const SizedBox(height: 18),
-            FilledButton(key: saveKey, onPressed: busy ? null : onSave, child: Text(context.l.saveLabel)),
+            FilledButton(key: saveKey, onPressed: busy ? null : onSave, child: Text(saveLabel ?? context.l.saveLabel)),
             if (extraAction != null) ...[const SizedBox(height: 8), extraAction!],
           ],
         ),

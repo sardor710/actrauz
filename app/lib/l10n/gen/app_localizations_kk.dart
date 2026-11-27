@@ -2904,4 +2904,25 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get errWindowClosed => 'Бұған берілген уақыт өтіп кетті';
+
+  @override
+  String get auditScoreConfirm => 'Есеп расталды';
+
+  @override
+  String get auditScoreCorrect => 'Есеп түзетілді';
+
+  @override
+  String get auditScoreVoid => 'Есеп болдырылмады';
+
+  @override
+  String get auditScoreKeep => 'Есеп күшінде қалдырылды';
+
+  @override
+  String get auditReportClosed => 'Шағым жабылды';
+
+  @override
+  String get auditTeamDeleted => 'Команда жойылды';
+
+  @override
+  String get reviewCloseReport => 'Шағымды жабу';
 }

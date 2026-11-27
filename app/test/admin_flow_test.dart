@@ -335,6 +335,25 @@ void main() {
     }
   });
 
+  test('the Review actions read as text in the audit log', () {
+    AuditEntry entry(String action, String entity) =>
+        AuditEntry(id: action, action: action, entity: entity, at: DateTime.utc(2026, 11, 27));
+    for (final code in ['en', 'ru', 'uz', 'kk']) {
+      final l = lookupAppLocalizations(Locale(code));
+      for (final (action, entity, text) in [
+        ('score_confirm', 'result', l.auditScoreConfirm),
+        ('score_correct', 'result', l.auditScoreCorrect),
+        ('score_void', 'result', l.auditScoreVoid),
+        ('score_keep', 'result', l.auditScoreKeep),
+        ('report_closed', 'report', l.auditReportClosed),
+        ('team_deleted', 'team', l.auditTeamDeleted),
+      ]) {
+        expect(auditActionText(l, entry(action, entity)), text, reason: '$code $action');
+        expect(text, isNot(action), reason: '$code $action');
+      }
+    }
+  });
+
   testWidgets('the audit log lists the changes, newest first, with their values', (tester) async {
     await openAdmin(tester);
     await tap(tester, key('admin-audit'));
@@ -458,6 +477,69 @@ void main() {
     final details = tester.getTopLeft(key('venue-name-en'));
     final courts = tester.getTopLeft(key('add-court'));
     expect(courts.dx, greaterThan(details.dx + 300));
+  });
+
+  testWidgets('Review names a deleted player instead of leaving a blank', (tester) async {
+    SharedPreferences.setMockInitialValues(signedIn);
+    final prefs = await SharedPreferences.getInstance();
+    await initializeDateFormatting();
+    tester.view.physicalSize = const Size(900, 3400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final game = AdminGameNote(gameId: 'g1', sportId: 'padel', startsLocal: DateTime.utc(2026, 11, 21, 18));
+    final review = AdminReview(
+      disputes: [
+        AdminDispute(
+          result: const MatchResult(
+            id: 'r1',
+            status: ResultStatus.disputed,
+            sets: [(6, 4)],
+            winner: MatchWinner.a,
+            enteredBy: 'u1',
+            sideA: ['u1'],
+            sideB: ['u2'],
+          ),
+          game: game,
+          // u1's name came back empty, u2 is missing altogether.
+          names: const {'u1': ''},
+          disputedByName: 'Aziz',
+        ),
+      ],
+      reports: [
+        AdminReport(
+          id: 'rep1',
+          reporterId: 'u3',
+          reporterName: '',
+          targetId: 'u4',
+          targetName: 'Bobur',
+          reason: ReportReason.language,
+          createdAt: DateTime.utc(2026, 11, 22, 8),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          adminReviewProvider.overrideWith((ref) async => review),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: buildTheme(),
+          home: const AdminReviewScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final board = find.byKey(const ValueKey('score-board'));
+    expect(find.descendant(of: board, matching: find.text('Deleted player')), findsNWidgets(2));
+
+    await tap(tester, find.text('Reports · 1'));
+    expect(find.text('Deleted player reported Bobur'), findsOneWidget);
   });
 
   group('review', () {
@@ -587,6 +669,7 @@ void main() {
 
       await tap(tester, key('review-close-$id'));
       await tester.enterText(key('review-note'), 'Warned them');
+      expect(find.descendant(of: key('review-close-save'), matching: find.text('Close report')), findsOneWidget);
       await tap(tester, key('review-close-save'));
       expect(key('review-report-$id'), findsNothing);
       expect(find.text('No open reports'), findsOneWidget);
