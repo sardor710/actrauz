@@ -67,51 +67,76 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('No confirmed results in Tashkent yet.'), findsOneWidget);
   });
-
   testWidgets('my row is pinned below the list when I rank lower than 100', (tester) async {
-    SharedPreferences.setMockInitialValues(signedIn);
-    final prefs = await SharedPreferences.getInstance();
-    tester.view.physicalSize = const Size(900, 3400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final rows = [
-      for (var i = 1; i <= 100; i++)
-        LeaderboardRow(
-          position: i,
-          id: 'u$i',
-          name: 'Player $i',
-          rating: const SportRating(rating: 4, ratedGames: 12),
-          isMe: false,
-        ),
-    ];
-    const me = LeaderboardRow(
-      position: 140,
-      id: kMeId,
-      name: 'Test',
-      rating: SportRating(rating: 2, ratedGames: 3),
-      isMe: true,
-    );
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPrefsProvider.overrideWithValue(prefs),
-          leaderboardProvider.overrideWith((ref, key) async => Leaderboard(rows: rows, me: me)),
-        ],
-        child: MaterialApp(
-          locale: const Locale('en'),
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: buildTheme(),
-          home: const LeaderboardScreen(sportId: 'padel'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _pumpBoard(tester, Leaderboard(rows: _top(100), me: _me(140)));
     final pinned = find.byKey(const ValueKey('leaderboard-me'));
     expect(pinned, findsOneWidget);
     expect(find.descendant(of: pinned, matching: find.text('140')), findsOneWidget);
     expect(find.descendant(of: pinned, matching: find.text('3 games')), findsOneWidget);
     expect(find.descendant(of: pinned, matching: find.text('2.00')), findsOneWidget);
   });
+
+  testWidgets('a player hidden from search still sees their own row, though not in the list', (tester) async {
+    await _pumpBoard(tester, Leaderboard(rows: _top(10), me: _me(5)));
+    final pinned = find.byKey(const ValueKey('leaderboard-me'));
+    expect(pinned, findsOneWidget);
+    expect(find.descendant(of: pinned, matching: find.text('5')), findsOneWidget);
+  });
+
+  testWidgets('a hidden player on an otherwise empty board sees their row, not the empty state', (tester) async {
+    await _pumpBoard(tester, Leaderboard(rows: const [], me: _me(1)));
+    expect(find.byKey(const ValueKey('leaderboard-me')), findsOneWidget);
+    expect(find.text('No confirmed results in Tashkent yet.'), findsNothing);
+  });
+
+  testWidgets('my row inside the list is not pinned a second time', (tester) async {
+    final rows = _top(10);
+    await _pumpBoard(tester, Leaderboard(rows: [...rows.take(4), _me(5), ...rows.skip(5)], me: _me(5)));
+    expect(find.byKey(const ValueKey('leaderboard-me')), findsNothing);
+    expect(_row(kMeId), findsOneWidget);
+  });
+}
+
+List<LeaderboardRow> _top(int count) => [
+  for (var i = 1; i <= count; i++)
+    LeaderboardRow(
+      position: i,
+      id: 'u$i',
+      name: 'Player $i',
+      rating: const SportRating(rating: 4, ratedGames: 12),
+      isMe: false,
+    ),
+];
+
+LeaderboardRow _me(int position) => LeaderboardRow(
+  position: position,
+  id: kMeId,
+  name: 'Test',
+  rating: const SportRating(rating: 2, ratedGames: 3),
+  isMe: true,
+);
+
+/// The leaderboard screen on its own, showing [board].
+Future<void> _pumpBoard(WidgetTester tester, Leaderboard board) async {
+  SharedPreferences.setMockInitialValues(signedIn);
+  final prefs = await SharedPreferences.getInstance();
+  tester.view.physicalSize = const Size(900, 3400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        sharedPrefsProvider.overrideWithValue(prefs),
+        leaderboardProvider.overrideWith((ref, key) async => board),
+      ],
+      child: MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: buildTheme(),
+        home: const LeaderboardScreen(sportId: 'padel'),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }

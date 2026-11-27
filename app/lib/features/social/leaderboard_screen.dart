@@ -67,28 +67,31 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             child: AsyncBody(
               value: ref.watch(leaderboardProvider((sportId: _sportId, cityId: city.id))),
               builder: (board) {
-                if (board.rows.isEmpty) {
+                final me = board.me;
+                if (board.rows.isEmpty && me == null) {
                   return EmptyState(icon: Icons.emoji_events_outlined, text: l.leaderboardEmpty(cityName));
                 }
-                final me = board.me;
-                final pinned = me != null && me.position > Leaderboard.maxRows ? me : null;
+                // My row is pinned whenever the list does not hold it: I rank
+                // below the top 100, or I hid myself from search.
+                final pinned = me != null && !board.rows.any((r) => r.id == me.id) ? me : null;
                 return Column(
                   children: [
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         children: [
-                          Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
-                              children: [
-                                for (var i = 0; i < board.rows.length; i++) ...[
-                                  if (i > 0) const Divider(height: 1),
-                                  _LeaderboardTile(row: board.rows[i]),
+                          if (board.rows.isNotEmpty)
+                            Card(
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(
+                                children: [
+                                  for (var i = 0; i < board.rows.length; i++) ...[
+                                    if (i > 0) const Divider(height: 1),
+                                    _LeaderboardTile(row: board.rows[i]),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
