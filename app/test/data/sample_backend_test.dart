@@ -1163,6 +1163,54 @@ void main() {
       expect((await backend.game('gf1')).result!.flaggedNoShow, isTrue);
     });
 
+    group('the no-show majority by game size', () {
+      // A running game tomorrow 07:00-08:00 in Tashkent, then the clock moves past its end.
+      final start = DateTime.utc(2026, 11, 23, 7);
+
+      Future<(SampleBackend, String)> played(List<String> others) async {
+        var now = utcNow;
+        final b = SampleBackend(utcNow: () => now);
+        final game = await b.createAs(
+          'p1',
+          GameDraft(
+            sportId: 'running',
+            spots: 8,
+            meetingPoint: 'Riverside',
+            start: start,
+            end: start.add(const Duration(hours: 1)),
+          ),
+        );
+        await b.join(game.id);
+        for (final id in others) {
+          await b.joinAs(id, game.id);
+        }
+        // Monday 09:00 in Tashkent, an hour after the end.
+        now = DateTime.utc(2026, 11, 23, 4);
+        return (b, game.id);
+      }
+
+      Future<bool> recorded(SampleBackend b) async => (await b.inbox()).any((n) => n.kind == 'no_show_recorded');
+
+      test('five players: two of the other four are not enough, three are', () async {
+        final (b, id) = await played(['p2', 'p3', 'p4']);
+        expect((await b.game(id)).participantIds, hasLength(5));
+        await b.reportNoShowAs('p1', id, kMeId, reported: true);
+        await b.reportNoShowAs('p2', id, kMeId, reported: true);
+        expect(await recorded(b), isFalse, reason: 'two of four is not more than half');
+        await b.reportNoShowAs('p3', id, kMeId, reported: true);
+        expect(await recorded(b), isTrue);
+      });
+
+      test('three players: one of the other two is not enough, both are', () async {
+        final (b, id) = await played(['p2']);
+        expect((await b.game(id)).participantIds, hasLength(3));
+        await b.reportNoShowAs('p1', id, kMeId, reported: true);
+        expect(await recorded(b), isFalse, reason: 'at least two are needed');
+        await b.reportNoShowAs('p2', id, kMeId, reported: true);
+        expect(await recorded(b), isTrue);
+      });
+    });
+
     test('reporting a player: once per player and game while open', () async {
       await backend.reportPlayer('p1', gameId: 'gf1', reason: ReportReason.falseScore, details: 'Not 6-0');
       expect(
@@ -1395,6 +1443,17 @@ void main() {
         'team_name': 'Aziz Runners',
       });
       expect(posted.route, '/games/${game.id}');
+    });
+
+    test('an invited player who is not in the team sees the team game and can join it', () async {
+      final team = await backend.createTeamAs('p1', runners('Aziz Runners'));
+      final game = await backend.createAs('p1', teamRun(team.id));
+      expect(await listed(backend, kMeId), isNot(contains(game.id)));
+
+      await backend.inviteAs('p1', game.id, kMeId);
+      expect(await listed(backend, kMeId), contains(game.id));
+      expect((await backend.game(game.id)).myStatus, MyGameStatus.invited);
+      expect((await backend.join(game.id)).participantIds, ['p1', kMeId]);
     });
 
     test('a member the host removed from a team game no longer sees it through the team', () async {

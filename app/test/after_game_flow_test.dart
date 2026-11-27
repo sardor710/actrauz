@@ -240,6 +240,25 @@ void main() {
       expect(find.byKey(const ValueKey('player-menu-p1')), findsOneWidget, reason: 'reports have no deadline');
     });
 
+    testWidgets('a player who did not play, or was only invited, sees no finished section', (tester) async {
+      Game as(MyGameStatus? status) => Game(
+        id: 'gx',
+        sportId: 'football',
+        cityId: 'tashkent',
+        hostId: 'p1',
+        start: game.start,
+        end: game.end,
+        spots: 4,
+        participantIds: const ['p1', 'p2'],
+        participants: const [GameMember(id: 'p1', name: 'Aziz'), GameMember(id: 'p2', name: 'Dilnoza')],
+        myStatus: status,
+      );
+      for (final status in [null, MyGameStatus.invited, MyGameStatus.requested]) {
+        await pumpAt(tester, const Duration(hours: 2), g: as(status));
+        expect(find.byKey(const ValueKey('finished-section')), findsNothing, reason: '$status');
+      }
+    });
+
     testWidgets('a deleted player gets no row, and a game alone has no section', (tester) async {
       await pumpAt(tester, const Duration(hours: 2));
       expect(find.byKey(const ValueKey('after-game-p1')), findsOneWidget);

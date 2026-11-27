@@ -134,6 +134,19 @@ void main() {
     expect(find.byType(SnackBar), findsNothing, reason: 'the second tap did not ask again');
   });
 
+  testWidgets("a member who is not the captain sees no Edit, Delete or member menu", (tester) async {
+    await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+    await containerOf(tester).read(sampleBackendProvider).joinTeam('tm1');
+    await _refresh(tester);
+    await _push(tester, '/teams/tm1');
+
+    expect(_key('team-leave'), findsOneWidget, reason: 'a member');
+    expect(_key('team-edit'), findsNothing);
+    expect(_key('team-delete'), findsNothing);
+    expect(find.byWidgetPredicate((w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('team-member-menu-')), findsNothing);
+    expect(_key('team-post-game'), findsNothing);
+  });
+
   testWidgets('join an open team', (tester) async {
     await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
     await tap(tester, find.text('Social'));
