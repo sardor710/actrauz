@@ -7,6 +7,7 @@ import '../../domain/booking_engine.dart';
 import '../../domain/brackets.dart';
 import '../../domain/competitive.dart';
 import '../../domain/models.dart';
+import '../../domain/owner.dart';
 import '../../domain/slot_generator.dart';
 import '../../domain/tournaments.dart';
 import 'sample_data.dart' show kMeId;
@@ -1344,7 +1345,20 @@ class SampleBrackets implements SampleDrawGuard {
 
   /// A tournament match's calendar block: the organiser's to move or clear,
   /// never the owner's.
-  bool isMatchBlock(String bookingId) => _draws.values.any((d) => d.matches.any((m) => m.blockId == bookingId));
+  bool isMatchBlock(String bookingId) => matchBlock(bookingId) != null;
+
+  /// The tournament match whose calendar block [bookingId] is, for the
+  /// owner's calendar (`owner_calendar`'s `tournament`).
+  TournamentBlockRef? matchBlock(String bookingId) {
+    for (final d in _draws.values) {
+      for (final m in d.matches) {
+        if (m.blockId == bookingId) {
+          return TournamentBlockRef(title: tournaments.info(d.tournamentId)!.title, matchId: m.id);
+        }
+      }
+    }
+    return null;
+  }
 
   // ---- Views ----
 

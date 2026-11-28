@@ -87,6 +87,7 @@ String bookingErrorText(AppLocalizations l, Object error) {
     BookingError.hasBookings => l.errHasBookings,
     BookingError.alreadyExists => l.errAlreadyExists,
     BookingError.notFound => l.errNotFound,
+    BookingError.tournamentBlock => l.errTournamentBlock,
     _ => l.errGeneric,
   };
 }

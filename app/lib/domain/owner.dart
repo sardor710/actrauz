@@ -1,3 +1,4 @@
+import '../core/localized_text.dart';
 import '../core/markets.dart';
 import 'booking_engine.dart';
 import 'models.dart';
@@ -98,8 +99,17 @@ class OwnerBooking {
   bool get isBlock => source == BookingSource.block;
 }
 
+/// The tournament match a calendar block holds the court for (M8a): the
+/// owner sees it and cannot cancel it.
+class TournamentBlockRef {
+  const TournamentBlockRef({required this.title, required this.matchId});
+
+  final LocalizedText title;
+  final String matchId;
+}
+
 class OwnerSlot {
-  const OwnerSlot({required this.time, required this.price, required this.state, this.bookingId});
+  const OwnerSlot({required this.time, required this.price, required this.state, this.bookingId, this.tournament});
 
   final SlotTime time;
   final int price;
@@ -107,6 +117,12 @@ class OwnerSlot {
 
   /// The row covering this slot; `null` for `free` and `past`.
   final String? bookingId;
+
+  /// A block that belongs to a tournament match.
+  final TournamentBlockRef? tournament;
+
+  OwnerSlot withTournament(TournamentBlockRef? tournament) =>
+      OwnerSlot(time: time, price: price, state: state, bookingId: bookingId, tournament: tournament);
 }
 
 /// A venue's numbers over a date range (product spec §11.6). A booking

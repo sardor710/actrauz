@@ -144,6 +144,10 @@ enum BookingError {
   /// Reliability is too low to book (spec §8.3).
   reliabilityTooLow,
 
+  /// The owner cancelling a tournament match's block (M8a): only the
+  /// tournament's organisers move or clear it.
+  tournamentBlock,
+
   /// The backend could not be reached or answered with something unexpected.
   unavailable,
 }

@@ -30,6 +30,7 @@ const _bookingErrors = <String, BookingError>{
   'has_bookings': BookingError.hasBookings,
   'already_exists': BookingError.alreadyExists,
   'reliability_too_low': BookingError.reliabilityTooLow,
+  'tournament_block': BookingError.tournamentBlock,
 };
 
 const _joinErrors = <String, JoinError>{

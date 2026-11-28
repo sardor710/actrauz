@@ -3136,9 +3136,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get manageScores => 'Hisob';
 
   @override
-  String get manageTabSoon => 'Tez orada paydo boʻladi';
-
-  @override
   String get entriesTitle => 'Arizalar';
 
   @override
@@ -3216,4 +3213,101 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get redoConfirmText =>
       'Eʼlon qilingan setka bekor qilinadi va roʻyxatdagi arizalardan yangi qoralama tuziladi. Oʻyinchilarga xabar beriladi.';
+
+  @override
+  String calendarTournament(String title) {
+    return 'Turnir: $title';
+  }
+
+  @override
+  String get scheduleNoDraws =>
+      'Oʻyinlarni jadvalga qoʻyish va hisobini kiritish uchun setkani eʼlon qiling';
+
+  @override
+  String get scheduleUnscheduled => 'Vaqti belgilanmagan';
+
+  @override
+  String get scheduleDayEmpty => 'Oʻyinlar yoʻq';
+
+  @override
+  String get scheduleMatchTitle => 'Oʻyin vaqti';
+
+  @override
+  String get scheduleCourtClosed => 'Bu kuni kort yopiq';
+
+  @override
+  String get clearTime => 'Vaqtni olib tashlash';
+
+  @override
+  String get placeNoteLabel => 'Joy (ixtiyoriy)';
+
+  @override
+  String get pickTime => 'Vaqtni tanlang';
+
+  @override
+  String get matchClash =>
+      'Oʻyinchi shu vaqtda boshqa oʻyinda. Ulardan birini koʻchiring';
+
+  @override
+  String get fillDay => 'Kunni toʻldirish';
+
+  @override
+  String get fillDayHint =>
+      'Vaqti yoʻq oʻyinlar tanlangan kortlarning boʻsh vaqtlariga bosqichma-bosqich qoʻyiladi';
+
+  @override
+  String get fillCourts => 'Kortlar';
+
+  @override
+  String get fillFrom => 'Boshlanishi';
+
+  @override
+  String get fillRun => 'Toʻldirish';
+
+  @override
+  String fillPlaced(int count) {
+    return 'Joylashtirilgan oʻyinlar: $count';
+  }
+
+  @override
+  String get fillNotFitted => 'Sigʻmadi';
+
+  @override
+  String get fillAllFitted => 'Barcha oʻyinlar joylashdi';
+
+  @override
+  String get scoresEmpty => 'Hisob kiritiladigan oʻyinlar hali yoʻq';
+
+  @override
+  String get scoreCorrect => 'Hisobni tuzatish';
+
+  @override
+  String get outcomePlayed => 'Oʻynaldi';
+
+  @override
+  String get matchWinner => 'Kim yutdi?';
+
+  @override
+  String get deciderPrompt => 'Durang: hal qiluvchi oʻyinda kim yutdi?';
+
+  @override
+  String get retiredHint => 'Oʻyin toʻxtagan paytdagi hisobni kiriting';
+
+  @override
+  String get matchActions => 'Oʻyin amallari';
+
+  @override
+  String withdrawEntry(String name) {
+    return '${name}ni chiqarish';
+  }
+
+  @override
+  String get withdrawConfirmTitle => 'Arizani setkadan chiqarasizmi?';
+
+  @override
+  String get withdrawConfirmText =>
+      'Oʻynalmagan oʻyinlari raqiblarga texnik gʻalaba boʻladi, oʻynalganlari hisobini saqlaydi. Oʻyinchilarga xabar beriladi.';
+
+  @override
+  String get withdrawAction => 'Chiqarish';
 }

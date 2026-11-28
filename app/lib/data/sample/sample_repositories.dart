@@ -1899,7 +1899,7 @@ class _SampleOwnerRepository implements OwnerRepository {
   @override
   Future<OwnerCalendar> calendar(String venueId, String courtId, DateTime from, int days) async {
     _owned(venueId);
-    return _engine.ownerCalendar(
+    final calendar = _engine.ownerCalendar(
       venueId,
       courtId,
       from,
@@ -1907,6 +1907,17 @@ class _SampleOwnerRepository implements OwnerRepository {
       now: _now(venueId),
       nameOf: _backend._nameOf,
       isDeleted: _backend._deleted.contains,
+    );
+    // Tournament blocks name their tournament, as `owner_calendar` does.
+    return OwnerCalendar(
+      slots: [
+        for (final s in calendar.slots)
+          if (s.bookingId case final id? when s.state == OwnerSlotState.blocked)
+            s.withTournament(_backend._brackets.matchBlock(id))
+          else
+            s,
+      ],
+      bookings: calendar.bookings,
     );
   }
 
@@ -1950,9 +1961,8 @@ class _SampleOwnerRepository implements OwnerRepository {
   @override
   Future<OwnerBooking> cancel(String bookingId) async {
     final booking = _ownedBooking(bookingId);
-    // A tournament match's block is the organiser's to move or clear
-    // (`tournament_block`, which the app reads as unavailable).
-    if (_backend._brackets.isMatchBlock(bookingId)) throw const BookingException(BookingError.unavailable);
+    // A tournament match's block is the organiser's to move or clear.
+    if (_backend._brackets.isMatchBlock(bookingId)) throw const BookingException(BookingError.tournamentBlock);
     final cancelled = _engine.cancelByVenue(bookingId, now: _now(booking.venueId));
     _backend._venueCancelled(cancelled);
     return _logged('owner_cancel_booking', booking, cancelled);

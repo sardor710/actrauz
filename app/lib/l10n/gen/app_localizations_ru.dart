@@ -3139,7 +3139,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get tournamentsIRun => 'Мои турниры как организатора';
+  String get tournamentsIRun => 'Турниры, которые я провожу';
 
   @override
   String get organizingEmpty => 'Вы не организуете ни одного турнира';
@@ -3172,9 +3172,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get manageScores => 'Счёт';
-
-  @override
-  String get manageTabSoon => 'Скоро появится';
 
   @override
   String get entriesTitle => 'Заявки';
@@ -3256,4 +3253,101 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get redoConfirmText =>
       'Опубликованная сетка удаляется, из зарегистрированных заявок составляется новый черновик. Игроки получат уведомление.';
+
+  @override
+  String calendarTournament(String title) {
+    return 'Турнир: $title';
+  }
+
+  @override
+  String get scheduleNoDraws =>
+      'Опубликуйте сетку, чтобы назначать матчи и вносить счёт';
+
+  @override
+  String get scheduleUnscheduled => 'Без времени';
+
+  @override
+  String get scheduleDayEmpty => 'Матчей нет';
+
+  @override
+  String get scheduleMatchTitle => 'Время матча';
+
+  @override
+  String get scheduleCourtClosed => 'В этот день корт закрыт';
+
+  @override
+  String get clearTime => 'Убрать время';
+
+  @override
+  String get placeNoteLabel => 'Место (необязательно)';
+
+  @override
+  String get pickTime => 'Выберите время';
+
+  @override
+  String get matchClash =>
+      'Игрок в это время в другом матче. Перенесите один из них';
+
+  @override
+  String get fillDay => 'Заполнить день';
+
+  @override
+  String get fillDayHint =>
+      'Матчи без времени встают в свободные слоты выбранных кортов, по кругам';
+
+  @override
+  String get fillCourts => 'Корты';
+
+  @override
+  String get fillFrom => 'Начиная с';
+
+  @override
+  String get fillRun => 'Заполнить';
+
+  @override
+  String fillPlaced(int count) {
+    return 'Назначено матчей: $count';
+  }
+
+  @override
+  String get fillNotFitted => 'Не поместились';
+
+  @override
+  String get fillAllFitted => 'Все матчи поместились';
+
+  @override
+  String get scoresEmpty => 'Пока нет матчей для счёта';
+
+  @override
+  String get scoreCorrect => 'Исправить счёт';
+
+  @override
+  String get outcomePlayed => 'Сыгран';
+
+  @override
+  String get matchWinner => 'Кто победил?';
+
+  @override
+  String get deciderPrompt => 'Ничья: кто победил в решающей серии?';
+
+  @override
+  String get retiredHint => 'Введите счёт на момент остановки';
+
+  @override
+  String get matchActions => 'Действия с матчем';
+
+  @override
+  String withdrawEntry(String name) {
+    return 'Снять: $name';
+  }
+
+  @override
+  String get withdrawConfirmTitle => 'Снять заявку с турнира?';
+
+  @override
+  String get withdrawConfirmText =>
+      'Несыгранные матчи станут техническими победами соперников, сыгранные сохранят счёт. Игроки получат уведомление.';
+
+  @override
+  String get withdrawAction => 'Снять';
 }

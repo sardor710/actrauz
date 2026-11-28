@@ -3145,9 +3145,6 @@ class AppLocalizationsKk extends AppLocalizations {
   String get manageScores => 'Есеп';
 
   @override
-  String get manageTabSoon => 'Жақында қосылады';
-
-  @override
   String get entriesTitle => 'Өтінімдер';
 
   @override
@@ -3225,4 +3222,101 @@ class AppLocalizationsKk extends AppLocalizations {
   @override
   String get redoConfirmText =>
       'Жарияланған жеребе жойылып, тіркелген өтінімдерден жаңа жоба жасалады. Ойыншыларға хабарланады.';
+
+  @override
+  String calendarTournament(String title) {
+    return 'Турнир: $title';
+  }
+
+  @override
+  String get scheduleNoDraws =>
+      'Матчтарды кестеге қою және есебін енгізу үшін жеребені жариялаңыз';
+
+  @override
+  String get scheduleUnscheduled => 'Уақыты белгіленбеген';
+
+  @override
+  String get scheduleDayEmpty => 'Матч жоқ';
+
+  @override
+  String get scheduleMatchTitle => 'Матч уақыты';
+
+  @override
+  String get scheduleCourtClosed => 'Бұл күні алаң жабық';
+
+  @override
+  String get clearTime => 'Уақытты алып тастау';
+
+  @override
+  String get placeNoteLabel => 'Орны (міндетті емес)';
+
+  @override
+  String get pickTime => 'Уақытты таңдаңыз';
+
+  @override
+  String get matchClash =>
+      'Ойыншы осы уақытта басқа матчта. Біреуін ауыстырыңыз';
+
+  @override
+  String get fillDay => 'Күнді толтыру';
+
+  @override
+  String get fillDayHint =>
+      'Уақыты жоқ матчтар таңдалған алаңдардың бос уақыттарына айналым бойынша қойылады';
+
+  @override
+  String get fillCourts => 'Алаңдар';
+
+  @override
+  String get fillFrom => 'Басталуы';
+
+  @override
+  String get fillRun => 'Толтыру';
+
+  @override
+  String fillPlaced(int count) {
+    return 'Орналастырылған матчтар: $count';
+  }
+
+  @override
+  String get fillNotFitted => 'Сыймады';
+
+  @override
+  String get fillAllFitted => 'Барлық матчтар орналасты';
+
+  @override
+  String get scoresEmpty => 'Әзірге есеп енгізетін матч жоқ';
+
+  @override
+  String get scoreCorrect => 'Есепті түзету';
+
+  @override
+  String get outcomePlayed => 'Ойналды';
+
+  @override
+  String get matchWinner => 'Кім жеңді?';
+
+  @override
+  String get deciderPrompt => 'Тең есеп: шешуші сайыста кім жеңді?';
+
+  @override
+  String get retiredHint => 'Ойын тоқтаған кездегі есепті енгізіңіз';
+
+  @override
+  String get matchActions => 'Матч әрекеттері';
+
+  @override
+  String withdrawEntry(String name) {
+    return 'Шығару: $name';
+  }
+
+  @override
+  String get withdrawConfirmTitle => 'Өтінімді шығарасыз ба?';
+
+  @override
+  String get withdrawConfirmText =>
+      'Ойналмаған матчтары қарсыластарға техникалық жеңіс болады, ойналғандары есебін сақтайды. Ойыншыларға хабарланады.';
+
+  @override
+  String get withdrawAction => 'Шығару';
 }

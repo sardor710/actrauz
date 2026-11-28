@@ -65,7 +65,7 @@ class _FlakyOrganizer implements OrganizerRepository {
   _FlakyOrganizer(this._inner, this._owner);
 
   final OrganizerRepository _inner;
-  final _Flaky _owner;
+  final FlakyBackend _owner;
 
   @override
   Future<List<TournamentSummary>> organizedTournaments() async {
@@ -114,7 +114,7 @@ class _FlakyTournaments implements TournamentRepository {
   _FlakyTournaments(this._inner, this._owner);
 
   final TournamentRepository _inner;
-  final _Flaky _owner;
+  final FlakyBackend _owner;
 
   @override
   Future<TournamentBracket> bracket(String tournamentId) async {
@@ -153,8 +153,10 @@ class _FlakyTournaments implements TournamentRepository {
   Future<List<MyMatch>> myMatches() => _inner.myMatches();
 }
 
-class _Flaky extends SampleBackend {
-  _Flaky({required super.utcNow}) : super(meName: 'Test');
+/// A sample backend whose organiser loads and brackets can wait and fail, for
+/// account switches (also used by organizer_matches_test.dart).
+class FlakyBackend extends SampleBackend {
+  FlakyBackend({required super.utcNow}) : super(meName: 'Test');
 
   bool offline = false;
 
@@ -247,13 +249,13 @@ void main() {
 
     testWidgets("another account never sees the previous one's row, even when its load fails", (tester) async {
       final gate = Completer<void>();
-      final backends = <_Flaky>[];
+      final backends = <FlakyBackend>[];
       await pumpApp(
         tester,
         prefs: signedIn,
         utcNow: sundayMorning,
         backend: (clock) {
-          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          final b = FlakyBackend(utcNow: clock)..gate = backends.isEmpty ? null : gate;
           backends.add(b);
           return b;
         },
@@ -438,13 +440,13 @@ void main() {
       tester,
     ) async {
       final gate = Completer<void>();
-      final backends = <_Flaky>[];
+      final backends = <FlakyBackend>[];
       await pumpApp(
         tester,
         prefs: signedIn,
         utcNow: sundayMorning,
         backend: (clock) {
-          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          final b = FlakyBackend(utcNow: clock)..gate = backends.isEmpty ? null : gate;
           backends.add(b);
           return b;
         },
@@ -484,13 +486,13 @@ void main() {
       tester,
     ) async {
       final gate = Completer<void>();
-      final backends = <_Flaky>[];
+      final backends = <FlakyBackend>[];
       await pumpApp(
         tester,
         prefs: signedIn,
         utcNow: sundayMorning,
         backend: (clock) {
-          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          final b = FlakyBackend(utcNow: clock)..gate = backends.isEmpty ? null : gate;
           backends.add(b);
           return b;
         },

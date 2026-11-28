@@ -18,13 +18,14 @@ Future<bool?> showBookingDetailsSheet(
   required Venue venue,
   required Court court,
   required OwnerBooking booking,
+  TournamentBlockRef? tournament,
   required DateTime now,
 }) => showModalBottomSheet<bool>(
   context: context,
   useRootNavigator: true,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) => _DetailsSheet(venue: venue, court: court, booking: booking, now: now),
+  builder: (context) => _DetailsSheet(venue: venue, court: court, booking: booking, tournament: tournament, now: now),
 );
 
 String ownerStatusText(AppLocalizations l, OwnerBooking booking) => switch (booking.status) {
@@ -49,11 +50,21 @@ String walkInPaymentText(AppLocalizations l, WalkInPayment payment) => switch (p
 };
 
 class _DetailsSheet extends ConsumerStatefulWidget {
-  const _DetailsSheet({required this.venue, required this.court, required this.booking, required this.now});
+  const _DetailsSheet({
+    required this.venue,
+    required this.court,
+    required this.booking,
+    required this.tournament,
+    required this.now,
+  });
 
   final Venue venue;
   final Court court;
   final OwnerBooking booking;
+
+  /// The tournament match a block holds the court for: its organisers move
+  /// or clear it; the owner's cancel is refused (`tournamentBlock`).
+  final TournamentBlockRef? tournament;
   final DateTime now;
 
   @override
@@ -111,6 +122,7 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
     final repo = ref.read(ownerRepositoryProvider);
     final currency = cityById(widget.venue.cityId).currency;
     final isBlock = booking.source == BookingSource.block;
+    final tournament = widget.tournament;
     final started = !booking.start.isAfter(widget.now);
     final ended = !booking.end.isAfter(widget.now);
     final canCancel = booking.status == BookingStatus.confirmed && !ended;
@@ -133,7 +145,9 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    isBlock
+                    tournament != null
+                        ? l.calendarTournament(tournament.title.resolve(context.lang))
+                        : isBlock
                         ? l.slotBlocked
                         : booking.customerDeleted
                         ? l.deletedPlayer
@@ -151,7 +165,8 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
             _Line(label: l.dateLabel, value: dayLabel(l, context.lang, booking.start, widget.now)),
             _Line(label: l.timeLabel, value: timeRange(booking.start, booking.end)),
             _Line(label: l.sourceLabel, value: ownerSourceText(l, booking.source)),
-            if (isBlock && (booking.reason ?? '').isNotEmpty) _Line(label: l.reasonLabel, value: booking.reason!),
+            if (isBlock && tournament == null && (booking.reason ?? '').isNotEmpty)
+              _Line(label: l.reasonLabel, value: booking.reason!),
             if (!isBlock) ...[
               if ((booking.customerPhone ?? '').isNotEmpty) _Line(label: l.phone, value: booking.customerPhone!),
               if (booking.players != null) _Line(label: l.playersCount, value: '${booking.players}'),

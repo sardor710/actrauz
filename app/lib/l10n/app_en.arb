@@ -1884,7 +1884,6 @@
   "notOrganizer": "Only this tournament's organisers can open this page",
   "manageSchedule": "Schedule",
   "manageScores": "Scores",
-  "manageTabSoon": "Coming soon",
   "entriesTitle": "Entries",
   "entriesCount": "{count, plural, =0{No entries} =1{1 entry} other{{count} entries}}",
   "@entriesCount": {
@@ -1914,5 +1913,55 @@
   "drawPublishedNote": "Published: entries are locked",
   "redoDraw": "Redo",
   "redoConfirmTitle": "Redo the draw?",
-  "redoConfirmText": "The published draw is thrown away and a new draft is made from the registered entries. The players are told."
+  "redoConfirmText": "The published draw is thrown away and a new draft is made from the registered entries. The players are told.",
+  "calendarTournament": "Tournament: {title}",
+  "@calendarTournament": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleNoDraws": "Publish a draw to schedule and score its matches",
+  "scheduleUnscheduled": "No time yet",
+  "scheduleDayEmpty": "No matches",
+  "scheduleMatchTitle": "Match time",
+  "scheduleCourtClosed": "The court is closed that day",
+  "clearTime": "Clear time",
+  "placeNoteLabel": "Place (optional)",
+  "pickTime": "Choose a time",
+  "matchClash": "A player is in another match at this time. Move one of them",
+  "fillDay": "Fill the day",
+  "fillDayHint": "Matches without a time go into free slots of the courts you pick, round by round",
+  "fillCourts": "Courts",
+  "fillFrom": "Starting at",
+  "fillRun": "Fill",
+  "fillPlaced": "Matches placed: {count}",
+  "@fillPlaced": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fillNotFitted": "Did not fit",
+  "fillAllFitted": "Every match fitted",
+  "scoresEmpty": "No matches to score yet",
+  "scoreCorrect": "Correct the score",
+  "outcomePlayed": "Played",
+  "matchWinner": "Who won?",
+  "deciderPrompt": "Level score: who won the decider?",
+  "retiredHint": "Enter the score when play stopped",
+  "matchActions": "Match actions",
+  "withdrawEntry": "Withdraw {name}",
+  "@withdrawEntry": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "withdrawConfirmTitle": "Withdraw this entry?",
+  "withdrawConfirmText": "Its unplayed matches become walkovers for the opponents; played matches keep their scores. The players are told.",
+  "withdrawAction": "Withdraw"
 }

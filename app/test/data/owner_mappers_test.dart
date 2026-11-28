@@ -170,6 +170,21 @@ void main() {
       expect(ownerCalendarFromJson(<String, dynamic>{}).slots, isEmpty);
     });
 
+    test("a tournament match's block names the tournament (M8a)", () {
+      final json = calendarJson();
+      (json['slots'] as List).add({
+        ...slotJson('2026-11-24T10:00:00', '2026-11-24T11:30:00', 'blocked', bookingId: 'booking-2'),
+        'tournament': {
+          'title': {'uz': 'Kubok', 'ru': 'Кубок', 'kk': null, 'en': 'Cup'},
+          'match_id': 'match-1',
+        },
+      });
+      final slots = ownerCalendarFromJson(json).slots;
+      expect(slots.take(5).map((s) => s.tournament), everyElement(isNull));
+      expect((slots.last.tournament!.title.en, slots.last.tournament!.title.ru), ('Cup', 'Кубок'));
+      expect(slots.last.tournament!.matchId, 'match-1');
+    });
+
     test('an unknown slot state is a format error', () {
       final json = calendarJson();
       (json['slots'] as List).add(slotJson('2026-11-24T10:00:00', '2026-11-24T11:30:00', 'haunted'));
@@ -276,6 +291,7 @@ void main() {
       expect(bookingExceptionFor(raised('invalid_argument')).error, BookingError.invalidArgument);
       expect(bookingExceptionFor(raised('invalid_hours')).error, BookingError.invalidHours);
       expect(bookingExceptionFor(raised('rules_overlap')).error, BookingError.rulesOverlap);
+      expect(bookingExceptionFor(raised('tournament_block')).error, BookingError.tournamentBlock);
     });
   });
 }

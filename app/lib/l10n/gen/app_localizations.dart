@@ -5478,12 +5478,6 @@ abstract class AppLocalizations {
   /// **'Scores'**
   String get manageScores;
 
-  /// No description provided for @manageTabSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'Coming soon'**
-  String get manageTabSoon;
-
   /// No description provided for @entriesTitle.
   ///
   /// In en, this message translates to:
@@ -5621,6 +5615,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The published draw is thrown away and a new draft is made from the registered entries. The players are told.'**
   String get redoConfirmText;
+
+  /// No description provided for @calendarTournament.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournament: {title}'**
+  String calendarTournament(String title);
+
+  /// No description provided for @scheduleNoDraws.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish a draw to schedule and score its matches'**
+  String get scheduleNoDraws;
+
+  /// No description provided for @scheduleUnscheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'No time yet'**
+  String get scheduleUnscheduled;
+
+  /// No description provided for @scheduleDayEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get scheduleDayEmpty;
+
+  /// No description provided for @scheduleMatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match time'**
+  String get scheduleMatchTitle;
+
+  /// No description provided for @scheduleCourtClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'The court is closed that day'**
+  String get scheduleCourtClosed;
+
+  /// No description provided for @clearTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear time'**
+  String get clearTime;
+
+  /// No description provided for @placeNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Place (optional)'**
+  String get placeNoteLabel;
+
+  /// No description provided for @pickTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a time'**
+  String get pickTime;
+
+  /// No description provided for @matchClash.
+  ///
+  /// In en, this message translates to:
+  /// **'A player is in another match at this time. Move one of them'**
+  String get matchClash;
+
+  /// No description provided for @fillDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill the day'**
+  String get fillDay;
+
+  /// No description provided for @fillDayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches without a time go into free slots of the courts you pick, round by round'**
+  String get fillDayHint;
+
+  /// No description provided for @fillCourts.
+  ///
+  /// In en, this message translates to:
+  /// **'Courts'**
+  String get fillCourts;
+
+  /// No description provided for @fillFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting at'**
+  String get fillFrom;
+
+  /// No description provided for @fillRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill'**
+  String get fillRun;
+
+  /// No description provided for @fillPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches placed: {count}'**
+  String fillPlaced(int count);
+
+  /// No description provided for @fillNotFitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Did not fit'**
+  String get fillNotFitted;
+
+  /// No description provided for @fillAllFitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Every match fitted'**
+  String get fillAllFitted;
+
+  /// No description provided for @scoresEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches to score yet'**
+  String get scoresEmpty;
+
+  /// No description provided for @scoreCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct the score'**
+  String get scoreCorrect;
+
+  /// No description provided for @outcomePlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Played'**
+  String get outcomePlayed;
+
+  /// No description provided for @matchWinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Who won?'**
+  String get matchWinner;
+
+  /// No description provided for @deciderPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Level score: who won the decider?'**
+  String get deciderPrompt;
+
+  /// No description provided for @retiredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the score when play stopped'**
+  String get retiredHint;
+
+  /// No description provided for @matchActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Match actions'**
+  String get matchActions;
+
+  /// No description provided for @withdrawEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw {name}'**
+  String withdrawEntry(String name);
+
+  /// No description provided for @withdrawConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this entry?'**
+  String get withdrawConfirmTitle;
+
+  /// No description provided for @withdrawConfirmText.
+  ///
+  /// In en, this message translates to:
+  /// **'Its unplayed matches become walkovers for the opponents; played matches keep their scores. The players are told.'**
+  String get withdrawConfirmText;
+
+  /// No description provided for @withdrawAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawAction;
 }
 
 class _AppLocalizationsDelegate

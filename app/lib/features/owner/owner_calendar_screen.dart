@@ -147,7 +147,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   weekStart: weekStart,
                   now: now,
                   onFree: (slot, following) => _newBooking(venue, court, slot, following),
-                  onBooking: (booking) => _details(venue, court, booking, now),
+                  onBooking: (booking, tournament) => _details(venue, court, booking, tournament, now),
                 ),
               ),
             ],
@@ -162,8 +162,21 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     if (saved == true && mounted) refreshOwner(ref);
   }
 
-  Future<void> _details(Venue venue, Court court, OwnerBooking booking, DateTime now) async {
-    final changed = await showBookingDetailsSheet(context, venue: venue, court: court, booking: booking, now: now);
+  Future<void> _details(
+    Venue venue,
+    Court court,
+    OwnerBooking booking,
+    TournamentBlockRef? tournament,
+    DateTime now,
+  ) async {
+    final changed = await showBookingDetailsSheet(
+      context,
+      venue: venue,
+      court: court,
+      booking: booking,
+      tournament: tournament,
+      now: now,
+    );
     if (changed == true && mounted) refreshOwner(ref);
   }
 }
@@ -209,7 +222,10 @@ class _WeekGrid extends StatefulWidget {
 
   /// The tapped free slot and the free slots that follow it without a gap.
   final void Function(OwnerSlot slot, List<OwnerSlot> following) onFree;
-  final void Function(OwnerBooking booking) onBooking;
+
+  /// The tapped booked or blocked slot's row, and its tournament match if it
+  /// holds the court for one.
+  final void Function(OwnerBooking booking, TournamentBlockRef? tournament) onBooking;
 
   static const _timeWidth = 50.0;
   static const _headerHeight = 50.0;
@@ -235,7 +251,7 @@ class _WeekGridState extends State<_WeekGrid> {
   DateTime get weekStart => widget.weekStart;
   DateTime get now => widget.now;
   void Function(OwnerSlot slot, List<OwnerSlot> following) get onFree => widget.onFree;
-  void Function(OwnerBooking booking) get onBooking => widget.onBooking;
+  void Function(OwnerBooking booking, TournamentBlockRef? tournament) get onBooking => widget.onBooking;
 
   static int _minuteOf(DateTime t) => t.hour * 60 + t.minute;
 
@@ -353,7 +369,7 @@ class _WeekGridState extends State<_WeekGrid> {
                                             onTap: switch (slot.state) {
                                               OwnerSlotState.free => () => onFree(slot, followingFree(d, slot)),
                                               OwnerSlotState.booked || OwnerSlotState.blocked =>
-                                                booking == null ? null : () => onBooking(booking),
+                                                booking == null ? null : () => onBooking(booking, slot.tournament),
                                               OwnerSlotState.past => null,
                                             },
                                           );
@@ -432,8 +448,23 @@ class _Cell extends StatelessWidget {
         content = const SizedBox.shrink();
       case OwnerSlotState.blocked:
         background = AppColors.amberSoft;
-        label = l.slotBlocked;
-        content = const Icon(Icons.lock_outline_rounded, size: 17, color: Color(0xFF7A4B00));
+        if (slot.tournament case final tournament?) {
+          // A tournament match: "Tournament: <title>".
+          label = l.calendarTournament(tournament.title.resolve(context.lang));
+          content = Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: manrope(11, 700, color: const Color(0xFF7A4B00), height: 1.15),
+            ),
+          );
+        } else {
+          label = l.slotBlocked;
+          content = const Icon(Icons.lock_outline_rounded, size: 17, color: Color(0xFF7A4B00));
+        }
       case OwnerSlotState.booked:
         final status = booking?.status;
         background = switch (status) {

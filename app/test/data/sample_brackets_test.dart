@@ -265,9 +265,11 @@ void main() {
       await org.scheduleMatch(ko(d, 1, 1).id, courtId: 'v1c1', startsAt: DateTime.utc(2026, 11, 25, 10));
       final cal = await backend.owner.calendar('v1', 'v1c1', day, 1);
       final slot = cal.slots.firstWhere((s) => s.time.start == DateTime.utc(2026, 11, 25, 10));
+      expect((slot.tournament?.title.en, slot.tournament?.matchId), ('Test Cup', ko(d, 1, 1).id));
+      expect(cal.slots.where((s) => s.tournament != null), hasLength(1));
       await expectLater(
         backend.owner.cancel(slot.bookingId!),
-        throwsA(isA<BookingException>().having((e) => e.error, 'error', BookingError.unavailable)),
+        throwsA(isA<BookingException>().having((e) => e.error, 'error', BookingError.tournamentBlock)),
       );
     });
 

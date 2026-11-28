@@ -3138,9 +3138,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manageScores => 'Scores';
 
   @override
-  String get manageTabSoon => 'Coming soon';
-
-  @override
   String get entriesTitle => 'Entries';
 
   @override
@@ -3219,4 +3216,101 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get redoConfirmText =>
       'The published draw is thrown away and a new draft is made from the registered entries. The players are told.';
+
+  @override
+  String calendarTournament(String title) {
+    return 'Tournament: $title';
+  }
+
+  @override
+  String get scheduleNoDraws =>
+      'Publish a draw to schedule and score its matches';
+
+  @override
+  String get scheduleUnscheduled => 'No time yet';
+
+  @override
+  String get scheduleDayEmpty => 'No matches';
+
+  @override
+  String get scheduleMatchTitle => 'Match time';
+
+  @override
+  String get scheduleCourtClosed => 'The court is closed that day';
+
+  @override
+  String get clearTime => 'Clear time';
+
+  @override
+  String get placeNoteLabel => 'Place (optional)';
+
+  @override
+  String get pickTime => 'Choose a time';
+
+  @override
+  String get matchClash =>
+      'A player is in another match at this time. Move one of them';
+
+  @override
+  String get fillDay => 'Fill the day';
+
+  @override
+  String get fillDayHint =>
+      'Matches without a time go into free slots of the courts you pick, round by round';
+
+  @override
+  String get fillCourts => 'Courts';
+
+  @override
+  String get fillFrom => 'Starting at';
+
+  @override
+  String get fillRun => 'Fill';
+
+  @override
+  String fillPlaced(int count) {
+    return 'Matches placed: $count';
+  }
+
+  @override
+  String get fillNotFitted => 'Did not fit';
+
+  @override
+  String get fillAllFitted => 'Every match fitted';
+
+  @override
+  String get scoresEmpty => 'No matches to score yet';
+
+  @override
+  String get scoreCorrect => 'Correct the score';
+
+  @override
+  String get outcomePlayed => 'Played';
+
+  @override
+  String get matchWinner => 'Who won?';
+
+  @override
+  String get deciderPrompt => 'Level score: who won the decider?';
+
+  @override
+  String get retiredHint => 'Enter the score when play stopped';
+
+  @override
+  String get matchActions => 'Match actions';
+
+  @override
+  String withdrawEntry(String name) {
+    return 'Withdraw $name';
+  }
+
+  @override
+  String get withdrawConfirmTitle => 'Withdraw this entry?';
+
+  @override
+  String get withdrawConfirmText =>
+      'Its unplayed matches become walkovers for the opponents; played matches keep their scores. The players are told.';
+
+  @override
+  String get withdrawAction => 'Withdraw';
 }

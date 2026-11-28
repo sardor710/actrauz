@@ -237,6 +237,13 @@ OwnerSlot ownerSlotFromJson(Row json) => OwnerSlot(
     final other => throw FormatException('Unknown slot state "$other"'),
   },
   bookingId: json['booking_id'] as String?,
+  tournament: switch (json['tournament']) {
+    final Map<String, dynamic> t => TournamentBlockRef(
+      title: localizedTextFromJson(t['title']),
+      matchId: t['match_id'] as String,
+    ),
+    _ => null,
+  },
 );
 
 /// The JSON returned by `owner_calendar`: `{ "slots": [...], "bookings": [...] }`.

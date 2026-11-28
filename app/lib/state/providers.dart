@@ -362,16 +362,24 @@ void refreshBookings(WidgetRef ref) {
 
 /// Refreshes everything that depends on tournaments and the player's
 /// registrations (also what a registration writes to the inbox).
-void refreshTournaments(WidgetRef ref) {
-  ref.invalidate(tournamentsProvider);
-  ref.invalidate(tournamentProvider);
-  ref.invalidate(myRegistrationsProvider);
-  ref.invalidate(bracketProvider);
-  ref.invalidate(myMatchesProvider);
-  ref.invalidate(organizedTournamentsProvider);
-  ref.invalidate(organizerEntriesProvider);
-  ref.invalidate(inboxProvider);
-  ref.invalidate(unreadCountProvider);
+void refreshTournaments(WidgetRef ref) => _refreshTournaments(ref.invalidate);
+
+/// [refreshTournaments] with a container captured before an `await`, for
+/// when the widget may be gone by then (a sheet that closed).
+void refreshTournamentsIn(ProviderContainer container) => _refreshTournaments(container.invalidate);
+
+void _refreshTournaments(Invalidate invalidate) {
+  invalidate(tournamentsProvider);
+  invalidate(tournamentProvider);
+  invalidate(myRegistrationsProvider);
+  invalidate(bracketProvider);
+  invalidate(myMatchesProvider);
+  invalidate(organizedTournamentsProvider);
+  invalidate(organizerEntriesProvider);
+  // Match times take and free court slots.
+  invalidate(availabilityProvider);
+  invalidate(inboxProvider);
+  invalidate(unreadCountProvider);
 }
 
 /// Detects the player's city during onboarding. Sample mode and tests never

@@ -7,6 +7,8 @@ import '../../state/providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
 import 'draw_tab.dart';
+import 'schedule_tab.dart';
+import 'scores_tab.dart';
 
 /// The tournament manager (M8a design §11), for its organisers and admins:
 /// Draw, Schedule and Scores tabs. Phone width first: it is used courtside.
@@ -29,9 +31,9 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
   /// For the title: the previous account's tournament is not shown.
   final _titleTracker = StaleTracker();
 
-  /// The Draw tab's bracket and entries, noted here on every build: the
-  /// screen outlives its tabs, so a reload seen while another tab is open
-  /// still counts when Draw comes back.
+  /// The tabs' bracket and the Draw tab's entries, noted here on every
+  /// build: the screen outlives its tabs, so a reload seen while another tab
+  /// is open still counts when that tab comes back.
   final _bracketTracker = StaleTracker();
   final _entriesTracker = StaleTracker();
 
@@ -90,9 +92,8 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
         body: TabBarView(
           children: [
             DrawTab(tournamentId: tournamentId, bracketStale: bracketStale, entriesStale: entriesStale),
-            // Built in M8a Task 8.
-            EmptyState(key: const ValueKey('manage-schedule'), icon: Icons.calendar_month_outlined, text: l.manageTabSoon),
-            EmptyState(key: const ValueKey('manage-scores'), icon: Icons.scoreboard_outlined, text: l.manageTabSoon),
+            ScheduleTab(tournamentId: tournamentId, bracketStale: bracketStale),
+            ScoresTab(tournamentId: tournamentId, bracketStale: bracketStale),
           ],
         ),
       ),
