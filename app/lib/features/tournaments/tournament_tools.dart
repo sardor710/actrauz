@@ -49,11 +49,24 @@ String tournamentErrorText(AppLocalizations l, Object error) {
   };
 }
 
+/// [tournamentErrorText] for the tournament manager: a refusal of the
+/// organiser check says that only the tournament's organisers may (not that
+/// only administrators may, as on the admin screens).
+String organizerErrorText(AppLocalizations l, Object error) =>
+    error is TournamentException && error.error == TournamentError.notAllowed
+    ? l.notOrganizer
+    : tournamentErrorText(l, error);
+
 /// Runs a registration action and shows the translated reason when the
 /// backend refuses. Reloads everything that depends on tournaments either way
 /// (a refusal usually means the screen was out of date). Returns whether it
-/// went through.
-Future<bool> runTournamentAction(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
+/// went through. [organizer]: an organiser's action ([organizerErrorText]).
+Future<bool> runTournamentAction(
+  BuildContext context,
+  WidgetRef ref,
+  Future<void> Function() action, {
+  bool organizer = false,
+}) async {
   final l = context.l;
   var done = false;
   String? message;
@@ -61,7 +74,7 @@ Future<bool> runTournamentAction(BuildContext context, WidgetRef ref, Future<voi
     await action();
     done = true;
   } on TournamentException catch (e) {
-    message = tournamentErrorText(l, e);
+    message = organizer ? organizerErrorText(l, e) : tournamentErrorText(l, e);
   }
   if (!context.mounted) return done;
   refreshTournaments(ref);

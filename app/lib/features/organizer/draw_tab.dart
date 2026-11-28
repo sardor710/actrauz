@@ -18,15 +18,9 @@ typedef _Choice = ({DrawFormat format, int groupSize, int advance});
 /// entries (names, phones, paid), the format, "Make draw", the draft with
 /// tap-two-entries-to-swap, Publish and Redo. Every refusal shows its reason.
 class DrawTab extends ConsumerStatefulWidget {
-  const DrawTab({super.key, required this.tournamentId, required this.bracketStale, required this.entriesStale});
+  const DrawTab({super.key, required this.tournamentId});
 
   final String tournamentId;
-
-  /// The bracket's and the entries' previous data belongs to another account
-  /// until fresh data arrives (also when that load fails). Tracked by the
-  /// manager screen, which outlives this tab, on every build.
-  final bool bracketStale;
-  final bool entriesStale;
 
   @override
   ConsumerState<DrawTab> createState() => _DrawTabState();
@@ -60,7 +54,7 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
       _busy = true;
       _selected = null;
     });
-    await runTournamentAction(context, ref, action);
+    await runTournamentAction(context, ref, action, organizer: true);
     if (mounted) setState(() => _busy = false);
   }
 
@@ -81,17 +75,19 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
   Future<bool> _confirm(String title, String text, String action) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(text),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.l.cancel)),
-          FilledButton(
-            key: const ValueKey('confirm-dialog-ok'),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(action),
-          ),
-        ],
+      builder: (context) => ClosesOnAccountChange(
+        child: AlertDialog(
+          title: Text(title),
+          content: Text(text),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.l.cancel)),
+            FilledButton(
+              key: const ValueKey('confirm-dialog-ok'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(action),
+            ),
+          ],
+        ),
       ),
     );
     return ok == true;
@@ -115,17 +111,15 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
     final l = context.l;
     final bracketValue = ref.watch(bracketProvider(tournamentId));
     final entriesValue = ref.watch(organizerEntriesProvider(tournamentId));
-    final bracketStale = widget.bracketStale;
-    final entriesStale = widget.entriesStale;
 
     return AsyncBody(
       value: ref.watch(tournamentProvider(tournamentId)),
       onRetry: () => ref.invalidate(tournamentProvider(tournamentId)),
-      errorText: (error) => tournamentErrorText(l, error),
+      errorText: (error) => organizerErrorText(l, error),
       canRetry: (error) => !(error is TournamentException && error.error == TournamentError.notFound),
       builder: (tournament) {
         // Kept through a failed refresh; never another account's.
-        final bracket = bracketStale ? null : bracketValue.valueOrNull;
+        final bracket = currentData(bracketValue);
         if (bracket == null) {
           if (bracketValue.isLoading || !bracketValue.hasError) {
             return const Padding(
@@ -136,7 +130,7 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
           return _error(bracketValue.error, () => ref.invalidate(bracketProvider(tournamentId)));
         }
         if (!bracket.organizer) return EmptyState(icon: Icons.lock_outline_rounded, text: l.notOrganizer);
-        return _body(context, tournament, bracket, entriesStale ? null : entriesValue.valueOrNull, entriesValue);
+        return _body(context, tournament, bracket, currentData(entriesValue), entriesValue);
       },
     );
   }
@@ -146,7 +140,7 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
     children: [
       EmptyState(
         icon: Icons.error_outline,
-        text: error == null ? context.l.errGeneric : tournamentErrorText(context.l, error),
+        text: error == null ? context.l.errGeneric : organizerErrorText(context.l, error),
       ),
       OutlinedButton(key: const ValueKey('async-retry'), onPressed: retry, child: Text(context.l.tryAgain)),
     ],
@@ -220,7 +214,17 @@ class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClient
     Widget entriesBlock() {
       if (mine == null) {
         if (entriesValue.isLoading || !entriesValue.hasError) return const LinearProgressIndicator();
-        return Text(l.errGeneric, style: AppText.muted);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(organizerErrorText(l, entriesValue.error!), key: const ValueKey('entries-error'), style: AppText.muted),
+            TextButton(
+              key: const ValueKey('entries-retry'),
+              onPressed: () => ref.invalidate(organizerEntriesProvider(tournamentId)),
+              child: Text(l.tryAgain),
+            ),
+          ],
+        );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

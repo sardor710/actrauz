@@ -27,13 +27,6 @@ class MyTournamentsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
-  /// Previous data that belongs to another account until fresh data arrives
-  /// (also when that load fails): the matches, and each tournament's bracket
-  /// (for the names). Noted on every build, also while the list shows a
-  /// spinner.
-  final _matchesTracker = StaleTracker();
-  final _bracketTrackers = <String, StaleTracker>{};
-
   @override
   void initState() {
     super.initState();
@@ -61,14 +54,19 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final matchesValue = ref.watch(myMatchesProvider);
-    final matchesStale = _matchesTracker.update(matchesValue);
-    final drawOf = <(String, String), CategoryDraw?>{};
-    for (final m in matchesValue.valueOrNull ?? const <MyMatch>[]) {
-      final bracketValue = ref.watch(bracketProvider(m.tournamentId));
-      final stale = _bracketTrackers.putIfAbsent(m.tournamentId, StaleTracker.new).update(bracketValue);
-      drawOf[(m.tournamentId, m.categoryId)] = stale ? null : bracketValue.valueOrNull?.draw(m.categoryId);
-    }
+    // Never another account's (currentData): the matches, and each
+    // tournament's bracket, read once per tournament, for the names in the
+    // matches and whether an entry's category is locked.
+    final matches = currentData(ref.watch(myMatchesProvider)) ?? const <MyMatch>[];
+    final entriesValue = ref.watch(myRegistrationsProvider);
+    final brackets = <String, TournamentBracket?>{
+      for (final id in {
+        for (final m in matches) m.tournamentId,
+        for (final e in currentData(entriesValue) ?? const <Registration>[]) e.tournamentId,
+      })
+        id: currentData(ref.watch(bracketProvider(id))),
+    };
+    CategoryDraw? drawOf(MyMatch m) => brackets[m.tournamentId]?.draw(m.categoryId);
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
@@ -77,11 +75,10 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
       // A failed refresh keeps the list (the pull that failed says so); a
       // reload for another account never shows the previous one's.
       body: AsyncBody(
-        value: ref.watch(myRegistrationsProvider),
+        value: entriesValue,
         onRetry: () => ref.invalidate(myRegistrationsProvider),
         errorText: (error) => tournamentErrorText(l, error),
         builder: (entries) {
-          final matches = (matchesStale ? null : matchesValue.valueOrNull) ?? const <MyMatch>[];
           final next = matches.where((m) => m.match.status != MatchStatus.done).firstOrNull;
           String? categoryName(String categoryId) =>
               entries.where((e) => e.categoryId == categoryId).firstOrNull?.categoryName.resolve(context.lang);
@@ -98,7 +95,7 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
                 if (next != null) ...[
                   _MatchOf(
                     myMatch: next,
-                    draw: drawOf[(next.tournamentId, next.categoryId)],
+                    draw: drawOf(next),
                     categoryName: categoryName(next.categoryId),
                     cityId: cityOf(next.tournamentId),
                     next: true,
@@ -120,7 +117,7 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _MatchOf(
                                 myMatch: m,
-                                draw: drawOf[(m.tournamentId, m.categoryId)],
+                                draw: drawOf(m),
                                 categoryName: categoryName(m.categoryId),
                                 cityId: cityOf(m.tournamentId),
                               ),
@@ -134,7 +131,10 @@ class _MyTournamentsScreenState extends ConsumerState<MyTournamentsScreen> {
                 for (final entry in entries)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _EntryCard(entry: entry),
+                    child: _EntryCard(
+                      entry: entry,
+                      locked: brackets[entry.tournamentId]?.isLocked(entry.categoryId) ?? false,
+                    ),
                   ),
               ],
             ),
@@ -186,9 +186,12 @@ class _MatchOf extends ConsumerWidget {
 }
 
 class _EntryCard extends ConsumerWidget {
-  const _EntryCard({required this.entry});
+  const _EntryCard({required this.entry, required this.locked});
 
   final Registration entry;
+
+  /// Its category's entries are locked (from the tournament's bracket).
+  final bool locked;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -245,7 +248,7 @@ class _EntryCard extends ConsumerWidget {
               ),
             ),
             const Divider(height: 24),
-            RegistrationBlock(registration: entry, cityId: cityId, registrationOpen: open),
+            RegistrationBlock(registration: entry, cityId: cityId, registrationOpen: open, locked: locked),
           ],
         ),
       ),

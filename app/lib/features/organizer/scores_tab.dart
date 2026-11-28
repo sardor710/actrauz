@@ -17,13 +17,9 @@ import 'score_sheet.dart';
 /// published draws in play order. Tapping one enters its score, or corrects
 /// it; an entry's menu withdraws it from the draw.
 class ScoresTab extends ConsumerStatefulWidget {
-  const ScoresTab({super.key, required this.tournamentId, required this.bracketStale});
+  const ScoresTab({super.key, required this.tournamentId});
 
   final String tournamentId;
-
-  /// The bracket's previous data belongs to another account until fresh data
-  /// arrives (also when that load fails). Tracked by the manager screen.
-  final bool bracketStale;
 
   @override
   ConsumerState<ScoresTab> createState() => _ScoresTabState();
@@ -41,23 +37,30 @@ class _ScoresTabState extends ConsumerState<ScoresTab> with AutomaticKeepAliveCl
     final l = context.l;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.withdrawConfirmTitle),
-        content: Text('${entryName(l, m.draw, registrationId)}\n\n${l.withdrawConfirmText}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.cancel)),
-          FilledButton(
-            key: const ValueKey('confirm-dialog-ok'),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.withdrawAction),
-          ),
-        ],
+      builder: (context) => ClosesOnAccountChange(
+        child: AlertDialog(
+          title: Text(l.withdrawConfirmTitle),
+          content: Text('${entryName(l, m.draw, registrationId)}\n\n${l.withdrawConfirmText}'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.cancel)),
+            FilledButton(
+              key: const ValueKey('confirm-dialog-ok'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l.withdrawAction),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !mounted || _busy) return;
     setState(() => _busy = true);
-    await runTournamentAction(context, ref, () => ref.read(organizerRepositoryProvider).withdraw(registrationId));
+    await runTournamentAction(
+      context,
+      ref,
+      () => ref.read(organizerRepositoryProvider).withdraw(registrationId),
+      organizer: true,
+    );
     if (mounted) setState(() => _busy = false);
   }
 
@@ -72,11 +75,11 @@ class _ScoresTabState extends ConsumerState<ScoresTab> with AutomaticKeepAliveCl
       child: AsyncBody(
         value: ref.watch(tournamentProvider(tournamentId)),
         onRetry: () => ref.invalidate(tournamentProvider(tournamentId)),
-        errorText: (error) => tournamentErrorText(l, error),
+        errorText: (error) => organizerErrorText(l, error),
         canRetry: (error) => !(error is TournamentException && error.error == TournamentError.notFound),
         builder: (tournament) {
           // Kept through a failed refresh; never another account's.
-          final bracket = widget.bracketStale ? null : bracketValue.valueOrNull;
+          final bracket = currentData(bracketValue);
           if (bracket == null) {
             return bracketLoadState(context, bracketValue, () => ref.invalidate(bracketProvider(tournamentId)));
           }
@@ -138,7 +141,7 @@ Widget bracketLoadState(BuildContext context, AsyncValue<TournamentBracket> valu
   return Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      EmptyState(icon: Icons.error_outline, text: tournamentErrorText(context.l, value.error!)),
+      EmptyState(icon: Icons.error_outline, text: organizerErrorText(context.l, value.error!)),
       OutlinedButton(key: const ValueKey('async-retry'), onPressed: retry, child: Text(context.l.tryAgain)),
     ],
   );

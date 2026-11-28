@@ -1253,6 +1253,8 @@ CategoryDraw categoryDrawFromJson(Row json, {required String? myUserId}) => Cate
   groupSize: json['group_size'] as int?,
   advance: json['advance'] as int?,
   published: json['status'] == 'published',
+  // Absent before the final review's backend: published means locked then.
+  locked: json['locked'] as bool? ?? json['status'] == 'published',
   outdated: json['outdated'] as bool? ?? false,
   entries: [
     for (final e in _rows(json['entries']))
@@ -1299,6 +1301,10 @@ TournamentBracket tournamentBracketFromJson(Row json, {required String? myUserId
         ? null
         : NextMatch(match: tournamentMatchFromJson(next), categoryId: next['category_id'] as String),
     finished: json['finished'] as bool? ?? false,
+    // Absent from an older backend: the published draws' categories then.
+    lockedCategoryIds: json.containsKey('locked_category_ids')
+        ? {for (final id in json['locked_category_ids'] as List? ?? const []) id as String}
+        : null,
   );
 }
 

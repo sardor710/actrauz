@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/languages.dart';
 import '../data/auth/auth_repository.dart';
+import 'account_epoch.dart';
 import 'providers.dart';
 
 class SessionState {
@@ -32,6 +33,12 @@ class SessionController extends Notifier<SessionState> {
     // If the backend ends the session (revoked, expired), go back to sign-in.
     final lost = auth.sessionLost.listen((_) => _forgetUser());
     ref.onDispose(lost.cancel);
+
+    // Another account (or none): whatever was loaded belongs to the previous
+    // one (AccountEpoch), before any screen rebuilds.
+    listenSelf((previous, next) {
+      if (previous != null && previous.userName != next.userName) AccountEpoch.accountChanged();
+    });
 
     final lang = prefs.getString(_lang);
     return SessionState(

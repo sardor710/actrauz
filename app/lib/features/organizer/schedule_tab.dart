@@ -23,13 +23,9 @@ import 'scores_tab.dart' show bracketLoadState;
 /// and time; "Fill the day" places the rest. Without a venue a match gets a
 /// time and a place note instead.
 class ScheduleTab extends ConsumerStatefulWidget {
-  const ScheduleTab({super.key, required this.tournamentId, required this.bracketStale});
+  const ScheduleTab({super.key, required this.tournamentId});
 
   final String tournamentId;
-
-  /// The bracket's previous data belongs to another account until fresh data
-  /// arrives (also when that load fails). Tracked by the manager screen.
-  final bool bracketStale;
 
   @override
   ConsumerState<ScheduleTab> createState() => _ScheduleTabState();
@@ -62,7 +58,9 @@ class _ScheduleTabState extends ConsumerState<ScheduleTab> with AutomaticKeepAli
       useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _MatchTimeSheet(tournament: tournament, bracket: bracket, match: m, day: day),
+      builder: (context) => ClosesOnAccountChange(
+        child: _MatchTimeSheet(tournament: tournament, bracket: bracket, match: m, day: day),
+      ),
     );
     if (moved != null && mounted) setState(() => _day = moved);
   }
@@ -72,7 +70,9 @@ class _ScheduleTabState extends ConsumerState<ScheduleTab> with AutomaticKeepAli
     useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => _FillDaySheet(tournament: tournament, bracket: bracket, day: day),
+    builder: (context) => ClosesOnAccountChange(
+      child: _FillDaySheet(tournament: tournament, bracket: bracket, day: day),
+    ),
   );
 
   @override
@@ -86,11 +86,11 @@ class _ScheduleTabState extends ConsumerState<ScheduleTab> with AutomaticKeepAli
       child: AsyncBody(
         value: ref.watch(tournamentProvider(tournamentId)),
         onRetry: () => ref.invalidate(tournamentProvider(tournamentId)),
-        errorText: (error) => tournamentErrorText(l, error),
+        errorText: (error) => organizerErrorText(l, error),
         canRetry: (error) => !(error is TournamentException && error.error == TournamentError.notFound),
         builder: (tournament) {
           // Kept through a failed refresh; never another account's.
-          final bracket = widget.bracketStale ? null : bracketValue.valueOrNull;
+          final bracket = currentData(bracketValue);
           if (bracket == null) {
             return bracketLoadState(context, bracketValue, () => ref.invalidate(bracketProvider(tournamentId)));
           }
@@ -386,12 +386,12 @@ class _MatchTimeSheetState extends ConsumerState<_MatchTimeSheet> {
       if (!mounted) {
         messenger
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(tournamentErrorText(l, e)), behavior: SnackBarBehavior.floating));
+          ..showSnackBar(SnackBar(content: Text(organizerErrorText(l, e)), behavior: SnackBarBehavior.floating));
         return;
       }
       setState(() {
         _busy = false;
-        _error = tournamentErrorText(l, e);
+        _error = organizerErrorText(l, e);
       });
     }
   }
@@ -498,7 +498,7 @@ class _MatchTimeSheetState extends ConsumerState<_MatchTimeSheet> {
       label(l.timeLabel),
       venue.when(
         loading: () => const LinearProgressIndicator(),
-        error: (_, _) => Text(l.errGeneric, style: AppText.muted),
+        error: (error, _) => _venueError(error),
         data: (venue) {
           final court = venue.courts.where((c) => c.id == _courtId).firstOrNull;
           final slots = court == null ? const <SlotTime>[] : generateSlots(venue, court, _day);
@@ -520,6 +520,20 @@ class _MatchTimeSheetState extends ConsumerState<_MatchTimeSheet> {
       ),
     ];
   }
+
+/// A venue that failed to load: the reason and Try again (it never spins
+  /// for ever).
+  Widget _venueError(Object error) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(organizerErrorText(context.l, error), style: AppText.muted),
+      TextButton(
+        key: const ValueKey('venue-retry'),
+        onPressed: () => ref.invalidate(venueProvider(widget.tournament.venueId!)),
+        child: Text(context.l.tryAgain),
+      ),
+    ],
+  );
 
   List<Widget> _noVenuePart(BuildContext context, Widget Function(String) label) {
     final l = context.l;
@@ -613,7 +627,7 @@ class _FillDaySheetState extends ConsumerState<_FillDaySheet> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = tournamentErrorText(l, e);
+          _error = organizerErrorText(l, e);
         });
       }
     }
@@ -652,7 +666,8 @@ class _FillDaySheetState extends ConsumerState<_FillDaySheet> {
 
   List<Widget> _form(BuildContext context, Widget Function(String) label) {
     final l = context.l;
-    final venue = ref.watch(venueProvider(widget.tournament.venueId!)).valueOrNull;
+    final venueValue = ref.watch(venueProvider(widget.tournament.venueId!));
+    final venue = venueValue.valueOrNull;
     // Every slot start of the picked courts that day.
     final starts = <int>{
       if (venue != null)
@@ -681,7 +696,7 @@ class _FillDaySheetState extends ConsumerState<_FillDaySheet> {
       ),
       label(l.fillFrom),
       if (venue == null)
-        const LinearProgressIndicator()
+        venueValue.hasError && !venueValue.isLoading ? _venueError(venueValue.error!) : const LinearProgressIndicator()
       else if (starts.isEmpty)
         Text(l.scheduleCourtClosed, style: AppText.muted)
       else
@@ -727,6 +742,20 @@ class _FillDaySheetState extends ConsumerState<_FillDaySheet> {
       ),
     ];
   }
+
+/// A venue that failed to load: the reason and Try again (it never spins
+  /// for ever).
+  Widget _venueError(Object error) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(organizerErrorText(context.l, error), style: AppText.muted),
+      TextButton(
+        key: const ValueKey('venue-retry'),
+        onPressed: () => ref.invalidate(venueProvider(widget.tournament.venueId!)),
+        child: Text(context.l.tryAgain),
+      ),
+    ],
+  );
 
   List<Widget> _report(BuildContext context, FillResult result) {
     final l = context.l;

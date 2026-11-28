@@ -41,7 +41,7 @@ class _OrganizedTournamentsScreenState extends ConsumerState<OrganizedTournament
       body: AsyncBody(
         value: ref.watch(organizedTournamentsProvider),
         onRetry: () => ref.invalidate(organizedTournamentsProvider),
-        errorText: (error) => tournamentErrorText(l, error),
+        errorText: (error) => organizerErrorText(l, error),
         builder: (tournaments) => RefreshIndicator(
           onRefresh: () => pullToReload(context, ref.refresh(organizedTournamentsProvider.future)),
           child: tournaments.isEmpty

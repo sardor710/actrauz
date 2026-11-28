@@ -7,6 +7,7 @@ import '../../domain/competitive.dart';
 import '../../domain/tournaments.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
+import '../common/widgets.dart';
 import '../games/score_sheet.dart' show SetsEditor;
 import '../tournaments/bracket_view.dart';
 import '../tournaments/tournament_tools.dart';
@@ -22,7 +23,7 @@ Future<bool?> showMatchScoreSheet(BuildContext context, ManagedMatch match, {req
       useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => MatchScoreSheet(match: match, rated: rated),
+      builder: (context) => ClosesOnAccountChange(child: MatchScoreSheet(match: match, rated: rated)),
     );
 
 /// The outcomes the organiser picks from; a decider is a played match with a
@@ -72,6 +73,14 @@ class _MatchScoreSheetState extends ConsumerState<MatchScoreSheet> {
 
   bool get _level => _points.$1 == _points.$2;
 
+  /// A withdrawn entry wins nothing it had not already won (the backend
+  /// refuses it): its chip is off unless it is the winner stored now.
+  bool _canWin(Side side) {
+    final registrationId = side == Side.a ? m.sideA : m.sideB;
+    final withdrawn = widget.match.draw.entries.any((e) => e.registrationId == registrationId && e.withdrawn);
+    return !withdrawn || (m.status == MatchStatus.done && m.winner == side);
+  }
+
   /// A knockout match of a sport without sets ending level: the organiser
   /// names who won the decider.
   bool get _decider => _kind == _Kind.played && !rated && knockout && _level;
@@ -116,12 +125,12 @@ class _MatchScoreSheetState extends ConsumerState<MatchScoreSheet> {
       if (!mounted) {
         messenger
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(tournamentErrorText(l, e)), behavior: SnackBarBehavior.floating));
+          ..showSnackBar(SnackBar(content: Text(organizerErrorText(l, e)), behavior: SnackBarBehavior.floating));
         return;
       }
       setState(() {
         _busy = false;
-        _error = tournamentErrorText(l, e);
+        _error = organizerErrorText(l, e);
       });
     }
   }
@@ -177,7 +186,7 @@ class _MatchScoreSheetState extends ConsumerState<MatchScoreSheet> {
             key: ValueKey(side == Side.a ? 'winner-a' : 'winner-b'),
             label: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
             selected: _winner == side,
-            onSelected: (_) => setState(() => _winner = side),
+            onSelected: _canWin(side) ? (_) => setState(() => _winner = side) : null,
           ),
       ],
     );

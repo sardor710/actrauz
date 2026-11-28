@@ -252,7 +252,13 @@ void main() {
       expect((cleared.courtId, cleared.startsAt), (null, null));
       expect(await at10('v1c1'), SlotState.free);
 
-      utcNow = DateTime.utc(2026, 11, 25, 6); // 11:00 on the day
+      // 11:00 on the day: the 10:00 slot (to 11:30) is under way and can
+      // still be recorded; once it has ended it is in the past.
+      utcNow = DateTime.utc(2026, 11, 25, 6);
+      final underWay = await org.scheduleMatch(qf.id, courtId: 'v1c1', startsAt: DateTime.utc(2026, 11, 25, 10));
+      expect(underWay.startsAt, DateTime.utc(2026, 11, 25, 10));
+      await org.scheduleMatch(qf.id);
+      utcNow = DateTime.utc(2026, 11, 25, 6, 30); // 11:30
       await expectLater(
         org.scheduleMatch(qf.id, courtId: 'v1c1', startsAt: DateTime.utc(2026, 11, 25, 10)),
         refuses(TournamentError.inPast),
@@ -776,6 +782,116 @@ void main() {
       expect(result.unscheduled, [finalId]);
       final after = (await backend.tournament.bracket(t)).draw(d.categoryId)!;
       expect(times(after).where((r) => r.$1 == 3).map((r) => r.$4), everyElement(DateTime.utc(2026, 11, 25, 11, 30)));
+    });
+  });
+
+  group('final review (as the backend)', () {
+    Future<int> inboxCount(String kind, {String? matchId}) async => (await backend.inbox())
+        .where((n) => n.kind == kind && (matchId == null || n.payload['match_id'] == matchId))
+        .length;
+
+    test('the entry lock shows for every caller, also for a redone draft', () async {
+      final (t, a, b) = await makeTournament();
+      await published(a);
+      await enter(b, ['p1', 'p2']);
+      await org.makeDraw(b, DrawFormat.knockout);
+      var seen = await backend.bracketAs('p1', t);
+      expect((seen.isLocked(a), seen.isLocked(b)), (true, false));
+      expect(seen.draw(a)!.locked, isTrue);
+
+      await org.redo(a);
+      seen = await backend.bracketAs('p1', t);
+      expect(seen.draws, isEmpty, reason: 'a redone draw is a draft again');
+      expect(seen.isLocked(a), isTrue);
+      final mine = (await backend.tournament.bracket(t)).draw(a)!;
+      expect((mine.published, mine.locked), (false, true));
+    });
+
+    test('a walkover by withdrawal, and an automatic one, tell the side that wins it', () async {
+      final (_, a, _) = await makeTournament();
+      final regs = await enter(a, [...eight.take(7), kMeId]);
+      await org.makeDraw(a, DrawFormat.knockout);
+      var d = await org.publish(a);
+      final mineQf = d.matches.firstWhere(
+        (m) => m.stage == MatchStage.knockout && m.round == 1 && (m.sideA == regs[kMeId] || m.sideB == regs[kMeId]),
+      );
+      final opponent = mineQf.sideA == regs[kMeId] ? mineQf.sideB! : mineQf.sideA!;
+      // The other quarter-final of my half: its winner withdraws before the
+      // semi-final, which then waits with an empty side.
+      final semi = ko(d, 2, (mineQf.position + 1) ~/ 2);
+      final otherQf = ko(d, 1, mineQf.position.isOdd ? mineQf.position + 1 : mineQf.position - 1);
+      d = await org.enterScore(otherQf.id, MatchOutcome.walkover, winner: Side.a);
+      d = await org.withdraw(otherQf.sideA!);
+
+      // My opponent withdraws: I hear of my walkover, and of the semi-final
+      // I then win as a walkover too.
+      d = await org.withdraw(opponent);
+      expect(await inboxCount('match_result', matchId: mineQf.id), 1);
+      final after = ko(d, 2, semi.position);
+      expect((after.outcome, after.winnerEntry), (MatchOutcome.walkover, regs[kMeId]));
+      expect(await inboxCount('match_result', matchId: semi.id), 1);
+    });
+
+    test('an entry placed into a match that already has its time hears of it, once', () async {
+      final (_, a, _) = await makeTournament();
+      final regs = await enter(a, ['p1', 'p2', 'p3', kMeId]);
+      await org.makeDraw(a, DrawFormat.knockout);
+      var d = await org.publish(a);
+      final finalMatch = ko(d, 2, 1);
+      await org.scheduleMatch(finalMatch.id, courtId: 'v1c1', startsAt: DateTime.utc(2026, 11, 25, 16));
+      final mine = d.matches.firstWhere(
+        (m) => m.stage == MatchStage.knockout && m.round == 1 && (m.sideA == regs[kMeId] || m.sideB == regs[kMeId]),
+      );
+      final me = mine.sideA == regs[kMeId] ? Side.a : Side.b;
+      d = await org.enterScore(mine.id, MatchOutcome.walkover, winner: me);
+      expect(await inboxCount('match_scheduled', matchId: finalMatch.id), 1);
+      final other = ko(d, 1, mine.position == 1 ? 2 : 1);
+      await org.enterScore(other.id, MatchOutcome.walkover, winner: Side.a);
+      expect(await inboxCount('match_scheduled', matchId: finalMatch.id), 1);
+    });
+
+    test('the stored result entered again changes nothing', () async {
+      final (_, a, _) = await makeTournament();
+      final regs = await enter(a, ['p1', kMeId]);
+      await org.makeDraw(a, DrawFormat.knockout);
+      final d = await org.publish(a);
+      final m = ko(d, 1, 1);
+      final me = m.sideA == regs[kMeId] ? Side.a : Side.b;
+      final sets = [
+        if (me == Side.a) [6, 2] else [2, 6],
+        if (me == Side.a) [6, 3] else [3, 6],
+      ];
+      await org.enterScore(m.id, MatchOutcome.played, sets: sets);
+      final notes = (await backend.inbox()).length;
+      Future<(double, int)> rating() async {
+        final r = (await backend.mySports()).firstWhere((s) => s.sportId == 'padel').rating!;
+        return (r.rating, r.ratedGames);
+      }
+
+      final before = await rating();
+      await org.enterScore(m.id, MatchOutcome.played, sets: sets);
+      expect((await backend.inbox()).length, notes);
+      expect(await rating(), before);
+    });
+
+    test('without a venue a start up to two hours back can be set', () async {
+      final (_, a, _) = await makeTournament(venueId: null);
+      final d = await published(a, players: ['p1', 'p2']);
+      utcNow = DateTime.utc(2026, 11, 25, 6); // 11:00 on the day
+      final m = await org.scheduleMatch(ko(d, 1, 1).id, startsAt: DateTime.utc(2026, 11, 25, 9));
+      expect(m.startsAt, DateTime.utc(2026, 11, 25, 9));
+      await expectLater(
+        org.scheduleMatch(ko(d, 1, 1).id, startsAt: DateTime.utc(2026, 11, 25, 8, 59)),
+        refuses(TournamentError.inPast),
+      );
+    });
+
+    test('a draw leaves out entries with a deleted account', () async {
+      final (_, a, _) = await makeTournament();
+      final regs = await enter(a, ['p1', 'p2', 'p3', 'p4']);
+      backend.markDeleted('p2');
+      final d = await org.makeDraw(a, DrawFormat.knockout);
+      expect({for (final e in d.entries) e.registrationId}, {regs['p1'], regs['p3'], regs['p4']});
     });
   });
 

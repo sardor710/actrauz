@@ -36,12 +36,6 @@ class TournamentScreen extends ConsumerStatefulWidget {
 class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   String get tournamentId => widget.tournamentId;
 
-  /// The bracket's previous data belongs to another account until fresh data
-  /// arrives (also when that load fails). Noted on every build, also while the
-  /// page itself shows a spinner.
-  final _bracketTracker = StaleTracker();
-  bool _bracketStale = false;
-
   @override
   void initState() {
     super.initState();
@@ -89,7 +83,6 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final value = ref.watch(tournamentProvider(tournamentId));
-    _bracketStale = _bracketTracker.update(ref.watch(bracketProvider(tournamentId)));
     return Scaffold(
       key: const ValueKey('tournament-detail'),
       appBar: value.hasValue ? null : AppBar(leading: BackButton(onPressed: () => _back(context))),
@@ -113,7 +106,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final description = t.description.resolve(lang);
     // Kept through a failed refresh; nothing of the draws until it first
     // loads, nor after a reload for another account until fresh data arrives.
-    final bracket = _bracketStale ? null : ref.watch(bracketProvider(tournamentId)).valueOrNull;
+    final bracket = currentData(ref.watch(bracketProvider(tournamentId)));
     final next = bracket?.myNextMatch;
     final nextDraw = next == null ? null : bracket?.draw(next.categoryId);
     CategoryDraw? published(String categoryId) {
@@ -231,6 +224,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                     tournament: t,
                     category: c,
                     draw: published(c.id),
+                    locked: bracket?.isLocked(c.id) ?? false,
                     now: now,
                     onRegister: (waitlist) => _register(context, t, c, waitlist: waitlist),
                   ),
@@ -250,6 +244,7 @@ class _CategoryTile extends StatelessWidget {
     required this.tournament,
     required this.category,
     required this.draw,
+    required this.locked,
     required this.now,
     required this.onRegister,
   });
@@ -257,8 +252,12 @@ class _CategoryTile extends StatelessWidget {
   final Tournament tournament;
   final TournamentCategory category;
 
-  /// Its published draw: the category's entries are locked.
+  /// Its published draw, shown under it.
   final CategoryDraw? draw;
+
+  /// The category's entries are locked (a draw published once, also a
+  /// redone draft a player does not see): no Register, waitlist or cancel.
+  final bool locked;
   final DateTime now;
 
   /// Register (false) or join the waitlist (true).
@@ -274,7 +273,7 @@ class _CategoryTile extends StatelessWidget {
     final grey = c.full && mine.isEmpty;
 
     Widget? action;
-    if (open && mine.isEmpty && draw == null) {
+    if (open && mine.isEmpty && !locked) {
       action = !c.full
           ? FilledButton(onPressed: () => onRegister(false), child: Text(l.registerLabel))
           : c.waitlistEnabled
@@ -327,7 +326,7 @@ class _CategoryTile extends StatelessWidget {
         ),
         for (final r in mine) ...[
           const SizedBox(height: 12),
-          RegistrationBlock(registration: r, cityId: tournament.cityId, registrationOpen: open),
+          RegistrationBlock(registration: r, cityId: tournament.cityId, registrationOpen: open, locked: locked),
         ],
         if (action != null) ...[const SizedBox(height: 12), SizedBox(width: double.infinity, child: action)],
         if (draw case final draw?) ...[const Divider(height: 28), CategoryDrawSection(draw: draw, now: now)],

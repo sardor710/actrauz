@@ -29,7 +29,9 @@ Future<RegisterChoice?> showRegisterSheet(
   useRootNavigator: true,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) => RegisterSheet(tournament: tournament, category: category, waitlist: waitlist),
+  builder: (context) => ClosesOnAccountChange(
+    child: RegisterSheet(tournament: tournament, category: category, waitlist: waitlist),
+  ),
 );
 
 class RegisterSheet extends ConsumerStatefulWidget {
@@ -304,7 +306,9 @@ Future<PlayerRef?> showPickPlayerSheet(
   useRootNavigator: true,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) => _PickPlayerSheet(title: title, action: action, sportId: sportId),
+  builder: (context) => ClosesOnAccountChange(
+    child: _PickPlayerSheet(title: title, action: action, sportId: sportId),
+  ),
 );
 
 class _PickPlayerSheet extends StatefulWidget {

@@ -175,6 +175,7 @@ class CategoryDraw {
     required this.categoryId,
     required this.format,
     required this.published,
+    bool? locked,
     this.groupSize,
     this.advance,
     this.outdated = false,
@@ -184,7 +185,7 @@ class CategoryDraw {
     this.winner,
     this.runnerUp,
     this.finished = false,
-  });
+  }) : locked = locked ?? published;
 
   final String categoryId;
   final DrawFormat format;
@@ -193,6 +194,10 @@ class CategoryDraw {
   final int? groupSize;
   final int? advance;
   final bool published;
+
+  /// The category's entries are locked: published once, also while a redone
+  /// draft is being made again.
+  final bool locked;
 
   /// A draft whose entries changed after it was made: make it again before
   /// publishing.
@@ -238,7 +243,8 @@ class TournamentBracket {
     this.myNextMatch,
     this.finished = false,
     this.courts = const [],
-  });
+    Set<String>? lockedCategoryIds,
+  }) : _lockedCategoryIds = lockedCategoryIds;
 
   /// The caller organises it (or is an admin): drafts and courts included.
   final bool organizer;
@@ -252,6 +258,16 @@ class TournamentBracket {
 
   /// Organisers only; empty for everyone else.
   final List<CourtRef> courts;
+
+  /// The categories whose entries are locked, for every caller (a redone
+  /// draft is hidden from players, its lock is not); null from a backend
+  /// that does not say (the published draws then).
+  final Set<String>? _lockedCategoryIds;
+
+  /// No entry of the category may change: no registering, joining the
+  /// waitlist or cancelling.
+  bool isLocked(String categoryId) =>
+      (_lockedCategoryIds?.contains(categoryId) ?? false) || (draw(categoryId)?.locked ?? false);
 
   CategoryDraw? draw(String categoryId) {
     for (final d in draws) {

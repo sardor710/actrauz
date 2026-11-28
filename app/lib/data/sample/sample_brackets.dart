@@ -295,16 +295,23 @@ class SampleBrackets implements SampleDrawGuard {
   // ---- Making a draw (app.build_draw, app.build_matches, app.build_knockout) ----
 
   void _checkEntries(String categoryId, DrawFormat format) {
-    final n = tournaments.registered(categoryId).length;
+    final n = _drawable(categoryId).length;
     if (n < 2 || (format == DrawFormat.groups && n < 3)) _fail(TournamentError.tooFewEntries);
   }
+
+  /// The category's registered entries a draw is made from: one with a
+  /// deleted account in it (registrant or partner) is left out.
+  List<SampleEntryInfo> _drawable(String categoryId) => [
+    for (final e in tournaments.registered(categoryId))
+      if (!isDeleted(e.userId) && !(e.partnerId != null && isDeleted(e.partnerId!))) e,
+  ];
 
   /// The draw's entries, groups and matches afresh from the category's
   /// registered entries. Strongest first; ties in the order they registered
   /// (the database breaks them at random).
   void _buildDraw(_Draw d) {
     final sport = tournaments.info(d.tournamentId)!.sportId;
-    final regs = tournaments.registered(d.categoryId);
+    final regs = _drawable(d.categoryId);
     double strength(SampleEntryInfo e) {
       final players = [e.userId, if (e.partnerId != null) e.partnerId!];
       final total = players.fold<double>(0, (s, p) => s + strengthOf(p, sport));
@@ -551,12 +558,13 @@ class SampleBrackets implements SampleDrawGuard {
     final trimmed = placeNote?.trim();
     final note = trimmed == null || trimmed.isEmpty ? null : trimmed;
     if (note != null && note.length > 100) _fail(TournamentError.invalidArgument);
-    if (startsAt.isBefore(_now(t.id))) _fail(TournamentError.inPast);
 
     final _Span span;
     Court? court;
     if (t.venueId == null) {
       if (courtId != null) _fail(TournamentError.invalidArgument);
+      // No slot length: a start up to two hours back is a match under way.
+      if (startsAt.isBefore(_now(t.id).subtract(const Duration(hours: 2)))) _fail(TournamentError.inPast);
       span = _Span(startsAt, startsAt, point: true);
     } else {
       final venue = venueOf(t.venueId!);
@@ -566,6 +574,8 @@ class SampleBrackets implements SampleDrawGuard {
       }
       if (!generateSlots(venue, court, date).any((s) => s.start == startsAt)) _fail(TournamentError.invalidArgument);
       span = _Span(startsAt, startsAt.add(Duration(minutes: court.slotMinutes)));
+      // Only a slot that has ended is refused; one under way can be recorded.
+      if (!span.end.isAfter(_now(t.id))) _fail(TournamentError.inPast);
     }
 
     if (_busy(t.id, m.id, _matchPlayers(m), span)) _fail(TournamentError.playerBusy);
@@ -606,7 +616,9 @@ class SampleBrackets implements SampleDrawGuard {
         .id;
   }
 
-  void _notifyScheduled(_Draw d, _Match m) {
+  /// match_scheduled to the players of the match's known sides, or only to
+  /// [only] (an entry just placed into it).
+  void _notifyScheduled(_Draw d, _Match m, {List<String>? only}) {
     final payload = {
       ...tournaments.note(d.tournamentId, d.categoryId),
       'match_id': m.id,
@@ -618,7 +630,7 @@ class SampleBrackets implements SampleDrawGuard {
       },
       'place_note': m.placeNote,
     };
-    for (final p in _matchPlayers(m).toSet()) {
+    for (final p in (only ?? _matchPlayers(m)).toSet()) {
       _notify(p, 'match_scheduled', payload);
     }
   }
@@ -853,7 +865,19 @@ class SampleBrackets implements SampleDrawGuard {
     // A next match that already has a result never changes a side under it.
     if (next.status == MatchStatus.done && _scored.contains(next.outcome)) _fail(TournamentError.nextMatchPlayed);
     _settle(d, next);
+    // Placed into a match that already has its time: the entry hears of it
+    // (fill-knockout tells the qualifiers itself).
+    if (entry != null &&
+        !_quietPlacement &&
+        next.status != MatchStatus.done &&
+        next.startsAt != null &&
+        (next.sideA == entry || next.sideB == entry)) {
+      _notifyScheduled(d, next, only: _players(entry));
+    }
   }
+
+  /// Set while fill-knockout places the qualifiers (it tells them itself).
+  bool _quietPlacement = false;
 
   /// Recomputes a knockout match nobody has scored from its sides: one side
   /// gone and the other known is done for the known side (a bye in round 1,
@@ -886,6 +910,10 @@ class SampleBrackets implements SampleDrawGuard {
       ..scoredBy = null
       ..scoredAt = status == MatchStatus.done ? utcNow() : null;
     if (status == MatchStatus.done) _notPlayed(d, m);
+    // The side that wins a walkover this way hears of it.
+    if (outcome == MatchOutcome.walkover) {
+      _notifyResult(d, m, _players(winner == Side.a ? m.sideA : m.sideB), correction: false);
+    }
     _placeWinner(d, m);
   }
 
@@ -932,6 +960,11 @@ class SampleBrackets implements SampleDrawGuard {
     final slots = [
       for (final id in BracketRules.placeQualifiers(ranked, groupOf, size)) id != null && _withdrawn(d, id) ? null : id,
     ];
+    // Who was on each side before, so only an entry newly placed is told.
+    final before = {
+      for (final m in d.matches)
+        if (m.stage == MatchStage.knockout) m.id: {m.sideA, m.sideB},
+    };
     for (final m in d.matches.where((m) => m.stage == MatchStage.knockout)) {
       m
         ..sideA = null
@@ -953,8 +986,19 @@ class SampleBrackets implements SampleDrawGuard {
         ..aEmpty = a == null
         ..bEmpty = b == null;
     }
-    for (var i = 1; i <= size ~/ 2; i++) {
-      _settle(d, _ko(d, 1, i)!);
+    _quietPlacement = true;
+    try {
+      for (var i = 1; i <= size ~/ 2; i++) {
+        _settle(d, _ko(d, 1, i)!);
+      }
+    } finally {
+      _quietPlacement = false;
+    }
+    for (final m in d.matches) {
+      if (m.stage != MatchStage.knockout || m.status == MatchStatus.done || m.startsAt == null) continue;
+      for (final entry in [?m.sideA, ?m.sideB]) {
+        if (!(before[m.id]?.contains(entry) ?? false)) _notifyScheduled(d, m, only: _players(entry));
+      }
     }
   }
 
@@ -1024,6 +1068,18 @@ class SampleBrackets implements SampleDrawGuard {
     ];
   }
 
+  static bool _sameSets(List<List<int>>? a, List<List<int>>? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].length != b[i].length) return false;
+      for (var j = 0; j < a[i].length; j++) {
+        if (a[i][j] != b[i][j]) return false;
+      }
+    }
+    return true;
+  }
+
   /// Enters or corrects a match's result.
   CategoryDraw enterScore(String userId, String matchId, MatchOutcome outcome, {Side? winner, List<List<int>>? sets}) {
     final (d0, _) = _find(matchId) ?? _fail(TournamentError.notFound);
@@ -1070,6 +1126,11 @@ class SampleBrackets implements SampleDrawGuard {
           _fail(TournamentError.invalidArgument);
       }
       if (won == Side.draw && m.stage == MatchStage.knockout) _fail(TournamentError.drawNotAllowed);
+
+      // The stored result entered again (a double tap, a retry): nothing changes.
+      if (m.status == MatchStatus.done && m.outcome == outcome && m.winner == won && _sameSets(m.sets, stored)) {
+        return _drawView(d, userId)!;
+      }
 
       // A withdrawn entry wins nothing it had not already won.
       final entry = switch (won) {
@@ -1276,6 +1337,8 @@ class SampleBrackets implements SampleDrawGuard {
             ..scoredBy = actor
             ..scoredAt = utcNow();
           _notPlayed(d, m);
+          // The opponent hears of the walkover.
+          _notifyResult(d, m, _players(other), correction: false);
           _placeWinner(d, m);
         } else {
           if (m.sideA == registrationId) {
@@ -1424,6 +1487,7 @@ class SampleBrackets implements SampleDrawGuard {
       categoryId: d.categoryId,
       format: d.format,
       published: d.published,
+      locked: d.locked,
       groupSize: d.groupSize,
       advance: d.advance,
       outdated: d.outdated,
@@ -1484,6 +1548,10 @@ class SampleBrackets implements SampleDrawGuard {
           ? null
           : NextMatch(match: _view(mine.first.$2, mine.first.$3), categoryId: mine.first.$2.categoryId),
       finished: drawn.isNotEmpty && drawn.every((d) => _result(d).finished),
+      lockedCategoryIds: {
+        for (final d in drawn)
+          if (d.locked) d.categoryId,
+      },
       courts: !organizer || venue == null
           ? const []
           : [

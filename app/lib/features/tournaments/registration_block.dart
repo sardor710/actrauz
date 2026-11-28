@@ -14,19 +14,25 @@ import 'tournament_tools.dart';
 ///
 /// [registrationOpen] gates everything the deadline closes: answering an
 /// invite and cancelling. An offered spot can still be claimed, since an admin
-/// may offer one after the deadline. Once the category's draw is published
-/// there is no cancelling either.
+/// may offer one after the deadline. Once the category is locked (its draw
+/// published once, a redone draft included) there is no cancelling either.
 class RegistrationBlock extends ConsumerWidget {
   const RegistrationBlock({
     super.key,
     required this.registration,
     required this.cityId,
     required this.registrationOpen,
+    required this.locked,
   });
 
   final Registration registration;
   final String cityId;
   final bool registrationOpen;
+
+  /// The category's entries are locked (TournamentBracket.isLocked, read
+  /// once per tournament by the screen): the backend refuses a cancel with
+  /// draw_published (M8a §6.4).
+  final bool locked;
 
   bool get _isMember =>
       registration.role == RegistrationRole.registrant ||
@@ -45,13 +51,15 @@ class RegistrationBlock extends ConsumerWidget {
     final l = context.l;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.cancelRegistrationTitle),
-        content: Text(l.cancelRegistrationMsg),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.keepRegistration)),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l.cancelRegistration)),
-        ],
+      builder: (context) => ClosesOnAccountChange(
+        child: AlertDialog(
+          title: Text(l.cancelRegistrationTitle),
+          content: Text(l.cancelRegistrationMsg),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l.keepRegistration)),
+            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l.cancelRegistration)),
+          ],
+        ),
       ),
     );
     if (ok != true || !context.mounted) return;
@@ -70,9 +78,6 @@ class RegistrationBlock extends ConsumerWidget {
         !r.partnerConfirmed &&
         (r.status == RegistrationStatus.pendingPartner || r.status == RegistrationStatus.waitlisted);
     final canClaim = r.status == RegistrationStatus.offered && _isMember;
-    // A published draw locks the category's entries: the backend refuses a
-    // cancel with draw_published (M8a §6.4).
-    final locked = ref.watch(bracketProvider(r.tournamentId)).valueOrNull?.draw(r.categoryId)?.published ?? false;
     final canCancel = registrationOpen && r.status.live && _isMember && !locked;
 
     final other = r.role == RegistrationRole.partner ? r.registrant : r.partner;

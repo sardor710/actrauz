@@ -2002,6 +2002,36 @@ void main() {
       expect(bracket.draw('cat-x'), isNull);
     });
 
+    test('locked_category_ids and draw locked: a redone draft hidden from a player is still locked', () {
+      final bracket = tournamentBracketFromJson({
+        'organizer': false,
+        'draws': [
+          {...groupDraw(), 'locked': true},
+        ],
+        'locked_category_ids': ['cat-1', 'cat-redone'],
+      }, myUserId: me);
+      expect(bracket.draw('cat-1')!.locked, isTrue);
+      expect(bracket.isLocked('cat-1'), isTrue);
+      expect(bracket.isLocked('cat-redone'), isTrue, reason: 'no draw to see, still locked');
+      expect(bracket.isLocked('cat-open'), isFalse);
+
+      // Without the keys (an older backend): a published draw is locked.
+      final old = tournamentBracketFromJson({
+        'organizer': false,
+        'draws': [groupDraw()..remove('locked')],
+      }, myUserId: me);
+      expect(old.draw('cat-1')!.locked, old.draw('cat-1')!.published);
+      expect(old.isLocked('cat-1'), old.draw('cat-1')!.published);
+      expect(old.isLocked('cat-redone'), isFalse);
+      final draft = tournamentBracketFromJson({
+        'organizer': true,
+        'draws': [
+          {...groupDraw(), 'status': 'draft'}..remove('locked'),
+        ],
+      }, myUserId: me);
+      expect(draft.isLocked('cat-1'), isFalse);
+    });
+
     test('a tournament_bracket for an organiser: courts, my next match and finished', () {
       final bracket = tournamentBracketFromJson({
         'organizer': true,

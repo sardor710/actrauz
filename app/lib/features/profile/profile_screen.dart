@@ -366,21 +366,12 @@ class _MenuRow extends StatelessWidget {
 /// "Tournaments I run" with its divider, only while the player organises at
 /// least one tournament. A failed reload keeps it; another account's never
 /// shows (also when that account's load fails).
-class _OrganizingRow extends ConsumerStatefulWidget {
+class _OrganizingRow extends ConsumerWidget {
   const _OrganizingRow();
 
   @override
-  ConsumerState<_OrganizingRow> createState() => _OrganizingRowState();
-}
-
-class _OrganizingRowState extends ConsumerState<_OrganizingRow> {
-  final _tracker = StaleTracker();
-
-  @override
-  Widget build(BuildContext context) {
-    final value = ref.watch(organizedTournamentsProvider);
-    final stale = _tracker.update(value);
-    final organizes = !stale && (value.valueOrNull ?? const []).isNotEmpty;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final organizes = (currentData(ref.watch(organizedTournamentsProvider)) ?? const []).isNotEmpty;
     if (!organizes) return const SizedBox.shrink();
     return Column(
       children: [

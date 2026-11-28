@@ -15,7 +15,8 @@ import 'scores_tab.dart';
 ///
 /// The screen checks nothing itself; the backend refuses everyone else and
 /// the Draw tab says so. Reloads on opening; a failed reload keeps what was
-/// shown, and another account never sees the previous one's data.
+/// shown, and another account never sees the previous one's data (each tab
+/// reads its data with currentData, which knows which account loaded it).
 class ManagerScreen extends ConsumerStatefulWidget {
   const ManagerScreen({super.key, required this.tournamentId});
 
@@ -27,15 +28,6 @@ class ManagerScreen extends ConsumerStatefulWidget {
 
 class _ManagerScreenState extends ConsumerState<ManagerScreen> {
   String get tournamentId => widget.tournamentId;
-
-  /// For the title: the previous account's tournament is not shown.
-  final _titleTracker = StaleTracker();
-
-  /// The tabs' bracket and the Draw tab's entries, noted here on every
-  /// build: the screen outlives its tabs, so a reload seen while another tab
-  /// is open still counts when that tab comes back.
-  final _bracketTracker = StaleTracker();
-  final _entriesTracker = StaleTracker();
 
   @override
   void initState() {
@@ -58,11 +50,8 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final value = ref.watch(tournamentProvider(tournamentId));
-    final stale = _titleTracker.update(value);
-    final bracketStale = _bracketTracker.update(ref.watch(bracketProvider(tournamentId)));
-    final entriesStale = _entriesTracker.update(ref.watch(organizerEntriesProvider(tournamentId)));
-    final title = stale ? null : value.valueOrNull?.title.resolve(context.lang);
+    // The previous account's tournament is not shown.
+    final title = currentData(ref.watch(tournamentProvider(tournamentId)))?.title.resolve(context.lang);
 
     return DefaultTabController(
       length: 3,
@@ -91,9 +80,9 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
         ),
         body: TabBarView(
           children: [
-            DrawTab(tournamentId: tournamentId, bracketStale: bracketStale, entriesStale: entriesStale),
-            ScheduleTab(tournamentId: tournamentId, bracketStale: bracketStale),
-            ScoresTab(tournamentId: tournamentId, bracketStale: bracketStale),
+            DrawTab(tournamentId: tournamentId),
+            ScheduleTab(tournamentId: tournamentId),
+            ScoresTab(tournamentId: tournamentId),
           ],
         ),
       ),

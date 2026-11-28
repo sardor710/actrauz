@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../data/sample/sample_media.dart';
+import '../../state/account_epoch.dart';
+import '../../state/providers.dart';
 import 'formatters.dart';
 
 /// Remembers, across builds, whether an async value's previous data belongs
@@ -13,6 +15,10 @@ import 'formatters.dart';
 /// dependency changed (another city, another player: `isReloading`) makes the
 /// previous value stale until fresh data arrives: Riverpod keeps the previous
 /// value on an error after either, so the reload has to be remembered.
+///
+/// Another account's data is known whatever this widget saw: [AccountEpoch]
+/// marks data with the account it was loaded for, so a widget built after
+/// that reload already failed (a page opened again) never shows it either.
 class StaleTracker {
   /// A reload was seen and no fresh data has arrived since.
   bool stale = false;
@@ -24,9 +30,26 @@ class StaleTracker {
     } else if (value is AsyncData<T> && !value.isLoading) {
       stale = false;
     }
-    return stale;
+    return accountStale(value) || stale;
   }
 }
+
+/// Whether [value]'s data belongs to an earlier account ([AccountEpoch]) and
+/// is not to be shown. Fresh data is marked as the current account's; call it
+/// on every build that shows the value.
+bool accountStale<T>(AsyncValue<T> value) {
+  if (value is AsyncData<T> && !value.isLoading) {
+    AccountEpoch.markFresh(value.value);
+    return false;
+  }
+  return value.hasValue && AccountEpoch.fromEarlierAccount(value.valueOrNull);
+}
+
+/// [value]'s data when it may be shown: kept through a failed refresh, never
+/// another account's ([accountStale]) and never while a reload because a
+/// dependency changed is under way. For screens that show an account's data
+/// beside an [AsyncBody] without remembering anything themselves.
+T? currentData<T>(AsyncValue<T> value) => accountStale(value) || value.isReloading ? null : value.valueOrNull;
 
 /// Loading, error and data states for one async value.
 ///
@@ -90,6 +113,28 @@ class _AsyncBodyState<T> extends State<AsyncBody<T>> {
       loading: () => loading,
       error: (_, _) => error(),
     );
+  }
+}
+
+/// For the content of a sheet or dialog: closes it (its result is null)
+/// when the signed-in account changes, since what it shows — names, entries,
+/// a match — belongs to the previous account and acting on it would be done
+/// as the new one.
+class ClosesOnAccountChange extends ConsumerWidget {
+  const ClosesOnAccountChange({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(sessionProvider.select((s) => s.userName), (_, _) {
+      if (!context.mounted) return;
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isActive) return;
+      // Removed, not popped: a sheet busy saving refuses a pop.
+      route.navigator?.removeRoute(route);
+    });
+    return child;
   }
 }
 
