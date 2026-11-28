@@ -44,50 +44,12 @@ class RegisterSheet extends ConsumerStatefulWidget {
 }
 
 class _RegisterSheetState extends ConsumerState<RegisterSheet> {
-  final _search = TextEditingController();
-  final _phone = TextEditingController();
-  int _tab = 0;
   PlayerRef? _partner;
-
-  /// Said under the phone field: no such player, too many lookups.
-  String? _phoneMessage;
 
   /// Said above the button: no partner chosen yet.
   String? _error;
-  bool _finding = false;
 
   bool get _pairs => widget.category.kind == CategoryKind.pairs;
-
-  @override
-  void dispose() {
-    _search.dispose();
-    _phone.dispose();
-    super.dispose();
-  }
-
-  Future<void> _find() async {
-    final phone = _phone.text.trim();
-    if (phone.isEmpty) return;
-    setState(() {
-      _finding = true;
-      _phoneMessage = null;
-      _partner = null;
-    });
-    final l = context.l;
-    try {
-      final found = await ref.read(tournamentRepositoryProvider).findPlayerByPhone(phone);
-      if (!mounted) return;
-      setState(() {
-        _partner = found;
-        _phoneMessage = found == null ? l.partnerNotFound : null;
-        _error = null;
-      });
-    } on TournamentException catch (e) {
-      if (mounted) setState(() => _phoneMessage = tournamentErrorText(l, e));
-    } finally {
-      if (mounted) setState(() => _finding = false);
-    }
-  }
 
   void _submit() {
     if (_pairs && _partner == null) {
@@ -133,22 +95,16 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
                 const SizedBox(height: 18),
                 Text(l.partnerTitle.toUpperCase(), style: AppText.sectionTitle),
                 const SizedBox(height: 10),
-                SegmentedButton<int>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(value: 0, label: Text(l.partnerTabPlayers)),
-                    ButtonSegment(value: 1, label: Text(l.partnerTabPhone)),
-                  ],
-                  selected: {_tab},
-                  onSelectionChanged: (v) => setState(() {
-                    _tab = v.first;
-                    _partner = null;
-                    _phoneMessage = null;
+                PlayerLookup(
+                  sportId: t.sportId,
+                  minLevel: c.minLevel,
+                  maxLevel: c.maxLevel,
+                  selected: _partner,
+                  onSelected: (p) => setState(() {
+                    _partner = p;
                     _error = null;
                   }),
                 ),
-                const SizedBox(height: 12),
-                if (_tab == 0) _players(context) else _phoneLookup(context),
                 const SizedBox(height: 8),
                 Text(l.inviteNote, style: AppText.caption),
               ],
@@ -172,15 +128,103 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
       ),
     );
   }
+}
+
+/// Picks one player: from Find players (by name, within [sportId] and the
+/// level range), or by an exact phone number. The pair invite's partner and
+/// a tournament's organisers are chosen with it. Reports every change of
+/// choice, null when switching tabs clears it.
+class PlayerLookup extends ConsumerStatefulWidget {
+  const PlayerLookup({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+    this.sportId,
+    this.minLevel = 1,
+    this.maxLevel = 5,
+  });
+
+  final PlayerRef? selected;
+  final ValueChanged<PlayerRef?> onSelected;
+  final String? sportId;
+  final int minLevel;
+  final int maxLevel;
+
+  @override
+  ConsumerState<PlayerLookup> createState() => _PlayerLookupState();
+}
+
+class _PlayerLookupState extends ConsumerState<PlayerLookup> {
+  final _search = TextEditingController();
+  final _phone = TextEditingController();
+  int _tab = 0;
+
+  /// Said under the phone field: no such player, too many lookups.
+  String? _phoneMessage;
+  bool _finding = false;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _find() async {
+    final phone = _phone.text.trim();
+    if (phone.isEmpty) return;
+    setState(() {
+      _finding = true;
+      _phoneMessage = null;
+    });
+    widget.onSelected(null);
+    final l = context.l;
+    try {
+      final found = await ref.read(tournamentRepositoryProvider).findPlayerByPhone(phone);
+      if (!mounted) return;
+      setState(() => _phoneMessage = found == null ? l.partnerNotFound : null);
+      widget.onSelected(found);
+    } on TournamentException catch (e) {
+      if (mounted) setState(() => _phoneMessage = tournamentErrorText(l, e));
+    } finally {
+      if (mounted) setState(() => _finding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: 0, label: Text(l.partnerTabPlayers)),
+            ButtonSegment(value: 1, label: Text(l.partnerTabPhone)),
+          ],
+          selected: {_tab},
+          onSelectionChanged: (v) {
+            setState(() {
+              _tab = v.first;
+              _phoneMessage = null;
+            });
+            widget.onSelected(null);
+          },
+        ),
+        const SizedBox(height: 12),
+        if (_tab == 0) _players(context) else _phoneLookup(context),
+      ],
+    );
+  }
 
   Widget _players(BuildContext context) {
     final l = context.l;
-    final c = widget.category;
     final text = _search.text.trim();
     final search = (
-      sportId: widget.tournament.sportId,
-      minLevel: c.minLevel,
-      maxLevel: c.maxLevel,
+      sportId: widget.sportId,
+      minLevel: widget.minLevel,
+      maxLevel: widget.maxLevel,
       minRating: null,
       maxRating: null,
       query: text.isEmpty ? null : text,
@@ -206,11 +250,8 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
                         _PartnerRow(
                           key: ValueKey('partner-player-${p.id}'),
                           name: p.name,
-                          selected: _partner?.id == p.id,
-                          onTap: () => setState(() {
-                            _partner = PlayerRef(id: p.id, name: p.name);
-                            _error = null;
-                          }),
+                          selected: widget.selected?.id == p.id,
+                          onTap: () => widget.onSelected(PlayerRef(id: p.id, name: p.name)),
                         ),
                     ],
                   ),
@@ -222,6 +263,7 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
 
   Widget _phoneLookup(BuildContext context) {
     final l = context.l;
+    final found = widget.selected;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -244,10 +286,81 @@ class _RegisterSheetState extends ConsumerState<RegisterSheet> {
           const SizedBox(height: 8),
           Text(_phoneMessage!, style: manrope(13.5, 700, color: AppColors.error)),
         ],
-        if (_partner != null) _PartnerRow(name: _partner!.name, selected: true, onTap: () {}),
+        if (found != null) _PartnerRow(name: found.name, selected: true, onTap: () {}),
       ],
     );
   }
+}
+
+/// Asks for one player with [PlayerLookup] and returns them, or null when
+/// dismissed. [action] names the button.
+Future<PlayerRef?> showPickPlayerSheet(
+  BuildContext context, {
+  required String title,
+  required String action,
+  String? sportId,
+}) => showModalBottomSheet<PlayerRef>(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (context) => _PickPlayerSheet(title: title, action: action, sportId: sportId),
+);
+
+class _PickPlayerSheet extends StatefulWidget {
+  const _PickPlayerSheet({required this.title, required this.action, this.sportId});
+
+  final String title;
+  final String action;
+  final String? sportId;
+
+  @override
+  State<_PickPlayerSheet> createState() => _PickPlayerSheetState();
+}
+
+class _PickPlayerSheetState extends State<_PickPlayerSheet> {
+  PlayerRef? _player;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(widget.title, style: AppText.title),
+            const SizedBox(height: 14),
+            PlayerLookup(
+              sportId: widget.sportId,
+              selected: _player,
+              onSelected: (p) => setState(() {
+                _player = p;
+                _error = null;
+              }),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!, style: manrope(13.5, 700, color: AppColors.error)),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              key: const ValueKey('pick-player-ok'),
+              onPressed: () {
+                final player = _player;
+                if (player == null) return setState(() => _error = context.l.pickPlayerFirst);
+                Navigator.of(context).pop(player);
+              },
+              child: Text(widget.action),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PartnerRow extends StatelessWidget {

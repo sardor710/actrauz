@@ -9,6 +9,7 @@ import '../../state/admin_providers.dart';
 import '../../state/providers.dart';
 import '../common/formatters.dart';
 import '../common/widgets.dart';
+import '../tournaments/register_sheet.dart';
 import '../tournaments/tournament_tools.dart';
 import 'admin_common.dart';
 import 'admin_tournaments_screen.dart';
@@ -218,7 +219,13 @@ class _TournamentEditorScreenState extends ConsumerState<TournamentEditorScreen>
               final side = adminGutter(constraints.maxWidth) - 16;
               return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(side, 4, side, 24),
-                child: Column(children: [_details(context, draft), _categories(context, draft, admin)]),
+                child: Column(
+                  children: [
+                    _details(context, draft),
+                    _categories(context, draft, admin),
+                    if (_tournamentId case final id?) OrganizersCard(tournamentId: id, sportId: draft.sportId),
+                  ],
+                ),
               );
             },
           ),
@@ -474,6 +481,97 @@ class _TournamentEditorScreenState extends ConsumerState<TournamentEditorScreen>
             onPressed: persisted && admin == null ? null : () => _editCategory(last: false),
             icon: const Icon(Icons.add_rounded),
             label: Text(l.addCategory),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The tournament's organisers (M8a design §5): who they are, Add organiser
+/// (an account found by name or phone, as the pair invite finds a partner)
+/// and Remove. Each person is told by the backend.
+class OrganizersCard extends ConsumerWidget {
+  const OrganizersCard({super.key, required this.tournamentId, required this.sportId});
+
+  final String tournamentId;
+
+  /// Find players starts with the tournament's sport.
+  final String sportId;
+
+  Future<void> _set(BuildContext context, WidgetRef ref, String userId, {required bool add}) async {
+    final l = context.l;
+    final error = await runAdminTournamentWrite(
+      ref,
+      l,
+      () => ref.read(adminRepositoryProvider).setOrganizer(tournamentId, userId, add: add),
+    );
+    if (context.mounted) showMessage(context, error ?? l.savedMsg);
+  }
+
+  Future<void> _add(BuildContext context, WidgetRef ref) async {
+    final l = context.l;
+    final player = await showPickPlayerSheet(context, title: l.addOrganizer, action: l.addOrganizer, sportId: sportId);
+    if (player == null || !context.mounted) return;
+    await _set(context, ref, player.id, add: true);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    return SectionCard(
+      key: const ValueKey('organizers-card'),
+      title: l.organizersTitle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.organizersHint, style: AppText.muted),
+          const SizedBox(height: 4),
+          AsyncBody(
+            value: ref.watch(adminOrganizersProvider(tournamentId)),
+            onRetry: () => ref.invalidate(adminOrganizersProvider(tournamentId)),
+            errorText: (error) => tournamentErrorText(l, error),
+            builder: (organizers) => organizers.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(l.noOrganizers, style: AppText.muted),
+                  )
+                : Column(
+                    children: [
+                      for (final p in organizers)
+                        Padding(
+                          key: ValueKey('organizer-${p.id}'),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              InitialAvatar(name: p.name, size: 36, deleted: p.deleted),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  playerName(l, p.name, deleted: p.deleted),
+                                  style: AppText.bodyStrong,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                key: ValueKey('remove-organizer-${p.id}'),
+                                tooltip: l.removeOrganizer,
+                                onPressed: () => _set(context, ref, p.id, add: false),
+                                icon: const Icon(Icons.person_remove_outlined, color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const ValueKey('add-organizer'),
+            onPressed: () => _add(context, ref),
+            icon: const Icon(Icons.person_add_alt_1_outlined),
+            label: Text(l.addOrganizer),
           ),
         ],
       ),

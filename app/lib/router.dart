@@ -24,6 +24,8 @@ import 'features/games/past_games_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/inbox/inbox_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/organizer/manager_screen.dart';
+import 'features/organizer/organized_tournaments_screen.dart';
 import 'features/owner/owner_calendar_screen.dart';
 import 'features/owner/owner_dashboard_screen.dart';
 import 'features/owner/owner_settings_screen.dart';
@@ -67,6 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/bookings', builder: (context, state) => const BookingsScreen()),
       GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
       GoRoute(path: '/my-tournaments', builder: (context, state) => const MyTournamentsScreen()),
+      GoRoute(path: '/organizing', builder: (context, state) => const OrganizedTournamentsScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const CommunitySettingsScreen()),
       // A player's public profile, opened from Find players and from a Game Request.
       GoRoute(
@@ -233,7 +236,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                       // the backend refuses everyone else.
                       GoRoute(
                         path: 'manage',
-                        builder: (context, state) => TournamentManageScreen(tournamentId: state.pathParameters['id']!),
+                        builder: (context, state) => ManagerScreen(
+                          key: ValueKey(state.pathParameters['id']),
+                          tournamentId: state.pathParameters['id']!,
+                        ),
                       ),
                     ],
                   ),

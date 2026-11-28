@@ -45,6 +45,11 @@ final adminRegistrationsProvider = FutureProvider.family<List<AdminRegistration>
   (ref, tournamentId) => ref.watch(adminRepositoryProvider).registrations(tournamentId),
 );
 
+/// A tournament's organisers, by name (M8a).
+final adminOrganizersProvider = FutureProvider.family<List<PlayerRef>, String>(
+  (ref, tournamentId) => ref.watch(adminRepositoryProvider).organizers(tournamentId),
+);
+
 /// The admin dashboard's period: [cityId] `null` = every city; [from] and
 /// [to] are the first and last day (the time of day is ignored).
 typedef DashboardQuery = ({String? cityId, DateTime from, DateTime to});
@@ -64,6 +69,7 @@ void refreshAdmin(WidgetRef ref) {
   ref.invalidate(adminReviewProvider);
   ref.invalidate(adminTournamentsProvider);
   ref.invalidate(adminRegistrationsProvider);
+  ref.invalidate(adminOrganizersProvider);
   ref.invalidate(adminDashboardProvider);
   ref.invalidate(sportsProvider);
   ref.invalidate(bannersProvider);

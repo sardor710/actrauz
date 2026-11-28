@@ -183,6 +183,12 @@ final organizedTournamentsProvider = FutureProvider<List<TournamentSummary>>(
   (ref) => ref.watch(organizerRepositoryProvider).organizedTournaments(),
 );
 
+/// Every entry of a tournament, any state, with names and phones: for its
+/// organisers, by tournament id.
+final organizerEntriesProvider = FutureProvider.family<List<AdminRegistration>, String>(
+  (ref, tournamentId) => ref.watch(organizerRepositoryProvider).entries(tournamentId),
+);
+
 typedef AvailabilityKey = ({String venueId, String courtId, DateTime date});
 
 final availabilityProvider = FutureProvider.family<List<SlotView>, AvailabilityKey>(
@@ -363,6 +369,7 @@ void refreshTournaments(WidgetRef ref) {
   ref.invalidate(bracketProvider);
   ref.invalidate(myMatchesProvider);
   ref.invalidate(organizedTournamentsProvider);
+  ref.invalidate(organizerEntriesProvider);
   ref.invalidate(inboxProvider);
   ref.invalidate(unreadCountProvider);
 }

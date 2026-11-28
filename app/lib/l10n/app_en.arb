@@ -1782,7 +1782,6 @@
   },
   "myMatchesTitle": "My matches",
   "manageTournament": "Manage",
-  "manageComingSoon": "The tournament manager is coming soon",
   "notifOrganizerAdded": "You are now an organiser of {title}",
   "@notifOrganizerAdded": {
     "placeholders": {
@@ -1873,5 +1872,47 @@
         "type": "String"
       }
     }
-  }
+  },
+  "tournamentsIRun": "Tournaments I run",
+  "organizingEmpty": "You do not run any tournaments",
+  "organizersTitle": "Organisers",
+  "organizersHint": "Organisers make the draw, set match times and enter scores for this tournament",
+  "noOrganizers": "No organisers yet",
+  "addOrganizer": "Add organiser",
+  "removeOrganizer": "Remove organiser",
+  "pickPlayerFirst": "Choose a player first",
+  "notOrganizer": "Only this tournament's organisers can open this page",
+  "manageSchedule": "Schedule",
+  "manageScores": "Scores",
+  "manageTabSoon": "Coming soon",
+  "entriesTitle": "Entries",
+  "entriesCount": "{count, plural, =0{No entries} =1{1 entry} other{{count} entries}}",
+  "@entriesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notPaidLabel": "Not paid",
+  "drawStatusNone": "No draw yet",
+  "drawStatusDraft": "Draft",
+  "drawStatusPublished": "Published",
+  "drawFormatLabel": "Format",
+  "formatKnockout": "Knockout",
+  "formatGroups": "Groups",
+  "groupSizeLabel": "Group size",
+  "advancingLabel": "Go through from each group",
+  "makeDraw": "Make draw",
+  "makeDrawAgain": "Make the draw again",
+  "drawOutdatedBanner": "Out of date — make the draw again",
+  "swapHint": "Tap two entries to swap them",
+  "byeLabel": "Bye",
+  "publishDraw": "Publish",
+  "publishConfirmTitle": "Publish the draw?",
+  "publishConfirmText": "Entries lock and the waitlist closes. Every player in the category is told.",
+  "drawPublishedNote": "Published: entries are locked",
+  "redoDraw": "Redo",
+  "redoConfirmTitle": "Redo the draw?",
+  "redoConfirmText": "The published draw is thrown away and a new draft is made from the registered entries. The players are told."
 }

@@ -335,20 +335,3 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 }
-
-/// Where "Manage" leads until the tournament manager is built (M8a Task 7).
-class TournamentManageScreen extends StatelessWidget {
-  const TournamentManageScreen({super.key, required this.tournamentId});
-
-  final String tournamentId;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    key: const ValueKey('tournament-manage-screen'),
-    appBar: AppBar(
-      leading: BackButton(onPressed: () => context.canPop() ? context.pop() : context.go('/tournaments/$tournamentId')),
-      title: Text(context.l.manageTournament),
-    ),
-    body: EmptyState(icon: Icons.tune_rounded, text: context.l.manageComingSoon),
-  );
-}

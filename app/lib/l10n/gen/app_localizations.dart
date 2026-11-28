@@ -5346,12 +5346,6 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get manageTournament;
 
-  /// No description provided for @manageComingSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'The tournament manager is coming soon'**
-  String get manageComingSoon;
-
   /// No description provided for @notifOrganizerAdded.
   ///
   /// In en, this message translates to:
@@ -5417,6 +5411,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You won at {title}!'**
   String notifCategoryWonPlain(String title);
+
+  /// No description provided for @tournamentsIRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Tournaments I run'**
+  String get tournamentsIRun;
+
+  /// No description provided for @organizingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not run any tournaments'**
+  String get organizingEmpty;
+
+  /// No description provided for @organizersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organisers'**
+  String get organizersTitle;
+
+  /// No description provided for @organizersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Organisers make the draw, set match times and enter scores for this tournament'**
+  String get organizersHint;
+
+  /// No description provided for @noOrganizers.
+  ///
+  /// In en, this message translates to:
+  /// **'No organisers yet'**
+  String get noOrganizers;
+
+  /// No description provided for @addOrganizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add organiser'**
+  String get addOrganizer;
+
+  /// No description provided for @removeOrganizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove organiser'**
+  String get removeOrganizer;
+
+  /// No description provided for @pickPlayerFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a player first'**
+  String get pickPlayerFirst;
+
+  /// No description provided for @notOrganizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this tournament\'s organisers can open this page'**
+  String get notOrganizer;
+
+  /// No description provided for @manageSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get manageSchedule;
+
+  /// No description provided for @manageScores.
+  ///
+  /// In en, this message translates to:
+  /// **'Scores'**
+  String get manageScores;
+
+  /// No description provided for @manageTabSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get manageTabSoon;
+
+  /// No description provided for @entriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries'**
+  String get entriesTitle;
+
+  /// No description provided for @entriesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No entries} =1{1 entry} other{{count} entries}}'**
+  String entriesCount(int count);
+
+  /// No description provided for @notPaidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not paid'**
+  String get notPaidLabel;
+
+  /// No description provided for @drawStatusNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No draw yet'**
+  String get drawStatusNone;
+
+  /// No description provided for @drawStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get drawStatusDraft;
+
+  /// No description provided for @drawStatusPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get drawStatusPublished;
+
+  /// No description provided for @drawFormatLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get drawFormatLabel;
+
+  /// No description provided for @formatKnockout.
+  ///
+  /// In en, this message translates to:
+  /// **'Knockout'**
+  String get formatKnockout;
+
+  /// No description provided for @formatGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get formatGroups;
+
+  /// No description provided for @groupSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group size'**
+  String get groupSizeLabel;
+
+  /// No description provided for @advancingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Go through from each group'**
+  String get advancingLabel;
+
+  /// No description provided for @makeDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Make draw'**
+  String get makeDraw;
+
+  /// No description provided for @makeDrawAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Make the draw again'**
+  String get makeDrawAgain;
+
+  /// No description provided for @drawOutdatedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of date — make the draw again'**
+  String get drawOutdatedBanner;
+
+  /// No description provided for @swapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap two entries to swap them'**
+  String get swapHint;
+
+  /// No description provided for @byeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bye'**
+  String get byeLabel;
+
+  /// No description provided for @publishDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get publishDraw;
+
+  /// No description provided for @publishConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish the draw?'**
+  String get publishConfirmTitle;
+
+  /// No description provided for @publishConfirmText.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries lock and the waitlist closes. Every player in the category is told.'**
+  String get publishConfirmText;
+
+  /// No description provided for @drawPublishedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Published: entries are locked'**
+  String get drawPublishedNote;
+
+  /// No description provided for @redoDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get redoDraw;
+
+  /// No description provided for @redoConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo the draw?'**
+  String get redoConfirmTitle;
+
+  /// No description provided for @redoConfirmText.
+  ///
+  /// In en, this message translates to:
+  /// **'The published draw is thrown away and a new draft is made from the registered entries. The players are told.'**
+  String get redoConfirmText;
 }
 
 class _AppLocalizationsDelegate

@@ -3048,9 +3048,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manageTournament => 'Manage';
 
   @override
-  String get manageComingSoon => 'The tournament manager is coming soon';
-
-  @override
   String notifOrganizerAdded(String title) {
     return 'You are now an organiser of $title';
   }
@@ -3104,4 +3101,122 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifCategoryWonPlain(String title) {
     return 'You won at $title!';
   }
+
+  @override
+  String get tournamentsIRun => 'Tournaments I run';
+
+  @override
+  String get organizingEmpty => 'You do not run any tournaments';
+
+  @override
+  String get organizersTitle => 'Organisers';
+
+  @override
+  String get organizersHint =>
+      'Organisers make the draw, set match times and enter scores for this tournament';
+
+  @override
+  String get noOrganizers => 'No organisers yet';
+
+  @override
+  String get addOrganizer => 'Add organiser';
+
+  @override
+  String get removeOrganizer => 'Remove organiser';
+
+  @override
+  String get pickPlayerFirst => 'Choose a player first';
+
+  @override
+  String get notOrganizer =>
+      'Only this tournament\'s organisers can open this page';
+
+  @override
+  String get manageSchedule => 'Schedule';
+
+  @override
+  String get manageScores => 'Scores';
+
+  @override
+  String get manageTabSoon => 'Coming soon';
+
+  @override
+  String get entriesTitle => 'Entries';
+
+  @override
+  String entriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+      zero: 'No entries',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notPaidLabel => 'Not paid';
+
+  @override
+  String get drawStatusNone => 'No draw yet';
+
+  @override
+  String get drawStatusDraft => 'Draft';
+
+  @override
+  String get drawStatusPublished => 'Published';
+
+  @override
+  String get drawFormatLabel => 'Format';
+
+  @override
+  String get formatKnockout => 'Knockout';
+
+  @override
+  String get formatGroups => 'Groups';
+
+  @override
+  String get groupSizeLabel => 'Group size';
+
+  @override
+  String get advancingLabel => 'Go through from each group';
+
+  @override
+  String get makeDraw => 'Make draw';
+
+  @override
+  String get makeDrawAgain => 'Make the draw again';
+
+  @override
+  String get drawOutdatedBanner => 'Out of date — make the draw again';
+
+  @override
+  String get swapHint => 'Tap two entries to swap them';
+
+  @override
+  String get byeLabel => 'Bye';
+
+  @override
+  String get publishDraw => 'Publish';
+
+  @override
+  String get publishConfirmTitle => 'Publish the draw?';
+
+  @override
+  String get publishConfirmText =>
+      'Entries lock and the waitlist closes. Every player in the category is told.';
+
+  @override
+  String get drawPublishedNote => 'Published: entries are locked';
+
+  @override
+  String get redoDraw => 'Redo';
+
+  @override
+  String get redoConfirmTitle => 'Redo the draw?';
+
+  @override
+  String get redoConfirmText =>
+      'The published draw is thrown away and a new draft is made from the registered entries. The players are told.';
 }

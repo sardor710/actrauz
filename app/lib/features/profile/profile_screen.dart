@@ -195,6 +195,7 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push('/my-tournaments'),
                 ),
                 const Divider(indent: 60),
+                const _OrganizingRow(),
                 _MenuRow(
                   icon: Icons.notifications_none_rounded,
                   title: l.notificationsAndPrivacy,
@@ -318,7 +319,14 @@ class _Stat extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.title, required this.onTap, this.value, this.danger = false});
+  const _MenuRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.value,
+    this.danger = false,
+  });
 
   final IconData icon;
   final String title;
@@ -351,6 +359,39 @@ class _MenuRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Tournaments I run" with its divider, only while the player organises at
+/// least one tournament. A failed reload keeps it; another account's never
+/// shows (also when that account's load fails).
+class _OrganizingRow extends ConsumerStatefulWidget {
+  const _OrganizingRow();
+
+  @override
+  ConsumerState<_OrganizingRow> createState() => _OrganizingRowState();
+}
+
+class _OrganizingRowState extends ConsumerState<_OrganizingRow> {
+  final _tracker = StaleTracker();
+
+  @override
+  Widget build(BuildContext context) {
+    final value = ref.watch(organizedTournamentsProvider);
+    final stale = _tracker.update(value);
+    final organizes = !stale && (value.valueOrNull ?? const []).isNotEmpty;
+    if (!organizes) return const SizedBox.shrink();
+    return Column(
+      children: [
+        _MenuRow(
+          key: const ValueKey('profile-organizing'),
+          icon: Icons.sports_score_outlined,
+          title: context.l.tournamentsIRun,
+          onTap: () => context.push('/organizing'),
+        ),
+        const Divider(indent: 60),
+      ],
     );
   }
 }

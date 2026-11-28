@@ -3084,9 +3084,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get manageTournament => 'Управление';
 
   @override
-  String get manageComingSoon => 'Управление турниром скоро появится';
-
-  @override
   String notifOrganizerAdded(String title) {
     return 'Вы стали организатором турнира: $title';
   }
@@ -3140,4 +3137,123 @@ class AppLocalizationsRu extends AppLocalizations {
   String notifCategoryWonPlain(String title) {
     return 'Вы победили: $title!';
   }
+
+  @override
+  String get tournamentsIRun => 'Мои турниры как организатора';
+
+  @override
+  String get organizingEmpty => 'Вы не организуете ни одного турнира';
+
+  @override
+  String get organizersTitle => 'Организаторы';
+
+  @override
+  String get organizersHint =>
+      'Организаторы составляют сетку, назначают время матчей и вносят счёт этого турнира';
+
+  @override
+  String get noOrganizers => 'Организаторов пока нет';
+
+  @override
+  String get addOrganizer => 'Добавить организатора';
+
+  @override
+  String get removeOrganizer => 'Убрать организатора';
+
+  @override
+  String get pickPlayerFirst => 'Сначала выберите игрока';
+
+  @override
+  String get notOrganizer =>
+      'Эта страница доступна только организаторам турнира';
+
+  @override
+  String get manageSchedule => 'Расписание';
+
+  @override
+  String get manageScores => 'Счёт';
+
+  @override
+  String get manageTabSoon => 'Скоро появится';
+
+  @override
+  String get entriesTitle => 'Заявки';
+
+  @override
+  String entriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count заявок',
+      few: '$count заявки',
+      one: '$count заявка',
+      zero: 'Нет заявок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notPaidLabel => 'Не оплачено';
+
+  @override
+  String get drawStatusNone => 'Сетки ещё нет';
+
+  @override
+  String get drawStatusDraft => 'Черновик';
+
+  @override
+  String get drawStatusPublished => 'Опубликована';
+
+  @override
+  String get drawFormatLabel => 'Формат';
+
+  @override
+  String get formatKnockout => 'Плей-офф';
+
+  @override
+  String get formatGroups => 'Группы';
+
+  @override
+  String get groupSizeLabel => 'Размер группы';
+
+  @override
+  String get advancingLabel => 'Выходят из каждой группы';
+
+  @override
+  String get makeDraw => 'Составить сетку';
+
+  @override
+  String get makeDrawAgain => 'Составить сетку заново';
+
+  @override
+  String get drawOutdatedBanner => 'Устарела — составьте сетку заново';
+
+  @override
+  String get swapHint => 'Нажмите на две заявки, чтобы поменять их местами';
+
+  @override
+  String get byeLabel => 'Без соперника';
+
+  @override
+  String get publishDraw => 'Опубликовать';
+
+  @override
+  String get publishConfirmTitle => 'Опубликовать сетку?';
+
+  @override
+  String get publishConfirmText =>
+      'Заявки фиксируются, лист ожидания закрывается. Все игроки категории получат уведомление.';
+
+  @override
+  String get drawPublishedNote => 'Опубликована: заявки зафиксированы';
+
+  @override
+  String get redoDraw => 'Переделать';
+
+  @override
+  String get redoConfirmTitle => 'Переделать сетку?';
+
+  @override
+  String get redoConfirmText =>
+      'Опубликованная сетка удаляется, из зарегистрированных заявок составляется новый черновик. Игроки получат уведомление.';
 }

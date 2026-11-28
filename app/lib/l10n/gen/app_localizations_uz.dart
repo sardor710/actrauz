@@ -3047,9 +3047,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get manageTournament => 'Boshqarish';
 
   @override
-  String get manageComingSoon => 'Turnirni boshqarish tez orada paydo boʻladi';
-
-  @override
   String notifOrganizerAdded(String title) {
     return 'Siz turnir tashkilotchisi boʻldingiz: $title';
   }
@@ -3103,4 +3100,120 @@ class AppLocalizationsUz extends AppLocalizations {
   String notifCategoryWonPlain(String title) {
     return 'Siz gʻolib boʻldingiz: $title!';
   }
+
+  @override
+  String get tournamentsIRun => 'Men oʻtkazadigan turnirlar';
+
+  @override
+  String get organizingEmpty => 'Siz hech qanday turnir oʻtkazmaysiz';
+
+  @override
+  String get organizersTitle => 'Tashkilotchilar';
+
+  @override
+  String get organizersHint =>
+      'Tashkilotchilar bu turnir setkasini tuzadi, oʻyin vaqtini belgilaydi va hisobni kiritadi';
+
+  @override
+  String get noOrganizers => 'Hozircha tashkilotchi yoʻq';
+
+  @override
+  String get addOrganizer => 'Tashkilotchi qoʻshish';
+
+  @override
+  String get removeOrganizer => 'Tashkilotchini chiqarish';
+
+  @override
+  String get pickPlayerFirst => 'Avval oʻyinchini tanlang';
+
+  @override
+  String get notOrganizer => 'Bu sahifa faqat turnir tashkilotchilari uchun';
+
+  @override
+  String get manageSchedule => 'Jadval';
+
+  @override
+  String get manageScores => 'Hisob';
+
+  @override
+  String get manageTabSoon => 'Tez orada paydo boʻladi';
+
+  @override
+  String get entriesTitle => 'Arizalar';
+
+  @override
+  String entriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta ariza',
+      zero: 'Ariza yoʻq',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notPaidLabel => 'Toʻlanmagan';
+
+  @override
+  String get drawStatusNone => 'Setka hali yoʻq';
+
+  @override
+  String get drawStatusDraft => 'Qoralama';
+
+  @override
+  String get drawStatusPublished => 'Eʼlon qilingan';
+
+  @override
+  String get drawFormatLabel => 'Format';
+
+  @override
+  String get formatKnockout => 'Pley-off';
+
+  @override
+  String get formatGroups => 'Guruhlar';
+
+  @override
+  String get groupSizeLabel => 'Guruh hajmi';
+
+  @override
+  String get advancingLabel => 'Har bir guruhdan chiqadi';
+
+  @override
+  String get makeDraw => 'Setka tuzish';
+
+  @override
+  String get makeDrawAgain => 'Setkani qayta tuzish';
+
+  @override
+  String get drawOutdatedBanner => 'Eskirgan — setkani qayta tuzing';
+
+  @override
+  String get swapHint => 'Joyini almashtirish uchun ikki arizani bosing';
+
+  @override
+  String get byeLabel => 'Raqibsiz';
+
+  @override
+  String get publishDraw => 'Eʼlon qilish';
+
+  @override
+  String get publishConfirmTitle => 'Setka eʼlon qilinsinmi?';
+
+  @override
+  String get publishConfirmText =>
+      'Arizalar qulflanadi va kutish roʻyxati yopiladi. Toifadagi barcha oʻyinchilarga xabar beriladi.';
+
+  @override
+  String get drawPublishedNote => 'Eʼlon qilingan: arizalar qulflangan';
+
+  @override
+  String get redoDraw => 'Qayta tuzish';
+
+  @override
+  String get redoConfirmTitle => 'Setka qayta tuzilsinmi?';
+
+  @override
+  String get redoConfirmText =>
+      'Eʼlon qilingan setka bekor qilinadi va roʻyxatdagi arizalardan yangi qoralama tuziladi. Oʻyinchilarga xabar beriladi.';
 }

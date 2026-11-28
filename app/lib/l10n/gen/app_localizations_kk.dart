@@ -3056,9 +3056,6 @@ class AppLocalizationsKk extends AppLocalizations {
   String get manageTournament => 'Басқару';
 
   @override
-  String get manageComingSoon => 'Турнирді басқару жақында қосылады';
-
-  @override
   String notifOrganizerAdded(String title) {
     return 'Сіз $title турнирінің ұйымдастырушысы болдыңыз';
   }
@@ -3112,4 +3109,120 @@ class AppLocalizationsKk extends AppLocalizations {
   String notifCategoryWonPlain(String title) {
     return 'Сіз $title турнирінде жеңдіңіз!';
   }
+
+  @override
+  String get tournamentsIRun => 'Мен өткізетін турнирлер';
+
+  @override
+  String get organizingEmpty => 'Сіз ешбір турнир өткізбейсіз';
+
+  @override
+  String get organizersTitle => 'Ұйымдастырушылар';
+
+  @override
+  String get organizersHint =>
+      'Ұйымдастырушылар осы турнирдің жеребесін жасайды, матч уақытын белгілейді және есепті енгізеді';
+
+  @override
+  String get noOrganizers => 'Әзірге ұйымдастырушы жоқ';
+
+  @override
+  String get addOrganizer => 'Ұйымдастырушы қосу';
+
+  @override
+  String get removeOrganizer => 'Ұйымдастырушыны шығару';
+
+  @override
+  String get pickPlayerFirst => 'Алдымен ойыншы таңдаңыз';
+
+  @override
+  String get notOrganizer => 'Бұл бетті тек турнир ұйымдастырушылары аша алады';
+
+  @override
+  String get manageSchedule => 'Кесте';
+
+  @override
+  String get manageScores => 'Есеп';
+
+  @override
+  String get manageTabSoon => 'Жақында қосылады';
+
+  @override
+  String get entriesTitle => 'Өтінімдер';
+
+  @override
+  String entriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count өтінім',
+      zero: 'Өтінім жоқ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notPaidLabel => 'Төленбеген';
+
+  @override
+  String get drawStatusNone => 'Жеребе әлі жоқ';
+
+  @override
+  String get drawStatusDraft => 'Жоба';
+
+  @override
+  String get drawStatusPublished => 'Жарияланды';
+
+  @override
+  String get drawFormatLabel => 'Формат';
+
+  @override
+  String get formatKnockout => 'Плей-офф';
+
+  @override
+  String get formatGroups => 'Топтар';
+
+  @override
+  String get groupSizeLabel => 'Топ өлшемі';
+
+  @override
+  String get advancingLabel => 'Әр топтан шығады';
+
+  @override
+  String get makeDraw => 'Жеребе жасау';
+
+  @override
+  String get makeDrawAgain => 'Жеребені қайта жасау';
+
+  @override
+  String get drawOutdatedBanner => 'Ескірді — жеребені қайта жасаңыз';
+
+  @override
+  String get swapHint => 'Орнын ауыстыру үшін екі өтінімді басыңыз';
+
+  @override
+  String get byeLabel => 'Қарсыласы жоқ';
+
+  @override
+  String get publishDraw => 'Жариялау';
+
+  @override
+  String get publishConfirmTitle => 'Жеребені жариялау керек пе?';
+
+  @override
+  String get publishConfirmText =>
+      'Өтінімдер бекітіледі, күту тізімі жабылады. Санаттың барлық ойыншысына хабарланады.';
+
+  @override
+  String get drawPublishedNote => 'Жарияланды: өтінімдер бекітілді';
+
+  @override
+  String get redoDraw => 'Қайта жасау';
+
+  @override
+  String get redoConfirmTitle => 'Жеребені қайта жасау керек пе?';
+
+  @override
+  String get redoConfirmText =>
+      'Жарияланған жеребе жойылып, тіркелген өтінімдерден жаңа жоба жасалады. Ойыншыларға хабарланады.';
 }
