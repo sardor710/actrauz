@@ -325,7 +325,7 @@ void main() {
       expect(inCategory(mine, find.text('Cancel registration')), findsNothing);
       expect(inCategory(mine, find.text('Register')), findsNothing);
       expect(inCategory(theirs, find.text('Register')), findsNothing);
-      expect(inCategory(theirs, find.text('Join the waitlist')), findsNothing);
+      expect(inCategory(theirs, find.text('Join waitlist')), findsNothing);
       // An open category still offers Register.
       expect(inCategory(open, find.text('Register')), findsOneWidget);
       // Nothing of the drafts shows to a player.

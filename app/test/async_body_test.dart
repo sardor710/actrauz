@@ -8,6 +8,7 @@ import 'package:actra/features/common/widgets.dart';
 import 'package:actra/features/games/game_card.dart';
 import 'package:actra/l10n/gen/app_localizations.dart';
 import 'package:actra/router.dart';
+import 'package:actra/state/account_epoch.dart';
 import 'package:actra/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -119,6 +120,50 @@ void main() {
     await _show(tester, two);
     expect(find.text('data 2'), findsOneWidget);
     await _show(tester, const AsyncLoading<int>().copyWithPrevious(two));
+    expect(find.text('data 2'), findsOneWidget);
+  });
+
+  testWidgets('AsyncBody with a list: a refresh and its failure keep the data; an earlier account\'s never shows', (
+    tester,
+  ) async {
+    Future<void> show(AsyncValue<List<int>> value) => tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: buildTheme(),
+        home: Scaffold(
+          body: AsyncBody<List<int>>(value: value, builder: (n) => Text('data ${n.first}')),
+        ),
+      ),
+    );
+    final st = StackTrace.empty;
+    final one = AsyncData<List<int>>([1]);
+    await show(one);
+    expect(find.text('data 1'), findsOneWidget);
+    final refreshing = const AsyncLoading<List<int>>().copyWithPrevious(one);
+    await show(refreshing);
+    expect(find.text('data 1'), findsOneWidget);
+    await show(AsyncError<List<int>>('offline', st).copyWithPrevious(refreshing));
+    expect(find.text('data 1'), findsOneWidget);
+    expect(find.text(_error), findsNothing);
+
+    // Another account signs in: the same failed value is not shown any more,
+    // also by a body built afresh.
+    AccountEpoch.accountChanged();
+    await show(AsyncError<List<int>>('offline', st).copyWithPrevious(refreshing));
+    expect(find.text('data 1'), findsNothing);
+    expect(find.text(_error), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await show(AsyncError<List<int>>('offline', st).copyWithPrevious(refreshing));
+    expect(find.text('data 1'), findsNothing);
+    expect(find.text(_error), findsOneWidget);
+
+    // Fresh data for the new account shows, and a failed refresh keeps it.
+    final two = AsyncData<List<int>>([2]);
+    await show(two);
+    expect(find.text('data 2'), findsOneWidget);
+    await show(AsyncError<List<int>>('offline', st).copyWithPrevious(const AsyncLoading<List<int>>().copyWithPrevious(two)));
     expect(find.text('data 2'), findsOneWidget);
   });
 

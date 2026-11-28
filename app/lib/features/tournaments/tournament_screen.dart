@@ -83,6 +83,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final value = ref.watch(tournamentProvider(tournamentId));
+    // Loaded alongside the tournament, not after it.
+    ref.watch(bracketProvider(tournamentId));
     return Scaffold(
       key: const ValueKey('tournament-detail'),
       appBar: value.hasValue ? null : AppBar(leading: BackButton(onPressed: () => _back(context))),
