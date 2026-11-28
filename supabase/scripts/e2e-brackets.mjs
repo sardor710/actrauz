@@ -243,7 +243,7 @@ try {
   const scheduled = (await ok(organiser, 'tournament_bracket', { p_tournament_id: tournamentId })).draws
     .find((d) => d.category_id === main);
   const [s1, s2, f] = [knockout(scheduled, 1, 1), knockout(scheduled, 1, 2), knockout(scheduled, 2, 1)];
-  assert.ok(String(s1.starts_at).startsWith(`${day}T09:00`), `semi-final 1 at ${s1.starts_at}`);
+  assert.ok(String(s1.starts_at).replace('T', ' ').startsWith(`${day} 09:00`), `semi-final 1 at ${s1.starts_at}`);
   assert.equal(s2.starts_at, s1.starts_at, 'the semi-finals side by side');
   assert.notEqual(s1.court_id, s2.court_id);
   assert.ok(String(f.starts_at) > String(s1.starts_at), `final at ${f.starts_at}, after ${s1.starts_at}`);
