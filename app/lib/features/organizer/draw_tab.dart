@@ -18,22 +18,27 @@ typedef _Choice = ({DrawFormat format, int groupSize, int advance});
 /// entries (names, phones, paid), the format, "Make draw", the draft with
 /// tap-two-entries-to-swap, Publish and Redo. Every refusal shows its reason.
 class DrawTab extends ConsumerStatefulWidget {
-  const DrawTab({super.key, required this.tournamentId});
+  const DrawTab({super.key, required this.tournamentId, required this.bracketStale, required this.entriesStale});
 
   final String tournamentId;
+
+  /// The bracket's and the entries' previous data belongs to another account
+  /// until fresh data arrives (also when that load fails). Tracked by the
+  /// manager screen, which outlives this tab, on every build.
+  final bool bracketStale;
+  final bool entriesStale;
 
   @override
   ConsumerState<DrawTab> createState() => _DrawTabState();
 }
 
-class _DrawTabState extends ConsumerState<DrawTab> {
+/// Kept alive: a tab flip keeps the category, the format choices and the
+/// open entries list.
+class _DrawTabState extends ConsumerState<DrawTab> with AutomaticKeepAliveClientMixin {
   String get tournamentId => widget.tournamentId;
 
-  /// Previous data that belongs to another account until fresh data arrives
-  /// (also when that load fails). Noted on every build, also while the tab
-  /// shows a spinner.
-  final _bracketTracker = StaleTracker();
-  final _entriesTracker = StaleTracker();
+  @override
+  bool get wantKeepAlive => true;
 
   String? _categoryId;
   final _choices = <String, _Choice>{};
@@ -106,11 +111,12 @@ class _DrawTabState extends ConsumerState<DrawTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l = context.l;
     final bracketValue = ref.watch(bracketProvider(tournamentId));
     final entriesValue = ref.watch(organizerEntriesProvider(tournamentId));
-    final bracketStale = _bracketTracker.update(bracketValue);
-    final entriesStale = _entriesTracker.update(entriesValue);
+    final bracketStale = widget.bracketStale;
+    final entriesStale = widget.entriesStale;
 
     return AsyncBody(
       value: ref.watch(tournamentProvider(tournamentId)),

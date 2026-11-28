@@ -29,6 +29,12 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
   /// For the title: the previous account's tournament is not shown.
   final _titleTracker = StaleTracker();
 
+  /// The Draw tab's bracket and entries, noted here on every build: the
+  /// screen outlives its tabs, so a reload seen while another tab is open
+  /// still counts when Draw comes back.
+  final _bracketTracker = StaleTracker();
+  final _entriesTracker = StaleTracker();
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +58,8 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
     final l = context.l;
     final value = ref.watch(tournamentProvider(tournamentId));
     final stale = _titleTracker.update(value);
+    final bracketStale = _bracketTracker.update(ref.watch(bracketProvider(tournamentId)));
+    final entriesStale = _entriesTracker.update(ref.watch(organizerEntriesProvider(tournamentId)));
     final title = stale ? null : value.valueOrNull?.title.resolve(context.lang);
 
     return DefaultTabController(
@@ -81,7 +89,7 @@ class _ManagerScreenState extends ConsumerState<ManagerScreen> {
         ),
         body: TabBarView(
           children: [
-            DrawTab(tournamentId: tournamentId),
+            DrawTab(tournamentId: tournamentId, bracketStale: bracketStale, entriesStale: entriesStale),
             // Built in M8a Task 8.
             EmptyState(key: const ValueKey('manage-schedule'), icon: Icons.calendar_month_outlined, text: l.manageTabSoon),
             EmptyState(key: const ValueKey('manage-scores'), icon: Icons.scoreboard_outlined, text: l.manageTabSoon),

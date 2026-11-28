@@ -480,6 +480,63 @@ void main() {
       nothingOfThePrevious();
     });
 
+    testWidgets("a switch while on another tab never brings the previous account's draft back to Draw", (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final backends = <_Flaky>[];
+      await pumpApp(
+        tester,
+        prefs: signedIn,
+        utcNow: sundayMorning,
+        backend: (clock) {
+          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          backends.add(b);
+          return b;
+        },
+      );
+      await _eightEntries(tester);
+      // From the tournament page, which keeps watching the bracket.
+      await _go(tester, '/tournaments/t3');
+      await tap(tester, key('tournament-manage'));
+      await tap(tester, key('manage-category-t3c1'));
+      await _makeDraw(tester, groups: true);
+      await tester.ensureVisible(key('entries-toggle'));
+      await tap(tester, key('entries-toggle'));
+      expect(key('draw-status-draft'), findsOneWidget);
+      expect(find.text('+998901000001'), findsOneWidget);
+
+      await tap(tester, key('manage-tab-schedule'));
+      await containerOf(tester).read(sessionProvider.notifier).signIn('Other');
+      await tester.pump();
+      await tester.pump();
+      backends.last.offline = true;
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      await tap(tester, key('manage-tab-draw'));
+      expect(key('tournament-manage-screen'), findsOneWidget);
+      expect(key('draw-status-draft'), findsNothing);
+      expect(find.text('Group A'), findsNothing);
+      expect(key('publish-draw'), findsNothing);
+      expect(key('redo-draw'), findsNothing);
+      expect(key('make-draw'), findsNothing);
+      expect(find.text('+998901000001'), findsNothing);
+      expect(key('entries-count'), findsNothing);
+    });
+
+    testWidgets('the Draw tab keeps its category and choices across tab flips', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      await _eightEntries(tester);
+      await _openManager(tester);
+      await tap(tester, key('format-groups'));
+      await tap(tester, key('manage-tab-schedule'));
+      await tap(tester, key('manage-tab-draw'));
+      // Still the open singles, still groups (the size picker shows).
+      expect(find.text('8 entries'), findsOneWidget);
+      expect(key('group-size-4'), findsOneWidget);
+    });
+
     testWidgets('Schedule and Scores are tabs of their own', (tester) async {
       await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
       await _go(tester, '/tournaments/t1/manage');
