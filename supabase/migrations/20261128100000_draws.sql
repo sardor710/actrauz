@@ -466,8 +466,11 @@ begin
   select t.sport_id into v_sport from public.tournament_categories c
   join public.tournaments t on t.id = c.tournament_id where c.id = p_category_id;
 
+  -- A registered entry with a deleted account in it (registrant or partner)
+  -- is left out: nobody could play it.
   select count(*)::integer into v_n from public.tournament_registrations r
-  where r.category_id = p_category_id and r.status = 'registered';
+  where r.category_id = p_category_id and r.status = 'registered'
+    and not exists (select 1 from public.profiles p where p.id in (r.user_id, r.partner_id) and p.deleted_at is not null);
   if v_n < 2 or (v_draw.format = 'groups' and v_n < 3) then raise exception 'too_few_entries'; end if;
 
   delete from public.tournament_matches m where m.category_id = p_category_id;
@@ -481,6 +484,7 @@ begin
     select r.id, app.entry_strength(r, v_sport) as strength
     from public.tournament_registrations r
     where r.category_id = p_category_id and r.status = 'registered'
+      and not exists (select 1 from public.profiles p where p.id in (r.user_id, r.partner_id) and p.deleted_at is not null)
   ) x;
 
   if v_draw.format = 'groups' then

@@ -688,6 +688,89 @@ test('organiser plays', async () => {
   assert.equal((await matchRow(final.id)).status, 'done');
 });
 
+// --- final review --------------------------------------------------------------------
+
+test('walkovers by withdrawal and automatic walkovers tell the opponent', async () => {
+  const t = await tournament();
+  const { cat } = await published(t, { n: 8 });
+  const [q1, , q3, q4] = await knockout(cat, 1);
+  const resultsAbout = async (reg, match) =>
+    (await Promise.all((await playersOf(reg)).map((p) => notesOf(p, 'match_result'))))
+      .flat()
+      .filter((n) => n.payload.match_id === match);
+
+  // A withdrawal: the opponent hears of the walkover.
+  await withdraw(organizer, q1.side_a);
+  const heard = await resultsAbout(q1.side_b, q1.id);
+  assert.equal(heard.length, 1);
+  assert.equal(heard[0].payload.outcome, 'walkover');
+  assert.equal(heard[0].payload.winner, 'b');
+  assert.equal(heard[0].payload.category_id, cat);
+
+  // A semi-finalist withdraws before their opponent is known: whoever wins
+  // quarter-final 4 is told of the semi-final walkover.
+  await score(organizer, q3.id, 'played', null, [[6, 3], [6, 3]]);
+  await withdraw(organizer, q3.side_a);
+  await score(organizer, q4.id, 'played', null, [[2, 6], [2, 6]]);
+  const [, semi2] = await knockout(cat, 2);
+  assert.equal(semi2.outcome, 'walkover');
+  const auto = await resultsAbout(q4.side_b, semi2.id);
+  assert.equal(auto.length, 1);
+  assert.equal(auto[0].payload.outcome, 'walkover');
+  // The loser of quarter-final 4 hears only of their own match.
+  assert.equal((await resultsAbout(q4.side_a, semi2.id)).length, 0);
+});
+
+test('players placed into a scheduled match hear its time', async () => {
+  const { venueId, courts } = await venue();
+  const t = await tournament({ venueId });
+  const { cat } = await published(t, { n: 4 });
+  const [s1, s2] = await knockout(cat, 1);
+  const [final] = await knockout(cat, 2);
+  await schedule(final.id, courts[0], at(day, 16));
+  const scheduledOf = async (reg) =>
+    (await Promise.all((await playersOf(reg)).map((p) => notesOf(p, 'match_scheduled'))))
+      .flat()
+      .filter((n) => n.payload.match_id === final.id);
+
+  await score(organizer, s1.id, 'played', null, [[6, 4], [6, 4]]);
+  const told = await scheduledOf(s1.side_a);
+  assert.equal(told.length, 1);
+  assert.equal(told[0].payload.starts_at, at(day, 16));
+  assert.equal(told[0].payload.court_id, courts[0]);
+  assert.equal((await scheduledOf(s1.side_b)).length, 0);
+
+  await score(organizer, s2.id, 'played', null, [[3, 6], [3, 6]]);
+  assert.equal((await scheduledOf(s2.side_b)).length, 1);
+  assert.equal((await scheduledOf(s1.side_a)).length, 1, 'told once');
+
+  // A correction puts the other semi-finalist in: they hear the time too.
+  await score(organizer, s1.id, 'played', null, [[4, 6], [4, 6]]);
+  assert.equal((await scheduledOf(s1.side_b)).length, 1);
+
+  // Groups into a scheduled knockout: the qualifiers are told, once.
+  const gt = await tournament({ venueId });
+  const { cat: groups } = await published(gt, { n: 4, format: 'groups', size: 4, advance: 2 });
+  const [gFinal] = await knockout(groups, 1);
+  await schedule(gFinal.id, courts[1], at(day, 17, 30));
+  const [a, b, c, d] = await members(groups, 'A');
+  await result(groups, a, b, [[6, 0], [6, 0]]);
+  await result(groups, a, c, [[6, 0], [6, 0]]);
+  await result(groups, a, d, [[6, 0], [6, 0]]);
+  await result(groups, b, c, [[6, 0], [6, 0]]);
+  await result(groups, b, d, [[6, 0], [6, 0]]);
+  const last = await result(groups, c, d, [[6, 0], [6, 0]]);
+  const toldOf = async (reg) =>
+    (await Promise.all((await playersOf(reg)).map((p) => notesOf(p, 'match_scheduled'))))
+      .flat()
+      .filter((n) => n.payload.match_id === gFinal.id);
+  for (const q of [a, b]) assert.equal((await toldOf(q)).length, 1, 'a qualifier is told');
+  for (const q of [c, d]) assert.equal((await toldOf(q)).length, 0);
+  // A correction that keeps the same qualifiers tells nobody again.
+  await score(organizer, last.id, 'played', null, last.side_a === c ? [[6, 1], [6, 1]] : [[1, 6], [1, 6]]);
+  for (const q of [a, b]) assert.equal((await toldOf(q)).length, 1, 'told once');
+});
+
 // --- the API -------------------------------------------------------------------------
 
 test('the public calls', async () => {

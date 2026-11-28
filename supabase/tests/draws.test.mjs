@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
-import { asUser, createUser, errorOf, expectError, freshDb } from './helpers/db.mjs';
+import { asAnon, asUser, createUser, errorOf, expectError, freshDb } from './helpers/db.mjs';
 import { addAdmin, addCategory, addEntries, addPhone, addRatedSports, addTournament, tashkent } from './helpers/fixtures.mjs';
 
 let db;
@@ -514,7 +514,7 @@ test('the public calls: organiser list, draws and the bracket', async () => {
   ]);
 
   const playerView = await asUser(pool, users[0], async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
-  assert.deepEqual(playerView, { organizer: false, draws: [], courts: [], my_next_match: null, finished: false });
+  assert.deepEqual(playerView, { organizer: false, draws: [], courts: [], my_next_match: null, finished: false, locked_category_ids: [] });
   const orgView = await asUser(pool, organizer, async (c) => (await c.query(`select public.tournament_bracket($1) as r`, [t])).rows[0].r);
   assert.equal(orgView.organizer, true);
   assert.equal(orgView.draws.length, 1);
@@ -538,4 +538,115 @@ test('the public calls: organiser list, draws and the bracket', async () => {
     (await c.query(`select public.swap_draw_entries($1, $2, $3) as r`, [cat, redone.entries[0].registration_id, redone.entries[1].registration_id])).rows[0].r,
   );
   assert.equal(swapped.entries.length, 4);
+});
+
+// --- final review -------------------------------------------------------------------
+
+test('the entry lock is visible to every caller, also for a redone draft', async () => {
+  const { t, cat, users } = await category(4);
+  const { cat: open } = await category(2, { tournament: t });
+  const bracket = (user) => scalar(`select app.tournament_bracket($1, $2) as r`, [user, t]);
+
+  await makeDraw(admin, cat);
+  await makeDraw(admin, open);
+  assert.deepEqual((await bracket(users[0])).locked_category_ids, []);
+  assert.equal((await drawJson(cat)).locked, false);
+
+  await publish(admin, cat);
+  assert.deepEqual((await bracket(users[0])).locked_category_ids, [cat]);
+  assert.equal((await drawJson(cat, users[0])).locked, true);
+
+  // A redone draw is a draft again, hidden from players, but still locked.
+  await redo(admin, cat);
+  const seen = await bracket(users[0]);
+  assert.deepEqual(seen.draws, []);
+  assert.deepEqual(seen.locked_category_ids, [cat]);
+  assert.deepEqual((await bracket(null)).locked_category_ids, [cat]);
+  const org = await drawJson(cat);
+  assert.equal(org.status, 'draft');
+  assert.equal(org.locked, true);
+  assert.equal((await drawJson(open)).locked, false);
+});
+
+test('deleted accounts are left out of a draw', async () => {
+  const { t, cat, users, regs } = await category(4);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [users[1], now]);
+  await makeDraw(admin, cat);
+  const draw = await drawJson(cat);
+  assert.deepEqual(
+    draw.entries.map((e) => e.registration_id).sort(),
+    [regs[0], regs[2], regs[3]].sort(),
+  );
+
+  // A pair whose partner has gone is left out too.
+  const pairs = await addCategory(pool, t, { kind: 'pairs' });
+  const lead = await players(3);
+  const mates = await players(3);
+  const pairRegs = await addEntries(pool, pairs, lead, { partners: mates });
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [mates[2], now]);
+  await makeDraw(admin, pairs);
+  assert.deepEqual(
+    (await drawJson(pairs)).entries.map((e) => e.registration_id).sort(),
+    [pairRegs[0], pairRegs[1]].sort(),
+  );
+
+  // Too few once the deleted ones are left out.
+  const small = await addCategory(pool, t);
+  const two = await players(2);
+  await addEntries(pool, small, two);
+  await pool.query(`update profiles set deleted_at = $2 where id = $1`, [two[0], now]);
+  await expectError(makeDraw(admin, small), 'too_few_entries');
+});
+
+test('every new public call: visitors refused, signed-in users allowed; RLS on every new table', async () => {
+  const signatures = [
+    ['admin_set_organizer', ['uuid', 'uuid', 'boolean']],
+    ['tournament_organizers', ['uuid']],
+    ['make_draw', ['uuid', 'text', 'integer', 'integer']],
+    ['swap_draw_entries', ['uuid', 'uuid', 'uuid']],
+    ['publish_draw', ['uuid']],
+    ['redo_draw', ['uuid']],
+    ['tournament_bracket', ['uuid']],
+    ['my_organized_tournaments', []],
+    ['organizer_entries', ['uuid']],
+    ['schedule_match', ['uuid', 'uuid', 'timestamp without time zone', 'text']],
+    ['fill_day', ['uuid', 'date', 'uuid[]', 'time without time zone', 'uuid[]']],
+    ['enter_match_score', ['uuid', 'text', 'text', 'jsonb']],
+    ['withdraw_entry', ['uuid']],
+    ['my_tournament_matches', []],
+  ];
+  for (const [name, types] of signatures) {
+    const fn = `public.${name}(${types.join(', ')})`;
+    const { rows: r } = await pool.query(
+      `select has_function_privilege('anon', $1, 'execute') as anon,
+              has_function_privilege('authenticated', $1, 'execute') as authed,
+              has_function_privilege('service_role', $1, 'execute') as service,
+              p.prosecdef as definer, p.proconfig as config
+       from pg_proc p where p.oid = $1::regprocedure`,
+      [fn],
+    );
+    assert.deepEqual(r[0], { anon: false, authed: true, service: true, definer: true, config: ['search_path=""'] }, fn);
+    const sql = `select public.${name}(${types.map((ty, i) => `$${i + 1}::${ty}`).join(', ')})`;
+    assert.equal(await errorOf(asAnon(pool, (c) => c.query(sql, types.map(() => null)))), '42501', fn);
+  }
+  // Each name has exactly one public function (no stray overload).
+  const { rows: listed } = await pool.query(
+    `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = any ($1::text[])`,
+    [signatures.map(([name]) => name)],
+  );
+  assert.equal(listed.length, signatures.length);
+
+  const tables = ['tournament_organizers', 'tournament_draws', 'tournament_groups', 'tournament_draw_entries', 'tournament_matches'];
+  for (const table of tables) {
+    const { rows: r } = await pool.query(
+      `select c.relrowsecurity as rls,
+              has_table_privilege('anon', c.oid, 'select') as anon,
+              has_table_privilege('authenticated', c.oid, 'select') as authed,
+              has_table_privilege('service_role', c.oid, 'select') as service
+       from pg_class c where c.oid = ('public.' || $1)::regclass`,
+      [table],
+    );
+    assert.deepEqual(r[0], { rls: true, anon: false, authed: false, service: true }, table);
+  }
 });

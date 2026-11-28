@@ -590,15 +590,30 @@ test('past slots', async () => {
   const [m] = await knockout(cat, 1);
   const eleven = tashkent(day, 11);
 
+  // A slot that has ended (9:00-10:30) is refused.
   await expectError(schedule(organizer, m.id, courts[0], at(day, 9), null, eleven), 'in_past');
-  // A slot under way (started 10:30) has a start before now too; 12:00 is fine.
-  await expectError(schedule(organizer, m.id, courts[0], at(day, 10, 30), null, eleven), 'in_past');
+  // A slot under way (10:30-12:00) can still be set: the organiser records
+  // when a match is really being played.
+  await schedule(organizer, m.id, courts[0], at(day, 10, 30), null, eleven);
+  assert.equal((await matchJson(m.id)).starts_at, at(day, 10, 30));
   await schedule(organizer, m.id, courts[0], at(day, 12), null, eleven);
 
+  // "Fill the day" still skips every slot that has already started.
   const result = await fill(organizer, t, day, courts, '09:00', null, eleven);
   assert.ok(result.scheduled > 0);
   for (const x of await allMatches([cat])) {
     if (x.j.starts_at) assert.ok(x.j.starts_at >= at(day, 11), x.j.starts_at);
   }
   assert.equal((await pool.query(`select count(*)::int as n from bookings where lower(during) < $1`, [eleven])).rows[0].n, 0);
+});
+
+test('past times without a venue: up to two hours back', async () => {
+  const t = await tournament();
+  const { cat } = await published(t);
+  const [m] = await knockout(cat, 1);
+  const eleven = tashkent(day, 11);
+
+  await schedule(organizer, m.id, null, at(day, 9), 'Field 2', eleven);
+  assert.equal((await matchJson(m.id)).starts_at, at(day, 9));
+  await expectError(schedule(organizer, m.id, null, at(day, 8, 59), 'Field 2', eleven), 'in_past');
 });

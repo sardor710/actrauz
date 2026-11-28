@@ -218,6 +218,34 @@ test('correction reverses once', async () => {
   assert.equal((await liveResult(final.id)).length, 1);
 });
 
+test('the same result entered again changes nothing', async () => {
+  const { final, a, b } = await singlesFinal(['I1', 'I2']);
+  await score(organizer, final.id, 'played', null, [[6, 2], [6, 3]]);
+  const before = await one(`select * from tournament_matches where id = $1`, [final.id]);
+  const [result] = await resultsOf(final.id);
+  const notes = async () => Number((await one(`select count(*) as n from notifications`)).n);
+  const audits = async () => Number((await one(`select count(*) as n from audit_log where action = 'enter_match_score'`)).n);
+  const noteCount = await notes();
+  const auditCount = await audits();
+
+  await score(organizer, final.id, 'played', null, [[6, 2], [6, 3]], plus(1));
+  assert.equal(await notes(), noteCount, 'no notices');
+  assert.equal(await audits(), auditCount);
+  const afterRow = await one(`select * from tournament_matches where id = $1`, [final.id]);
+  assert.equal(afterRow.scored_at.toISOString(), before.scored_at.toISOString());
+  const results = await resultsOf(final.id);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, result.id);
+  assert.equal(results[0].status, 'confirmed');
+  assert.deepEqual(await ratingRow(a), { rating: '2.64', rated_games: 1 });
+  assert.deepEqual(await ratingRow(b), { rating: '2.36', rated_games: 1 });
+  for (const u of [a, b]) assert.equal((await eventsOf(u)).length, 1);
+
+  // The same winner with another score is a real correction.
+  await score(organizer, final.id, 'played', null, [[6, 2], [6, 4]], plus(2));
+  assert.equal((await resultsOf(final.id)).length, 2);
+});
+
 test('football moves nothing', async () => {
   const t = await tournament('football');
   const users = [await createUser(pool, 'F1'), await createUser(pool, 'F2')];

@@ -91,8 +91,9 @@ as $$
   where c.id = p_court_id and m.id = p_match_id
 $$;
 
--- match_scheduled to every player of the match's known sides.
-create function app.notify_match_scheduled(p_match_id uuid, p_now timestamptz) returns void
+-- match_scheduled to every player of the match's known sides, or only to
+-- p_players (an entry just placed into the match) when given.
+create function app.notify_match_scheduled(p_match_id uuid, p_now timestamptz, p_players uuid[] default null) returns void
 language plpgsql
 set search_path = ''
 as $$
@@ -110,7 +111,7 @@ begin
     'court_id', v_match.court_id,
     'court_name', app.match_json(v_match) -> 'court_name',
     'place_note', v_match.place_note);
-  for v_player in select distinct x from unnest(app.match_players(v_match)) x loop
+  for v_player in select distinct x from unnest(coalesce(p_players, app.match_players(v_match))) x where x is not null loop
     perform app.notify(v_player, 'match_scheduled', 'tournaments', v_payload, p_now);
   end loop;
 end $$;
@@ -197,7 +198,9 @@ end $$;
 -- Without a venue: no court, a place note of up to 100 characters, no
 -- block. Refused when a player of either side is busy elsewhere in the
 -- tournament then (player_busy) or the slot is booked or blocked
--- (slot_taken). The players are told when the time or court changes.
+-- (slot_taken), or in the past (in_past: at a venue a slot that has ended,
+-- without one a start more than two hours ago). The players are told when
+-- the time or court changes.
 create function app.schedule_match(
   p_user uuid, p_match_id uuid, p_court_id uuid, p_starts_at timestamp, p_place_note text, p_now timestamptz)
 returns void
@@ -242,10 +245,11 @@ begin
   end if;
   if char_length(v_note) > 100 then raise exception 'invalid_argument'; end if;
   v_start := app.to_instant(p_starts_at, app.tournament_offset(v_tournament));
-  if v_start < p_now then raise exception 'in_past'; end if;
 
   if v_tournament.venue_id is null then
     if p_court_id is not null then raise exception 'invalid_argument'; end if;
+    -- No slot length: a start up to two hours back is a match under way.
+    if v_start < p_now - interval '2 hours' then raise exception 'in_past'; end if;
     v_span := tstzrange(v_start, v_start, '[]');
   else
     select c.* into v_court
@@ -256,6 +260,9 @@ begin
       raise exception 'invalid_argument';
     end if;
     v_span := tstzrange(v_start, v_start + make_interval(mins => v_court.slot_minutes), '[)');
+    -- Only a slot that has ended is refused (as owner blocks are): one under
+    -- way can still be recorded.
+    if upper(v_span) <= p_now then raise exception 'in_past'; end if;
   end if;
 
   if app.players_busy(v_match.id, v_tournament.id, app.match_players(v_match), v_span) then

@@ -361,6 +361,9 @@ try {
     : null;
   await removeAccounts({
     before: [
+      // The throw-away admin goes first, so a later statement that fails never
+      // leaves an admin account on the live project.
+      ...(users ? [`delete from public.app_admins where user_id in (${users})`] : []),
       ...(tournamentId
         ? [
             // Results first (their players and rating events go with them),
@@ -389,7 +392,7 @@ try {
           ]
         : []),
       ...(users
-        ? [`delete from public.audit_log where actor_id in (${users})`, `delete from public.app_admins where user_id in (${users})`]
+        ? [`delete from public.audit_log where actor_id in (${users})`]
         : []),
     ],
   });

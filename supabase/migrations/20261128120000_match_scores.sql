@@ -68,7 +68,10 @@ end $$;
 -- Puts what a knockout match produced into its side of the next match: the
 -- winner; an empty side when it is done without one (or its winner has
 -- withdrawn); nothing yet (an unknown side) while it is not done. Then
--- settles the next match. Nothing for a group match or the final.
+-- settles the next match. An entry placed into a next match that already
+-- has a court and time and is still to play hears of it (match_scheduled),
+-- unless actra.quiet_placement is 'on' (app.fill_knockout tells them
+-- itself). Nothing for a group match or the final.
 create function app.place_winner(p_match_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -106,11 +109,19 @@ begin
     raise exception 'next_match_played';
   end if;
   perform app.settle_match(v_next.id, p_now);
+
+  if v_entry is not null and coalesce(current_setting('actra.quiet_placement', true), '') <> 'on'
+     and exists (select 1 from public.tournament_matches m
+                 where m.id = v_next.id and m.status <> 'done' and m.starts_at is not null
+                   and v_entry in (m.side_a, m.side_b)) then
+    perform app.notify_match_scheduled(v_next.id, p_now, app.entry_players(v_entry));
+  end if;
 end $$;
 
 -- Recomputes the state of a knockout match nobody has scored (not done, or
 -- done as a bye or with no winner) from its sides, as the header describes,
--- and passes any change on to the next match.
+-- and passes any change on to the next match. The players of the side that
+-- wins a walkover this way hear of it (match_result).
 create function app.settle_match(p_match_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -152,6 +163,10 @@ begin
       scored_at = case when v_status = 'done' then p_now end
   where m.id = v_match.id;
   if v_status = 'done' then perform app.match_not_played(v_match.id, p_now); end if;
+  if v_outcome = 'walkover' then
+    perform app.notify_match_result(v_match.id,
+      app.entry_players(case v_winner when 'a' then v_match.side_a else v_match.side_b end), false, p_now);
+  end if;
   perform app.place_winner(v_match.id, p_now);
 end $$;
 
@@ -282,7 +297,8 @@ $$;
 -- as a better one from its group swaps with the nearest-ranked runner-up of
 -- another group in the other half whose own group-mate is not in this half.
 -- A withdrawn entry that would qualify (its group has too few others)
--- leaves its slot empty. Courts and times already set stay.
+-- leaves its slot empty. Courts and times already set stay; an entry newly
+-- placed into a match that has them hears of it (match_scheduled), once.
 create function app.fill_knockout(p_category_id uuid, p_now timestamptz) returns void
 language plpgsql
 set search_path = ''
@@ -305,6 +321,9 @@ declare
   v_match public.tournament_matches;
   v_a uuid;
   v_b uuid;
+  v_before jsonb;
+  v_quiet text;
+  v_entry uuid;
   r record;
   i integer;
   k integer;
@@ -385,6 +404,11 @@ begin
   v_rank := array_fill(null::integer, array[v_size]);
   for k in 1..v_count loop v_rank[v_slot[k]] := k; end loop;
 
+  -- Who was on each side before, so only an entry newly placed is told.
+  select coalesce(jsonb_object_agg(m.id::text, jsonb_build_array(m.side_a, m.side_b)), '{}'::jsonb) into v_before
+  from public.tournament_matches m
+  where m.category_id = p_category_id and m.stage = 'knockout';
+
   -- Start the knockout afresh, keeping courts and times.
   update public.tournament_matches m
   set side_a = null, side_b = null, a_empty = false, b_empty = false,
@@ -397,12 +421,27 @@ begin
     set side_a = v_a, side_b = v_b, a_empty = v_a is null, b_empty = v_b is null
     where m.category_id = p_category_id and m.stage = 'knockout' and m.round = 1 and m.position = i;
   end loop;
+  v_quiet := current_setting('actra.quiet_placement', true);
+  perform set_config('actra.quiet_placement', 'on', true);
   for v_match in
     select m.* from public.tournament_matches m
     where m.category_id = p_category_id and m.stage = 'knockout' and m.round = 1
     order by m.position
   loop
     perform app.settle_match(v_match.id, p_now);
+  end loop;
+  perform set_config('actra.quiet_placement', coalesce(v_quiet, ''), true);
+
+  for v_match in
+    select m.* from public.tournament_matches m
+    where m.category_id = p_category_id and m.stage = 'knockout' and m.status <> 'done' and m.starts_at is not null
+    order by m.round, m.position
+  loop
+    foreach v_entry in array array_remove(array[v_match.side_a, v_match.side_b], null) loop
+      if not coalesce((v_before -> v_match.id::text) ? v_entry::text, false) then
+        perform app.notify_match_scheduled(v_match.id, p_now, app.entry_players(v_entry));
+      end if;
+    end loop;
   end loop;
 end $$;
 
@@ -528,7 +567,8 @@ end $$;
 -- A correction is refused (next_match_played) once the match that depends
 -- on it has a score: for a knockout match the next match, for a group match
 -- any knockout match of the category (a bye aside). An organiser who plays
--- may score their own match (§14a.8).
+-- may score their own match (§14a.8). Entering exactly the stored result
+-- again changes nothing.
 create function app.enter_match_score(
   p_user uuid, p_match_id uuid, p_outcome text, p_winner text, p_sets jsonb, p_now timestamptz)
 returns void
@@ -594,6 +634,13 @@ begin
     raise exception 'invalid_argument';
   end if;
   if v_winner = 'draw' and v_previous.stage = 'knockout' then raise exception 'draw_not_allowed'; end if;
+
+  -- The result already stored, entered again (a double tap, a retry): no
+  -- change, so no reversal, no new rating result and no notices.
+  if v_previous.status = 'done' and v_previous.outcome = p_outcome
+     and v_previous.winner is not distinct from v_winner and v_previous.sets is not distinct from v_sets then
+    return;
+  end if;
 
   -- A withdrawn entry wins nothing it had not already won.
   v_entry := case v_winner when 'a' then v_previous.side_a when 'b' then v_previous.side_b end;
@@ -746,6 +793,9 @@ begin
             sets = null, scored_by = p_actor, scored_at = p_now
         where m.id = v_match.id;
         perform app.match_not_played(v_match.id, p_now);
+        -- The opponent hears of the walkover.
+        perform app.notify_match_result(v_match.id,
+          app.entry_players(case when v_match.side_a = v_reg.id then v_match.side_b else v_match.side_a end), false, p_now);
         perform app.place_winner(v_match.id, p_now);
       else
         update public.tournament_matches m
@@ -811,7 +861,8 @@ end $$;
 -- ---------------------------------------------------------------------------
 
 -- Redefined from 20261128100000_draws.sql: groups[].standings, "winner",
--- "runner_up" (registration ids or null) and "finished".
+-- "runner_up" (registration ids or null), "finished" and "locked" (the
+-- category's entries are locked: published once, a redone draft included).
 create or replace function app.draw_json(p_category_id uuid, p_user uuid) returns jsonb
 language plpgsql
 set search_path = ''
@@ -834,6 +885,7 @@ begin
     'advance', v_draw.advance,
     'status', v_draw.status,
     'outdated', v_draw.outdated,
+    'locked', v_draw.locked,
     'entries', (
       select coalesce(jsonb_agg(jsonb_build_object(
           'registration_id', e.registration_id,
@@ -866,7 +918,9 @@ end $$;
 -- before knockout, round and position: match_json plus "category_id", or
 -- null) and "finished" (at least one category has a draw, and every
 -- category with a draw has a published one that is finished; categories
--- without a draw are left out).
+-- without a draw are left out). "locked_category_ids", for every caller:
+-- the categories whose entries are locked (a draw published once, also
+-- while a redone draft is hidden), so a player can tell no entry may change.
 create or replace function app.tournament_bracket(p_user uuid, p_tournament_id uuid) returns jsonb
 language plpgsql
 set search_path = ''
@@ -908,6 +962,11 @@ begin
       select count(*) > 0 and bool_and((app.category_result(d.category_id) ->> 'finished')::boolean)
       from public.tournament_draws d
       join public.tournament_categories c on c.id = d.category_id
+      where c.tournament_id = p_tournament_id),
+    'locked_category_ids', (
+      select coalesce(jsonb_agg(c.id order by c.sort_order, c.created_at, c.id), '[]'::jsonb)
+      from public.tournament_categories c
+      join public.tournament_draws d on d.category_id = c.id and d.locked
       where c.tournament_id = p_tournament_id));
 end $$;
 

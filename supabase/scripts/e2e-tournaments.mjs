@@ -193,6 +193,9 @@ try {
   const categories = tournamentId ? `select c.id from public.tournament_categories c where c.tournament_id = '${tournamentId}'` : null;
   await removeAccounts({
     before: [
+      // The throw-away admin goes first, so a later statement that fails never
+      // leaves an admin account on the live project.
+      ...(users ? [`delete from public.app_admins where user_id in (${users})`] : []),
       ...(tournamentId
         ? [
             // Registrations block their category (on delete restrict); the
@@ -202,7 +205,7 @@ try {
           ]
         : []),
       ...(users
-        ? [`delete from public.audit_log where actor_id in (${users})`, `delete from public.app_admins where user_id in (${users})`]
+        ? [`delete from public.audit_log where actor_id in (${users})`]
         : []),
     ],
   });
