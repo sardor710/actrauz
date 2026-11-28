@@ -198,24 +198,24 @@ class _MatchScoreSheetState extends ConsumerState<MatchScoreSheet> {
                 const SizedBox(height: 4),
                 Text(matchStageText(l, context.lang, widget.match), style: AppText.muted),
                 const SizedBox(height: 14),
-                SegmentedButton<_Kind>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: _Kind.played,
-                      label: Text(l.outcomePlayed, key: const ValueKey('outcome-played'), maxLines: 1),
-                    ),
-                    ButtonSegment(
-                      value: _Kind.walkover,
-                      label: Text(l.outcomeWalkover, key: const ValueKey('outcome-walkover'), maxLines: 1),
-                    ),
-                    ButtonSegment(
-                      value: _Kind.retired,
-                      label: Text(l.outcomeRetired, key: const ValueKey('outcome-retired'), maxLines: 1),
-                    ),
+                // Chips that wrap: "Техническая победа" does not fit a third
+                // of a phone.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (kind, text, key) in [
+                      (_Kind.played, l.outcomePlayed, 'outcome-played'),
+                      (_Kind.walkover, l.outcomeWalkover, 'outcome-walkover'),
+                      (_Kind.retired, l.outcomeRetired, 'outcome-retired'),
+                    ])
+                      ChoiceChip(
+                        key: ValueKey(key),
+                        label: Text(text),
+                        selected: _kind == kind,
+                        onSelected: (_) => setState(() => _kind = kind),
+                      ),
                   ],
-                  selected: {_kind},
-                  onSelectionChanged: (v) => setState(() => _kind = v.first),
                 ),
                 if (_kind != _Kind.walkover) ...[
                   label(rated ? l.scoreSets : l.scoreEnter),

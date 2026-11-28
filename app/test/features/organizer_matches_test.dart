@@ -36,8 +36,9 @@ Future<void> _go(WidgetTester tester, String location) async {
 final _cupDay = DateTime.utc(2026, 11, 25);
 
 /// A one-day cup on 25 Nov with two singles categories (A, B), run by the
-/// demo player. Returns the tournament and its two categories.
-Future<(String, String, String)> _cup(WidgetTester tester, {String sportId = 'padel', String venueId = 'v1'}) async {
+/// demo player ([venueId] null: without a venue). Returns the tournament and
+/// its two categories.
+Future<(String, String, String)> _cup(WidgetTester tester, {String sportId = 'padel', String? venueId = 'v1'}) async {
   final backend = _backend(tester);
   final id = await backend.admin.saveTournament(
     TournamentDraft(
@@ -217,6 +218,39 @@ void main() {
       await tap(tester, key('manage-tab-scores'));
       await tester.ensureVisible(key('scores-clash-${clashed.id}'));
       expect(key('scores-clash-${clashed.id}'), findsOneWidget);
+    });
+  });
+
+  group('without a venue', () {
+    testWidgets('a match gets a time and a place note; no courts and no Fill the day', (tester) async {
+      await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
+      final (t, a, _) = await _cup(tester, venueId: null);
+      final d = await _published(tester, a, ['p1', 'p2']);
+      final m = _ko(d, 1, 1);
+      await _openTab(tester, t, 'schedule');
+      expect(key('fill-day'), findsNothing);
+      expect(key('schedule-court-v1c1'), findsNothing);
+
+      await _tapIn(tester, key('schedule-match-${m.id}'));
+      expect(key('sheet-court-v1c1'), findsNothing);
+      expect(tester.widget<FilledButton>(key('schedule-save')).onPressed, isNull);
+      // The picker opens at 10:00.
+      await _tapIn(tester, key('schedule-pick-time'));
+      await tap(tester, find.text('OK'));
+      expect(find.text('10:00'), findsOneWidget);
+      await tester.enterText(key('schedule-place-note'), 'Yunusobod park, court 3');
+      await _tapIn(tester, key('schedule-save'));
+
+      final after = _ko(await _draw(tester, t, a), 1, 1);
+      expect(
+        (after.courtId, after.startsAt, after.placeNote),
+        (null, DateTime.utc(2026, 11, 25, 10), 'Yunusobod park, court 3'),
+      );
+      // The day's list shows it with its place.
+      expect(
+        find.descendant(of: key('schedule-match-${m.id}'), matching: find.text('10:00 · Yunusobod park, court 3')),
+        findsOneWidget,
+      );
     });
   });
 
@@ -409,26 +443,55 @@ void main() {
         final sf1 = _ko(d, 2, 1);
         final finalMatch = _ko(d, 3, 1);
 
+        Future<void> closeSheet() async {
+          await tester.tapAt(const Offset(180, 40));
+          await tester.pumpAndSettle();
+        }
+
         await _openTab(tester, 't1', 'schedule');
+        expect(key('schedule-court-v1c2'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await _tapIn(tester, key('schedule-match-${finalMatch.id}'));
         await _tapIn(tester, key('sheet-court-v1c1'));
+        expect(key('sheet-slot-10:00'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        await tester.tapAt(const Offset(180, 40));
-        await tester.pumpAndSettle();
+        await closeSheet();
+        expect(key('schedule-save'), findsNothing);
+
         await _tapIn(tester, key('fill-day'));
+        expect(key('fill-run'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        await tester.tapAt(const Offset(180, 40));
-        await tester.pumpAndSettle();
+        await closeSheet();
+        expect(key('fill-run'), findsNothing);
 
         await tap(tester, key('manage-tab-scores'));
         expect(tester.takeException(), isNull);
         await _tapIn(tester, key('score-match-${sf1.id}'));
         await _tapIn(tester, key('outcome-retired'));
+        expect(key('winner-a'), findsOneWidget);
+        expect(key('set-0-mine-plus'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        await tester.tapAt(const Offset(180, 40));
-        await tester.pumpAndSettle();
+        await closeSheet();
+        expect(key('match-score-save'), findsNothing);
         await _tapIn(tester, key('match-menu-${sf1.id}'));
+        expect(key('withdraw-${sf1.sideA}'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+
+        // The owner's calendar: the semi-final's block on Friday 4 Dec.
+        await _go(tester, '/owner/v1');
+        await tap(tester, find.byIcon(Icons.chevron_right_rounded));
+        await tap(tester, find.byIcon(Icons.chevron_right_rounded));
+        await tester.ensureVisible(cell('2026-12-04T10:00'));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: cell('2026-12-04T10:00'), matching: find.byIcon(Icons.lock_outline_rounded)),
+          findsNothing,
+        );
+        expect(find.descendant(of: cell('2026-12-04T10:00'), matching: find.byType(Text)), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tap(tester, cell('2026-12-04T10:00'));
         expect(tester.takeException(), isNull);
       });
     }
