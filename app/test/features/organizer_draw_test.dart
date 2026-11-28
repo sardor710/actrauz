@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:actra/data/organizer_repository.dart';
+import 'package:actra/data/repositories.dart';
 import 'package:actra/data/sample/sample_data.dart';
 import 'package:actra/data/sample/sample_repositories.dart';
 import 'package:actra/domain/brackets.dart';
@@ -74,7 +75,12 @@ class _FlakyOrganizer implements OrganizerRepository {
   }
 
   @override
-  Future<List<AdminRegistration>> entries(String tournamentId) => _inner.entries(tournamentId);
+  Future<List<AdminRegistration>> entries(String tournamentId) async {
+    await _owner.gate?.future;
+    if (_owner.offline) throw const TournamentException(TournamentError.unavailable);
+    return _inner.entries(tournamentId);
+  }
+
   @override
   Future<CategoryDraw> makeDraw(String categoryId, DrawFormat format, {int? groupSize, int? advance}) =>
       _inner.makeDraw(categoryId, format, groupSize: groupSize, advance: advance);
@@ -103,17 +109,66 @@ class _FlakyOrganizer implements OrganizerRepository {
   Future<CategoryDraw> withdraw(String registrationId) => _inner.withdraw(registrationId);
 }
 
+/// Brackets wait for the gate and fail while offline; the rest passes through.
+class _FlakyTournaments implements TournamentRepository {
+  _FlakyTournaments(this._inner, this._owner);
+
+  final TournamentRepository _inner;
+  final _Flaky _owner;
+
+  @override
+  Future<TournamentBracket> bracket(String tournamentId) async {
+    await _owner.gate?.future;
+    if (_owner.offline) throw const TournamentException(TournamentError.unavailable);
+    return _inner.bracket(tournamentId);
+  }
+
+  @override
+  Future<List<Tournament>> list(
+    String cityId, {
+    String? sportId,
+    DateTime? from,
+    TournamentSort sort = TournamentSort.date,
+  }) => _inner.list(cityId, sportId: sportId, from: from, sort: sort);
+  @override
+  Future<Tournament> get(String id) => _inner.get(id);
+  @override
+  Future<Registration> register(String categoryId, {String? partnerId}) =>
+      _inner.register(categoryId, partnerId: partnerId);
+  @override
+  Future<Registration> respondPartner(String registrationId, {required bool accept}) =>
+      _inner.respondPartner(registrationId, accept: accept);
+  @override
+  Future<Registration> cancel(String registrationId) => _inner.cancel(registrationId);
+  @override
+  Future<Registration> joinWaitlist(String categoryId, {String? partnerId}) =>
+      _inner.joinWaitlist(categoryId, partnerId: partnerId);
+  @override
+  Future<Registration> claimOffer(String registrationId) => _inner.claimOffer(registrationId);
+  @override
+  Future<List<Registration>> myRegistrations() => _inner.myRegistrations();
+  @override
+  Future<PlayerRef?> findPlayerByPhone(String phone) => _inner.findPlayerByPhone(phone);
+  @override
+  Future<List<MyMatch>> myMatches() => _inner.myMatches();
+}
+
 class _Flaky extends SampleBackend {
   _Flaky({required super.utcNow}) : super(meName: 'Test');
 
   bool offline = false;
 
-  /// "Tournaments I run" waits for it (and then fails while [offline]).
+  /// "Tournaments I run", entries and brackets wait for it (and then fail
+  /// while [offline]).
   Completer<void>? gate;
 
   @override
   OrganizerRepository get organizer => _flaky ??= _FlakyOrganizer(super.organizer, this);
   OrganizerRepository? _flaky;
+
+  @override
+  TournamentRepository get tournament => _flakyTournaments ??= _FlakyTournaments(super.tournament, this);
+  TournamentRepository? _flakyTournaments;
 }
 
 void main() {
@@ -142,6 +197,21 @@ void main() {
       await settleSnackbars(tester);
       expect(key('organizer-p1'), findsNothing);
       expect(await _backend(tester).admin.organizers('t3'), isEmpty);
+    });
+
+    testWidgets('an admin adds an organiser found by name, whatever sport they play', (tester) async {
+      await openAdmin(tester);
+      // Almaty Open Tennis; Timur plays only football.
+      await _go(tester, '/admin/tournaments/t3');
+      await tester.ensureVisible(key('add-organizer'));
+      await tap(tester, key('add-organizer'));
+      await tester.enterText(key('partner-search'), 'Timur');
+      await tester.pumpAndSettle();
+      await tap(tester, key('partner-player-p3'));
+      await tap(tester, key('pick-player-ok'));
+      await settleSnackbars(tester);
+      expect(key('organizer-p3'), findsOneWidget);
+      expect((await _backend(tester).admin.organizers('t3')).map((p) => p.id), ['p3']);
     });
 
     testWidgets('adding needs a player picked first', (tester) async {
@@ -263,10 +333,7 @@ void main() {
       expect(after.entry(b).groupId, groupA);
       expect(key('draft-selected-$a'), findsNothing);
       // The preview follows: a is now listed in the second group.
-      expect(
-        find.descendant(of: key('draft-group-$groupB'), matching: key('draft-entry-$a')),
-        findsOneWidget,
-      );
+      expect(find.descendant(of: key('draft-group-$groupB'), matching: key('draft-entry-$a')), findsOneWidget);
     });
 
     testWidgets('an out-of-date draft shows the banner and cannot be published', (tester) async {
@@ -367,6 +434,52 @@ void main() {
       await settleSnackbars(tester);
     });
 
+    testWidgets("another account never sees the previous one's entries or draft, even when its loads fail", (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final backends = <_Flaky>[];
+      await pumpApp(
+        tester,
+        prefs: signedIn,
+        utcNow: sundayMorning,
+        backend: (clock) {
+          final b = _Flaky(utcNow: clock)..gate = backends.isEmpty ? null : gate;
+          backends.add(b);
+          return b;
+        },
+      );
+      await _eightEntries(tester);
+      await _openManager(tester);
+      await _makeDraw(tester, groups: true);
+      await tester.ensureVisible(key('entries-toggle'));
+      await tap(tester, key('entries-toggle'));
+      expect(key('entries-count'), findsOneWidget);
+      expect(find.text('+998901000001'), findsOneWidget);
+      expect(key('draw-status-draft'), findsOneWidget);
+      expect(find.text('Group A'), findsOneWidget);
+
+      void nothingOfThePrevious() {
+        expect(key('entries-count'), findsNothing);
+        expect(find.text('+998901000001'), findsNothing);
+        expect(find.text('Aziz'), findsNothing);
+        expect(key('draw-status-draft'), findsNothing);
+        expect(find.text('Group A'), findsNothing);
+      }
+
+      await containerOf(tester).read(sessionProvider.notifier).signIn('Other');
+      await tester.pump();
+      await tester.pump();
+      nothingOfThePrevious();
+
+      // The other account's loads fail.
+      backends.last.offline = true;
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(key('tournament-manage-screen'), findsOneWidget);
+      nothingOfThePrevious();
+    });
+
     testWidgets('Schedule and Scores are tabs of their own', (tester) async {
       await pumpApp(tester, prefs: signedIn, utcNow: sundayMorning);
       await _go(tester, '/tournaments/t1/manage');
@@ -396,6 +509,28 @@ void main() {
         await tap(tester, key('entries-toggle'));
         expect(tester.takeException(), isNull);
         await tester.ensureVisible(key('publish-draw'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        // A knockout draft: the first round with its byes.
+        await tester.ensureVisible(key('format-knockout'));
+        await tap(tester, key('format-knockout'));
+        await _makeDraw(tester);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('draft-match-'),
+          ),
+          findsNWidgets(4),
+        );
+        await tester.ensureVisible(key('publish-draw'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        // A published bracket with scores.
+        await _go(tester, '/tournaments/t1/manage');
+        await tap(tester, key('manage-category-t1c2'));
+        expect(key('draw-status-published'), findsOneWidget);
+        await tester.ensureVisible(key('draw-t1c2'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
 

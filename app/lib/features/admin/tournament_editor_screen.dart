@@ -223,7 +223,7 @@ class _TournamentEditorScreenState extends ConsumerState<TournamentEditorScreen>
                   children: [
                     _details(context, draft),
                     _categories(context, draft, admin),
-                    if (_tournamentId case final id?) OrganizersCard(tournamentId: id, sportId: draft.sportId),
+                    if (_tournamentId case final id?) OrganizersCard(tournamentId: id),
                   ],
                 ),
               );
@@ -492,12 +492,10 @@ class _TournamentEditorScreenState extends ConsumerState<TournamentEditorScreen>
 /// (an account found by name or phone, as the pair invite finds a partner)
 /// and Remove. Each person is told by the backend.
 class OrganizersCard extends ConsumerWidget {
-  const OrganizersCard({super.key, required this.tournamentId, required this.sportId});
+  const OrganizersCard({super.key, required this.tournamentId});
 
+  /// Organisers need not play the sport: Find players lists every sport.
   final String tournamentId;
-
-  /// Find players starts with the tournament's sport.
-  final String sportId;
 
   Future<void> _set(BuildContext context, WidgetRef ref, String userId, {required bool add}) async {
     final l = context.l;
@@ -511,7 +509,7 @@ class OrganizersCard extends ConsumerWidget {
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
     final l = context.l;
-    final player = await showPickPlayerSheet(context, title: l.addOrganizer, action: l.addOrganizer, sportId: sportId);
+    final player = await showPickPlayerSheet(context, title: l.addOrganizer, action: l.addOrganizer);
     if (player == null || !context.mounted) return;
     await _set(context, ref, player.id, add: true);
   }
