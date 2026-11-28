@@ -18,6 +18,8 @@ Who does each item: **[me]** = I can build it, **[you]** = needs the founder (an
 
 ## 1. M8a: tournament brackets and results (no outside dependencies)
 
+**2026-11-28: steps 1–9 done on branch `m8-brackets` (built, reviewed, walked through in sample mode); step 10 (deploy) and 11 (merge, app build) wait for the founder. `e2e-tournaments.mjs` (item 0.5) is written, not yet run live.**
+
 1. [me] Design doc: draw formats, seeding, byes, tie-breaks in groups, who may enter scores.
 2. [me] Database: draws, groups, rounds, matches, match courts/times, results.
 3. [me] Draw generation per category: knockout (seeded by rating, byes) and groups → knockout.

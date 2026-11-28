@@ -125,7 +125,7 @@ Order follows spec §16 option C: full player loop in Tashkent first, then Kazak
 | **M5** | **Tournaments (registration)** | Categories, pairs with partner accept, caps, waitlist, admin tournament manager, admin dashboard with revenue split | A tournament fills and closes a category correctly |
 | **M6** | **Kazakhstan launch** | Almaty and Astana content, KZT, Kazakh language decision carried out, store listings | Live in both countries |
 | **M7** | **Competitive layer** | Padel and tennis 1.0–7.0 ratings, score entry and confirmation, leaderboards, teams, sportsmanship | Ratings move after confirmed results |
-| **M8** | **Online payments + brackets** | Click and Payme (UZ), Kaspi and Freedom (KZ), commission and payouts, refunds, tournament brackets and results | Paid booking and refund work per country |
+| **M8** | **Online payments + brackets** | Click and Payme (UZ), Kaspi and Freedom (KZ), commission and payouts, refunds, tournament brackets and results | Paid booking and refund work per country. **2026-11-28:** split into M8a (brackets and results: built and reviewed on branch `m8-brackets`, not deployed) and M8b (online payments: waits for merchant agreements). |
 
 Running alongside from M2: crash reporting, analytics events, CI that runs tests and builds on every change, store release pipeline.
 
